@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macrocast cache
+.macrocast/
+
+# Data (downloaded, not committed)
+data_cache/
+*.csv.gz
+
+# R
+macrocastR/.Rproj.user
+macrocastR/src/*.o
+macrocastR/src/*.so
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv pip *)",
+      "Bash(uv sync*)",
+      "Bash(uv add *)",
+      "Bash(uv remove *)",
+      "Bash(python -m pytest*)",
+      "Bash(python -m macrocast*)",
+      "Bash(ruff *)",
+      "Bash(git *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(curl https://files.stlouisfed.org/*)",
+      "Bash(curl https://research.stlouisfed.org/*)",
+      "Bash(curl https://s3.amazonaws.com/real.stlouisfed.org/*)",
+      "Bash(Rscript *)",
+      "Bash(R -e *)",
+      "Read(*)",
+      "Write(macrocast/**)",
+      "Write(macrocastR/**)",
+      "Write(tests/**)",
+      "Write(examples/**)",
+      "Write(docs/**)",
+      "Write(paper/**)",
+      "Write(pyproject.toml)",
+      "Write(CLAUDE.md)",
+      "Write(README.md)",
+      "Write(.gitignore)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)*",
+      "Bash(sudo *)",
+      "Write(.env*)",
+      "Write(**/secrets*)"
+    ]
+  },
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": ".",
+    "MACROCAST_CACHE_DIR": "~/.macrocast/cache"
+  }
+}
