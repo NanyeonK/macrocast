@@ -124,6 +124,21 @@ class FeatureSpec:
     lookback : int
         Sequence look-back window length for LSTM.  Ignored for cross-sectional
         models.
+    use_marx : bool
+        Whether to include MARX (mixed-frequency AR with cross-section) features.
+        Requires FeatureBuilder support.
+    p_marx : int
+        Number of lags for MARX feature construction.
+    use_maf : bool
+        Whether to use MAF (factor-augmented) features.  Requires
+        ``use_factors=True``.
+    include_levels : bool
+        Whether to append the untransformed level panel alongside the
+        stationary-transformed panel.  Requires ``panel_levels`` to be
+        provided to ForecastExperiment.
+    target_scheme : str
+        Multi-step targeting strategy.  ``"direct"`` trains on y_{t+h};
+        ``"path_average"`` trains on the mean of y_{t+1}, ..., y_{t+h}.
     """
 
     use_factors: bool = True
@@ -132,6 +147,12 @@ class FeatureSpec:
     standardize_X: bool = True
     standardize_Z: bool = False
     lookback: int = 12  # for LSTM; months
+    # CLSS 2021 additions
+    use_marx: bool = False
+    p_marx: int = 12
+    use_maf: bool = False
+    include_levels: bool = False
+    target_scheme: str = "direct"  # "direct" | "path_average"
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +203,7 @@ class ForecastExperiment:
         horizons: list[int],
         model_specs: list[ModelSpec],
         feature_spec: FeatureSpec | None = None,
+        panel_levels: pd.DataFrame | None = None,
         window: Window = Window.EXPANDING,
         rolling_size: int | None = None,
         oos_start: pd.Timestamp | str | None = None,
@@ -195,6 +217,7 @@ class ForecastExperiment:
         self.horizons = horizons
         self.model_specs = model_specs
         self.feature_spec = feature_spec or FeatureSpec()
+        self.panel_levels = panel_levels
         self.window = window
         self.rolling_size = rolling_size
         self.n_jobs = n_jobs
@@ -218,6 +241,16 @@ class ForecastExperiment:
         if self.window == Window.ROLLING and rolling_size is None:
             raise ValueError(
                 "rolling_size must be provided when window=Window.ROLLING."
+            )
+
+        feat_spec = self.feature_spec
+        if feat_spec.use_maf and not feat_spec.use_factors:
+            raise ValueError("use_maf=True requires use_factors=True in FeatureSpec.")
+        if feat_spec.include_levels and panel_levels is None:
+            raise ValueError("include_levels=True requires panel_levels to be provided.")
+        if feat_spec.target_scheme not in {"direct", "path_average"}:
+            raise ValueError(
+                f"target_scheme must be 'direct' or 'path_average', got {feat_spec.target_scheme!r}."
             )
 
     # ------------------------------------------------------------------
@@ -329,11 +362,29 @@ class ForecastExperiment:
             if T_tr <= h:
                 return None
             X_tr_aligned = X_train[: T_tr - h]  # rows 0 .. T-h-1
-            y_tr_aligned = y_train_full[h:]  # rows h .. T-1 → y_{t+h}
+
+            if self.feature_spec.target_scheme == "path_average" and h > 1:
+                # Path average: ȳ_{t+h} = (1/h) Σ_{h'=1}^{h} y_{t+h'}
+                # For position i: mean(y[i+1], ..., y[i+h])
+                # Using cumsum: cs[k] = sum(y[0..k-1])
+                # path_avg[i] = (cs[i+h+1] - cs[i+1]) / h
+                cs = np.concatenate([[0.0], np.cumsum(y_train_full)])
+                y_tr_aligned = (cs[1 + h : T_tr + 1] - cs[1 : T_tr - h + 1]) / h
+            else:
+                y_tr_aligned = y_train_full[h:]  # rows h .. T-1 → y_{t+h}
 
             # Test row: single observation at train_end (forecast Z_{train_end})
             X_test_row = self.panel.loc[train_end:train_end].values  # (1, N)
-            y_true = float(self.target.loc[t_star])
+
+            if self.feature_spec.target_scheme == "path_average" and h > 1:
+                # y_true is the path average over the next h periods
+                # t_star_pos is the position of the forecast date (h steps ahead)
+                # We want mean(target[t_star_pos-h+1], ..., target[t_star_pos])
+                y_true = float(
+                    np.mean(self.target.iloc[t_star_pos - h + 1 : t_star_pos + 1])
+                )
+            else:
+                y_true = float(self.target.loc[t_star])
 
             # Feature construction
             feat_spec = self.feature_spec
@@ -354,20 +405,35 @@ class ForecastExperiment:
                     use_factors=feat_spec.use_factors,
                     standardize_X=feat_spec.standardize_X,
                     standardize_Z=feat_spec.standardize_Z,
+                    use_marx=feat_spec.use_marx,
+                    p_marx=feat_spec.p_marx,
+                    use_maf=feat_spec.use_maf,
+                    include_levels=feat_spec.include_levels,
                 )
+
+                # Prepare levels slices if needed
+                X_levels_tr: NDArray[np.floating] | None = None
+                X_levels_test: NDArray[np.floating] | None = None
+                if feat_spec.include_levels and self.panel_levels is not None:
+                    X_levels_tr = self.panel_levels.loc[train_start:train_end].values[: T_tr - h]
+                    X_levels_test = self.panel_levels.loc[train_end:train_end].values
+
                 # For the direct-h target, y_tr_aligned is the shifted target;
                 # we pass the *un-shifted* y for AR lag construction
-                Z_train = builder.fit_transform(X_tr_aligned, y_train_full[: T_tr - h])
+                Z_train = builder.fit_transform(
+                    X_tr_aligned, y_train_full[: T_tr - h], X_levels=X_levels_tr
+                )
                 Z_test = builder.transform(
-                    X_test_row, y_train_full[-feat_spec.n_lags :]
+                    X_test_row, y_train_full[-feat_spec.n_lags :], X_levels=X_levels_test
                 )
 
                 if Z_train.shape[0] == 0 or Z_test.shape[0] == 0:
                     return None
 
-                # Align y after feature builder drops first n_lags rows
-                p = feat_spec.n_lags
-                y_tr_for_fit = y_tr_aligned[p:]  # align with Z_train rows
+                # Align y with Z_train row count.  When MARX is active with
+                # p_marx > n_lags + 1 the FeatureBuilder drops max(p_marx-1, n_lags)
+                # rows instead of just n_lags; take the last Z_train.shape[0] rows.
+                y_tr_for_fit = y_tr_aligned[len(y_tr_aligned) - Z_train.shape[0] :]
 
             # Build and fit model
             model = spec.build()
@@ -399,6 +465,7 @@ class ForecastExperiment:
                 n_factors=n_factors,
                 n_lags=feat_spec.n_lags,
                 hp_selected=hp_selected,
+                target_scheme=feat_spec.target_scheme,
             )
 
         except Exception as exc:  # noqa: BLE001

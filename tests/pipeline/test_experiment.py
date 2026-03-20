@@ -148,3 +148,144 @@ class TestForecastExperiment:
         rs = exp.run()
         parquet_files = list(tmp_path.glob("*.parquet"))
         assert len(parquet_files) == 1
+
+
+class TestPathAverageTarget:
+    """Tests for target_scheme='path_average' in ForecastExperiment."""
+
+    def test_path_avg_h1_equals_direct(self, synthetic_panel, krr_spec):
+        """At h=1, path_average and direct must produce identical y_true values."""
+        panel, target = synthetic_panel
+
+        common = dict(
+            panel=panel,
+            target=target,
+            horizons=[1],
+            model_specs=[krr_spec],
+            oos_start="2014-01-01",
+            oos_end="2014-03-01",
+            n_jobs=1,
+        )
+        rs_direct = ForecastExperiment(
+            **common,
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, target_scheme="direct"),
+        ).run()
+        rs_path = ForecastExperiment(
+            **common,
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, target_scheme="path_average"),
+        ).run()
+
+        y_true_direct = sorted(r.y_true for r in rs_direct.records)
+        y_true_path = sorted(r.y_true for r in rs_path.records)
+        np.testing.assert_allclose(y_true_direct, y_true_path, rtol=1e-10)
+
+    def test_path_avg_h3_manual_verify(self, synthetic_panel, krr_spec):
+        """At h=3, y_true for path_average must equal mean of 3 adjacent target values."""
+        panel, target = synthetic_panel
+
+        rs = ForecastExperiment(
+            panel=panel,
+            target=target,
+            horizons=[3],
+            model_specs=[krr_spec],
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, target_scheme="path_average"),
+            oos_start="2014-01-01",
+            oos_end="2014-02-01",
+            n_jobs=1,
+        ).run()
+
+        assert len(rs.records) > 0
+        for r in rs.records:
+            t_star = r.forecast_date
+            t_idx = target.index.get_loc(t_star)
+            expected_avg = float(np.mean(target.iloc[t_idx - 3 + 1 : t_idx + 1]))
+            np.testing.assert_allclose(r.y_true, expected_avg, rtol=1e-10)
+
+    def test_target_scheme_recorded_in_results(self, synthetic_panel, krr_spec):
+        """target_scheme value is stored in each ForecastRecord."""
+        panel, target = synthetic_panel
+        rs = ForecastExperiment(
+            panel=panel,
+            target=target,
+            horizons=[1],
+            model_specs=[krr_spec],
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, target_scheme="path_average"),
+            oos_start="2014-01-01",
+            oos_end="2014-02-01",
+            n_jobs=1,
+        ).run()
+        assert all(r.target_scheme == "path_average" for r in rs.records)
+
+    def test_invalid_target_scheme_raises(self, synthetic_panel, krr_spec):
+        """Invalid target_scheme value should raise ValueError at construction time."""
+        panel, target = synthetic_panel
+        with pytest.raises(ValueError, match="target_scheme"):
+            ForecastExperiment(
+                panel=panel,
+                target=target,
+                horizons=[1],
+                model_specs=[krr_spec],
+                feature_spec=FeatureSpec(target_scheme="iterated"),
+            )
+
+
+class TestCLSS2021Integration:
+    """End-to-end integration tests for CLSS 2021 feature modes."""
+
+    def test_marx_maf_path_average_runs_without_error(self, synthetic_panel, krr_spec):
+        """FeatureSpec(use_maf=True, target_scheme='path_average') runs full experiment."""
+        panel, target = synthetic_panel
+        rs = ForecastExperiment(
+            panel=panel,
+            target=target,
+            horizons=[3],
+            model_specs=[krr_spec],
+            feature_spec=FeatureSpec(
+                n_factors=2,
+                n_lags=2,
+                use_maf=True,
+                p_marx=4,
+                target_scheme="path_average",
+            ),
+            oos_start="2014-01-01",
+            oos_end="2014-03-01",
+            n_jobs=1,
+        ).run()
+        assert isinstance(rs, ResultSet)
+        assert len(rs) > 0
+
+    def test_include_levels_runs_without_error(self, synthetic_panel, krr_spec):
+        """include_levels=True with panel_levels passes through experiment."""
+        panel, target = synthetic_panel
+        rng = np.random.default_rng(42)
+        levels = pd.DataFrame(
+            rng.standard_normal((len(panel), 5)),
+            index=panel.index,
+            columns=[f"lev{i}" for i in range(5)],
+        )
+        rs = ForecastExperiment(
+            panel=panel,
+            target=target,
+            horizons=[1],
+            model_specs=[krr_spec],
+            feature_spec=FeatureSpec(
+                n_factors=2, n_lags=2, use_factors=True, include_levels=True
+            ),
+            panel_levels=levels,
+            oos_start="2014-01-01",
+            oos_end="2014-02-01",
+            n_jobs=1,
+        ).run()
+        assert len(rs) > 0
+
+    def test_include_levels_requires_panel_levels(self, synthetic_panel, krr_spec):
+        """include_levels=True without panel_levels raises ValueError."""
+        panel, target = synthetic_panel
+        with pytest.raises(ValueError, match="panel_levels"):
+            ForecastExperiment(
+                panel=panel,
+                target=target,
+                horizons=[1],
+                model_specs=[krr_spec],
+                feature_spec=FeatureSpec(include_levels=True),
+            )

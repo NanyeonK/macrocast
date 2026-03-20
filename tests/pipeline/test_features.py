@@ -84,3 +84,194 @@ class TestFeatureBuilderEdgeCases:
         Z = builder.fit_transform(X, y)
         # n_factors clamped to 3 (or less if T is limiting)
         assert Z.shape[1] <= 3 + 2
+
+
+# ---------------------------------------------------------------------------
+# CLSS 2021 additions
+# ---------------------------------------------------------------------------
+
+
+class TestMARXTransform:
+    """Unit tests for FeatureBuilder._marx_transform static method."""
+
+    def test_shape(self):
+        """(T=10, K=3) with p_marx=4 → (7, 12)."""
+        rng = np.random.default_rng(2)
+        X = rng.standard_normal((10, 3))
+        out = FeatureBuilder._marx_transform(X, 4)
+        assert out.shape == (10 - 4 + 1, 3 * 4)
+
+    def test_p_marx_1_equals_identity(self):
+        """With p_marx=1 the MA_1 is just X itself (trimmed 0 rows)."""
+        rng = np.random.default_rng(3)
+        X = rng.standard_normal((8, 2))
+        out = FeatureBuilder._marx_transform(X, 1)
+        assert out.shape == (8, 2)
+        np.testing.assert_allclose(out, X)
+
+    def test_manual_computation(self):
+        """Verify exact values against a 4×2 panel with p_marx=3."""
+        # X = [[1,2],[3,4],[5,6],[7,8]]  (T=4, K=2)
+        X = np.array([[1, 2], [3, 4], [5, 6], [7, 8]], dtype=float)
+        # p_marx=3 → T - p_marx + 1 = 2 rows; K*p_marx = 6 columns
+        # Row 0 (t=2, 0-indexed): MA_1=[5,6], MA_2=mean([3,5],[4,6])=[4,5], MA_3=mean([1,3,5],[2,4,6])=[3,4]
+        # Row 1 (t=3): MA_1=[7,8], MA_2=mean([5,7],[6,8])=[6,7], MA_3=mean([3,5,7],[4,6,8])=[5,6]
+        out = FeatureBuilder._marx_transform(X, 3)
+        assert out.shape == (2, 6)
+        expected = np.array([
+            [5.0, 6.0, 4.0, 5.0, 3.0, 4.0],
+            [7.0, 8.0, 6.0, 7.0, 5.0, 6.0],
+        ])
+        np.testing.assert_allclose(out, expected)
+
+
+class TestMARXMode:
+    """Tests for FeatureBuilder with use_marx=True (without MAF)."""
+
+    def test_ar_only_marx_shape(self):
+        """use_marx=True, use_factors=False: MARX columns + AR lags."""
+        rng = np.random.default_rng(4)
+        T, K, p_marx, n_lags = 50, 5, 4, 2
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        builder = FeatureBuilder(
+            n_lags=n_lags, use_factors=False, use_marx=True, p_marx=p_marx
+        )
+        Z = builder.fit_transform(X, y)
+        # Effective rows: T - max(p_marx-1, n_lags) = 50 - max(3,2) = 47
+        common_start = max(p_marx - 1, n_lags)
+        assert Z.shape == (T - common_start, K * p_marx + n_lags)
+
+    def test_factors_marx_shape(self):
+        """use_marx=True, use_factors=True: PCA on MARX panel + AR lags."""
+        rng = np.random.default_rng(5)
+        T, K, n_factors, p_marx, n_lags = 60, 8, 3, 4, 2
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        builder = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags,
+            use_factors=True, use_marx=True, p_marx=p_marx
+        )
+        Z = builder.fit_transform(X, y)
+        common_start = max(p_marx - 1, n_lags)
+        assert Z.shape == (T - common_start, n_factors + n_lags)
+
+    def test_test_row_produces_one_row(self):
+        """Test-row transform returns exactly 1 row for MARX mode."""
+        rng = np.random.default_rng(6)
+        T, K, p_marx, n_lags = 50, 5, 4, 3
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        builder = FeatureBuilder(
+            n_lags=n_lags, use_factors=False, use_marx=True, p_marx=p_marx
+        )
+        builder.fit(X, y)
+        X_test = X[-1:, :]
+        Z_test = builder.transform(X_test, y[-n_lags:])
+        assert Z_test.shape[0] == 1
+
+
+class TestMAFMode:
+    """Tests for FeatureBuilder with use_maf=True."""
+
+    def test_maf_shape_matches_standard_factors(self):
+        """MAF output has same (rows, n_factors + n_lags) shape as standard factors."""
+        rng = np.random.default_rng(7)
+        T, K, n_factors, p_marx, n_lags = 80, 10, 4, 4, 3
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+
+        builder_maf = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags,
+            use_maf=True, p_marx=p_marx
+        )
+        Z_maf = builder_maf.fit_transform(X, y)
+
+        common_start = max(p_marx - 1, n_lags)
+        assert Z_maf.shape == (T - common_start, n_factors + n_lags)
+
+    def test_maf_output_differs_from_standard_factors(self):
+        """MAF uses MARX-transformed X for PCA, so output values differ from standard."""
+        rng = np.random.default_rng(8)
+        T, K, n_factors, n_lags = 80, 10, 4, 3
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+
+        builder_std = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags, use_factors=True, p_marx=3
+        )
+        builder_maf = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags, use_maf=True, p_marx=3
+        )
+        Z_std = builder_std.fit_transform(X, y)
+        Z_maf = builder_maf.fit_transform(X, y)
+
+        # Same shape (both have p_marx-1=2 < n_lags=3 → common_start=n_lags)
+        assert Z_std.shape == Z_maf.shape
+        # Values differ because PCA input is different
+        assert not np.allclose(Z_std, Z_maf)
+
+    def test_maf_forces_use_marx_and_factors(self):
+        """use_maf=True should set use_marx=True and use_factors=True internally."""
+        builder = FeatureBuilder(use_maf=True)
+        assert builder.use_marx is True
+        assert builder.use_factors is True
+
+
+class TestLevelInclusion:
+    """Tests for FeatureBuilder with include_levels=True."""
+
+    def test_levels_increase_column_count(self):
+        """Z column count increases by N_levels + 1 when include_levels=True."""
+        rng = np.random.default_rng(9)
+        T, K, N_levels, n_factors, n_lags = 60, 10, 5, 3, 2
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        X_levels = rng.standard_normal((T, N_levels))
+
+        builder_base = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags, use_factors=True
+        )
+        Z_base = builder_base.fit_transform(X, y)
+
+        builder_lev = FeatureBuilder(
+            n_factors=n_factors, n_lags=n_lags,
+            use_factors=True, include_levels=True
+        )
+        Z_lev = builder_lev.fit_transform(X, y, X_levels=X_levels)
+
+        assert Z_lev.shape[0] == Z_base.shape[0]
+        assert Z_lev.shape[1] == Z_base.shape[1] + N_levels + 1
+
+    def test_levels_with_ar_only_mode(self):
+        """include_levels also works without PCA (AR-only mode)."""
+        rng = np.random.default_rng(10)
+        T, K, N_levels, n_lags = 50, 8, 4, 3
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        X_levels = rng.standard_normal((T, N_levels))
+
+        builder = FeatureBuilder(
+            n_lags=n_lags, use_factors=False, include_levels=True
+        )
+        Z = builder.fit_transform(X, y, X_levels=X_levels)
+        assert Z.shape[1] == n_lags + N_levels + 1
+
+    def test_levels_test_row_shape(self):
+        """Level inclusion works correctly for a single test row."""
+        rng = np.random.default_rng(11)
+        T, K, N_levels, n_lags = 50, 6, 3, 2
+        X = rng.standard_normal((T, K))
+        y = rng.standard_normal(T)
+        X_levels = rng.standard_normal((T, N_levels))
+
+        builder = FeatureBuilder(
+            n_lags=n_lags, use_factors=False, include_levels=True
+        )
+        builder.fit(X, y, X_levels=X_levels)
+        X_test = X[-1:, :]
+        X_levels_test = X_levels[-1:, :]
+        Z_test = builder.transform(
+            X_test, y[-n_lags:], X_levels=X_levels_test
+        )
+        assert Z_test.shape == (1, n_lags + N_levels + 1)

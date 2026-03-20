@@ -92,6 +92,7 @@ class ForecastRecord:
     n_factors: int | None
     n_lags: int
     hp_selected: dict = field(default_factory=dict)
+    target_scheme: str = "direct"  # "direct" | "path_average"
 
     # ------------------------------------------------------------------
     # Derived quantities
@@ -130,6 +131,7 @@ class ForecastRecord:
             "n_factors": self.n_factors,
             "n_lags": self.n_lags,
             **{f"hp_{k}": v for k, v in self.hp_selected.items()},
+            "target_scheme": self.target_scheme,
         }
 
 
