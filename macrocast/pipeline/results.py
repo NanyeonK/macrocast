@@ -14,6 +14,7 @@ forecast-vs-realisation pairs.
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -100,6 +101,7 @@ class ForecastRecord:
     hp_selected: dict = field(default_factory=dict)
     target_scheme: str = "direct"  # "direct" | "path_average"
     feature_set: str = ""
+    feature_importances: dict[str, float] | None = None
 
     # ------------------------------------------------------------------
     # Derived quantities
@@ -140,6 +142,7 @@ class ForecastRecord:
             **{f"hp_{k}": v for k, v in self.hp_selected.items()},
             "target_scheme": self.target_scheme,
             "feature_set": self.feature_set,
+            "feature_importances": json.dumps(self.feature_importances) if self.feature_importances else None,
         }
 
 

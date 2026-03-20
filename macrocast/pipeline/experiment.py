@@ -499,6 +499,24 @@ class ForecastExperiment:
                 hp_selected = getattr(model, "best_params_", {})
                 n_factors = feat_spec.n_factors if feat_spec.use_factors else None
 
+            # Extract feature importances from sklearn tree-based estimators.
+            # Works for RF and gradient-boosted models wrapped in MacrocastEstimator.
+            # The internal sklearn estimator is stored in ``_estimator``; for models
+            # that use GridSearchCV or similar, the fitted estimator is under
+            # ``best_estimator_``.
+            fi: dict[str, float] | None = None
+            if not is_sequence and builder._feature_names_out_:
+                estimator = getattr(model, "_estimator", None)
+                best_est = (
+                    getattr(estimator, "best_estimator_", None)
+                    if estimator is not None
+                    else estimator
+                )
+                if best_est is not None and hasattr(best_est, "feature_importances_"):
+                    fi = dict(
+                        zip(builder.feature_names_out_, best_est.feature_importances_.tolist())
+                    )
+
             return ForecastRecord(
                 experiment_id=self.experiment_id,
                 model_id=spec.model_id,
@@ -518,6 +536,7 @@ class ForecastExperiment:
                 hp_selected=hp_selected,
                 target_scheme=feat_spec.target_scheme,
                 feature_set=self.feature_spec.label,
+                feature_importances=fi,
             )
 
         except Exception as exc:  # noqa: BLE001
