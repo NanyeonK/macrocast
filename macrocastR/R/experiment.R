@@ -50,14 +50,15 @@ forecast_record_to_df <- function(experiment_id, model_id,
                                   hp = list()) {
   # Flatten hp list to scalar columns with prefix "hp_"
   hp_cols <- if (length(hp) > 0) {
-    as.data.frame(
+    df <- as.data.frame(
       lapply(hp, function(x) if (length(x) == 1) x else paste(x, collapse = ",")),
       check.names = FALSE
     )
+    names(df) <- paste0("hp_", names(df))
+    df
   } else {
     data.frame()
   }
-  names(hp_cols) <- paste0("hp_", names(hp_cols))
 
   base <- data.frame(
     experiment_id  = experiment_id,
