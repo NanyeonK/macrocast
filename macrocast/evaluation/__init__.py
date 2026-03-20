@@ -34,6 +34,12 @@ from macrocast.evaluation.marginal import (
     marginal_contribution_all,
     oos_r2_panel,
 )
+from macrocast.evaluation.variable_importance import (
+    CLSS_VI_GROUPS,
+    average_vi_by_horizon,
+    extract_vi_dataframe,
+    vi_by_group,
+)
 
 __all__ = [
     # metrics
@@ -76,4 +82,9 @@ __all__ = [
     "MarginalEffect",
     "marginal_contribution",
     "marginal_contribution_all",
+    # variable importance (CLSS 2021 Fig 3)
+    "CLSS_VI_GROUPS",
+    "extract_vi_dataframe",
+    "vi_by_group",
+    "average_vi_by_horizon",
 ]
