@@ -45,16 +45,17 @@ build_features <- function(X_panel, y, n_factors = 8L, n_lags = 4L,
   N     <- ncol(X_panel)
   p     <- as.integer(n_lags)
 
-  # In transform mode (pca_fit provided) a single test row is valid
-  if (is.null(pca_fit) && T_obs <= p) {
+  # Single test-row transform is valid regardless of use_factors / pca_fit.
+  # Multi-row input must have T_obs > p to produce at least one aligned row.
+  if (T_obs == 0L || (T_obs > 1L && T_obs <= p)) {
     stop("Training window (", T_obs, " rows) is not larger than n_lags (", p, ").")
   }
 
   # --- AR lag matrix --------------------------------------------------
-  # Training mode: rows p+1..T each get p lags from y.
-  # Transform mode with T_obs == 1: y contains the last p values; build
+  # Training mode (T_obs > p): rows p+1..T each get p lags from y.
+  # Single-row test mode (T_obs == 1): y contains the last p values; build
   # one lag row directly (lag 1 = y[p], lag 2 = y[p-1], ..., lag p = y[1]).
-  if (T_obs == 1L && !is.null(pca_fit)) {
+  if (T_obs == 1L) {
     y_p     <- tail(y, p)
     ar_lags <- matrix(y_p[seq(p, 1L, by = -1L)], nrow = 1L, ncol = p)
   } else {
