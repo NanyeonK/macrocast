@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "coulombe-kb": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "python", "macrocast/mcp/server.py"]
+    }
+  }
+}

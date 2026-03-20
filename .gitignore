@@ -39,3 +39,10 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/session-*.md
+
+# mkdocs build output
+site/
+
+# Notebook outputs (examples/results/ is gitignored)
+examples/results/

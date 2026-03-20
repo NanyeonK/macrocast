@@ -1,0 +1,31 @@
+{
+  "dataset": "FRED-SD",
+  "frequency": "state_monthly",
+  "source_url": "https://files.stlouisfed.org/files/htdocs/fred-md/FRED_SD.xlsx",
+  "vintage_url_template": null,
+  "reference": "McCracken & Owyang (2021)",
+  "notes": "Vintage support deferred to v2. Only the latest FRED_SD.xlsx is supported.",
+  "groups": {
+    "labor": "Labor Market",
+    "housing": "Housing",
+    "income": "Income",
+    "prices": "Prices",
+    "financial": "Financial"
+  },
+  "states": [
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
+  ],
+  "variables": {
+    "UR": {"description": "Unemployment Rate", "group": "labor", "tcode": 2, "frequency": "monthly"},
+    "EMPL": {"description": "Total Nonfarm Payroll Employment", "group": "labor", "tcode": 5, "frequency": "monthly"},
+    "ICLAIMS": {"description": "Initial Unemployment Insurance Claims", "group": "labor", "tcode": 5, "frequency": "monthly"},
+    "HPERMIT": {"description": "New Private Housing Building Permits", "group": "housing", "tcode": 4, "frequency": "monthly"},
+    "HSTARTS": {"description": "New Privately-Owned Housing Units Started", "group": "housing", "tcode": 4, "frequency": "monthly"},
+    "PI": {"description": "Personal Income", "group": "income", "tcode": 5, "frequency": "monthly"},
+    "RGSP": {"description": "Real Gross State Product", "group": "income", "tcode": 5, "frequency": "quarterly"}
+  }
+}

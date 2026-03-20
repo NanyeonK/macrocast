@@ -16,7 +16,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
 ]
-
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
@@ -30,10 +29,17 @@ dependencies = [
     "tqdm>=4.65",
 ]
 
+[project.urls]
+Documentation = "https://macrocast.github.io/macrocast"
+Repository = "https://github.com/macrocast/macrocast"
+Issues = "https://github.com/macrocast/macrocast/issues"
+
 [project.optional-dependencies]
 ml = [
     "lightgbm>=4.0",
     "torch>=2.0",
+    "xgboost>=2.0",
+    "pyarrow>=14.0",
 ]
 viz = [
     "matplotlib>=3.7",
@@ -50,10 +56,27 @@ docs = [
     "mkdocs-material>=9.4",
     "mkdocstrings[python]>=0.23",
 ]
-all = ["macrocast[ml,viz,dev,docs]"]
+rag = [
+    "mcp[cli]>=1.2.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "pymupdf>=1.23.0",
+    "beautifulsoup4>=4.12.0",
+    "einops>=0.8.2",
+]
+all = ["macrocast[ml,viz,dev,docs,rag]"]
 
 [project.scripts]
 macrocast = "macrocast.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["macrocast"]
+
+[tool.hatch.build]
+include = [
+    "macrocast/**/*.py",
+    "macrocast/data/specs/*.json",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -65,14 +88,25 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",    # line too long — handled by formatter
+    "N803",    # argument name should be lowercase — math conventions (X, W)
+    "N806",    # variable should be lowercase — math conventions (X_mat, XtX, W, T)
+    "N802",    # function name should be lowercase — KFOLD factory is intentional
+    "N815",    # mixedCase class attribute — standardize_X/Z are intentional
+    "B905",    # zip() without strict= — not needed for internal zip calls
+    "SIM103",  # return condition directly — readability preference
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["macrocast"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not network'"
+markers = [
+    "network: marks tests that require network access (deselect with '-m not network')",
+]
 
 [tool.mypy]
 python_version = "3.10"

@@ -140,18 +140,37 @@ The data layer handles these by normalizing to a unified `StateMacroFrame` with 
 
 ### 4.1 The Decomposition Framework
 
-Following Coulombe et al. (2020), the pipeline decomposes ML forecasting into four orthogonal "treatment" dimensions:
+Following Coulombe, Leroux, Stevanovic, and Surprenant (2022), the pipeline decomposes ML forecasting into four orthogonal "treatment" dimensions:
 
-| Dimension       | Baseline (off)              | Treatment (on)                    |
-|-----------------|-----------------------------|-----------------------------------|
-| Nonlinearity    | Linear model                | Nonlinear model (RF, NN, etc.)    |
-| Regularization  | OLS / no penalty            | Ridge, Lasso, Factors, Elastic Net|
-| CV scheme       | BIC / fixed window          | K-fold, rolling-origin, expanding |
-| Loss function   | L2 (squared error)          | L1, epsilon-insensitive, quantile |
+| Dimension       | Baseline                    | Treatment alternatives                          |
+|-----------------|-----------------------------|-------------------------------------------------|
+| Nonlinearity    | Linear (AR, ARDI)           | KRR, RF, XGBoost, NN, LSTM, SVR                |
+| Regularization  | OLS / no penalty            | Ridge, LASSO, Adaptive LASSO, Group LASSO, Elastic Net, Factors (PCA) |
+| CV scheme       | BIC (inner HP selection)    | K-fold (preferred), POOS-CV                    |
+| Loss function   | L2 (squared error)          | epsilon-insensitive (SVR)                      |
 
-The key design insight: each dimension is a **pluggable component**, not a model hyperparameter. This means the user constructs experiments by mixing and matching components, and the pipeline evaluates all requested combinations.
+Two distinct window concepts apply:
 
-### 4.2 Experiment API
+- **Inner CV loop** (hyperparameter selection): K-fold, POOS-CV, BIC — controlled by `CVScheme`
+- **Outer evaluation loop** (pseudo-OOS): expanding window (default) or rolling window — controlled by `ForecastExperiment(window=...)`
+
+### 4.2 R / Python Split
+
+Linear regularized models run in R via `glmnet` / `grpreg`; nonlinear models run in Python. Results are exchanged as parquet files under `~/.macrocast/results/{experiment_id}/`. The Python evaluation layer (Layer 3) reads from both sides for unified metric computation.
+
+```
+R (macrocastR)                        Python (macrocast)
+──────────────────────────────        ──────────────────────────────
+AR(p) — base R                        KRR with RBF kernel — sklearn
+ARDI (PCA + OLS) — prcomp + lm        SVR (RBF + linear) — sklearn
+Ridge — glmnet                        Random Forest — sklearn
+LASSO — glmnet                        XGBoost — xgboost
+Adaptive LASSO — glmnet               Neural Net (FF, ReLU) — pytorch
+Group LASSO — grpreg / gglasso        LSTM — pytorch
+Elastic Net — glmnet
+```
+
+### 4.3 Experiment API
 
 ```python
 from macrocast.pipeline import ForecastExperiment
@@ -165,103 +184,140 @@ exp = ForecastExperiment(
     horizons=[1, 3, 6, 12],
     eval_start="1990-01",
     eval_end="2019-12",
-    expanding=True,                          # expanding window
-    min_train_size=120,                      # minimum training window (months)
+    window="expanding",                      # outer evaluation loop
+    min_train_size=120,
 )
 
-# Define treatment grid
 exp.set_components(
     nonlinearity=[
-        Nonlinearity.LINEAR,                 # OLS / Ridge
+        Nonlinearity.LINEAR,
+        Nonlinearity.KRR,
         Nonlinearity.RANDOM_FOREST,
+        Nonlinearity.XGBOOST,
         Nonlinearity.NEURAL_NET,
+        Nonlinearity.LSTM,
     ],
     regularization=[
         Regularization.NONE,
         Regularization.RIDGE,
-        Regularization.FACTORS(n=8),         # PCA factor augmentation
+        Regularization.LASSO,
+        Regularization.ADAPTIVE_LASSO,
+        Regularization.GROUP_LASSO,
+        Regularization.ELASTIC_NET,
+        Regularization.FACTORS,             # PCA diffusion index (ARDI)
     ],
     cv_scheme=[
-        CVScheme.BIC,
-        CVScheme.KFOLD(k=5),
-        CVScheme.ROLLING_ORIGIN(window=60),
+        CVScheme.BIC,                        # inner HP selection
+        CVScheme.KFOLD(k=5),                 # preferred per CLSS 2022
+        CVScheme.POOS,                       # expanding one-step-ahead CV
     ],
     loss_function=[
         LossFunction.L2,
-        LossFunction.L1,
+        LossFunction.EPSILON_INSENSITIVE,    # SVR-type, for loss fn comparison
     ],
 )
 
-# Run all combinations (3 × 3 × 3 × 2 = 54 configurations)
 results = exp.run(n_jobs=-1)
 ```
 
-### 4.3 Built-in Models
+### 4.4 Built-in Models
 
-| Model           | Nonlinearity | Implementation         |
-|-----------------|-------------|------------------------|
-| AR(p)           | Linear      | statsmodels / custom   |
-| Ridge           | Linear      | sklearn                |
-| Lasso           | Linear      | sklearn                |
-| Elastic Net     | Linear      | sklearn                |
-| Factor + OLS    | Linear      | PCA + statsmodels      |
-| Random Forest   | Nonlinear   | sklearn                |
-| Gradient Boost  | Nonlinear   | lightgbm               |
-| Neural Net (FF) | Nonlinear   | pytorch (1-2 hidden)   |
-| SVR             | Nonlinear   | sklearn                |
+#### Python side
 
-### 4.4 Custom Model Interface
+| Model              | Nonlinearity | Loss       | Implementation            | Role                          |
+|--------------------|-------------|------------|---------------------------|-------------------------------|
+| KRR (RBF kernel)   | Nonlinear   | L2         | sklearn.kernel_ridge       | Primary NL model (CLSS 2022)  |
+| SVR (RBF kernel)   | Nonlinear   | ε-insens.  | sklearn.svm.SVR            | Loss fn comparison vs KRR     |
+| SVR (linear)       | Linear      | ε-insens.  | sklearn.svm.SVR(kernel="linear") | Loss fn comparison vs ARDI |
+| Random Forest      | Nonlinear   | L2         | sklearn.ensemble.RF        | Primary NL model (CLSS 2022)  |
+| XGBoost            | Nonlinear   | L2/custom  | xgboost                   | Extended NL model             |
+| Neural Net (FF)    | Nonlinear   | L2         | pytorch, 1-2 hidden, ReLU | Secondary NL model            |
+| LSTM               | Nonlinear   | L2         | pytorch                   | Sequence NL model             |
+
+LSTM uses a `SequenceEstimator` subclass: input is `(T, L, N)` where L is the lookback window length. Direct forecasting still applies — the model maps the sequence to a single `y_{t+h}` output.
+
+#### R side (macrocastR)
+
+| Model             | Regularization | Implementation           | Role                          |
+|-------------------|---------------|--------------------------|-------------------------------|
+| AR(p)             | None          | base R `ar()`            | Benchmark (BIC lag selection) |
+| ARDI              | Factors (PCA) | `prcomp` + `lm`          | Data-rich linear baseline     |
+| Ridge             | L2            | `glmnet(alpha=0)`        | Data-poor linear              |
+| LASSO             | L1            | `glmnet(alpha=1)`        | Sparse (inferior per CLSS 2022) |
+| Adaptive LASSO    | L1 weighted   | `glmnet(penalty.factor=)`| Oracle-consistent sparse      |
+| Group LASSO       | Group L1      | `grpreg`                 | FRED group-structured sparse  |
+| Elastic Net       | L1 + L2       | `glmnet(alpha=0.5)`      | Correlated predictor robust   |
+
+### 4.5 Custom Model Interface
 
 ```python
-from macrocast.pipeline.adapters import MacrocastEstimator
+from macrocast.pipeline.estimator import MacrocastEstimator
 
 class MyModel(MacrocastEstimator):
-    """User-defined model must implement fit() and predict()."""
+    """Point-forecast model. X is (T, N), y is (T,)."""
 
-    def fit(self, X, y, **kwargs):
-        # X: (T_train, N) array
-        # y: (T_train,) array
+    def fit(self, X: np.ndarray, y: np.ndarray, **kwargs) -> "MyModel":
         ...
         return self
 
-    def predict(self, X, **kwargs):
-        # X: (T_test, N) array
-        # returns: (T_test,) array
+    def predict(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        # returns shape (T_test,)
         ...
-        return y_hat
 
     @property
-    def nonlinearity_type(self):
-        return "nonlinear"  # or "linear"
+    def nonlinearity_type(self) -> Nonlinearity:
+        return Nonlinearity.NONLINEAR
 ```
 
-### 4.5 Data Environment Modes
-
-Coulombe et al. distinguish between data-rich (N >> 1) and data-poor (small N) environments. The pipeline supports both:
-
-- **Data-rich**: Use full FRED-MD/QD panel (~130 or ~250 predictors)
-- **Data-poor**: Use only lags of the target variable + a few selected predictors
-- **Factor-augmented**: Extract k factors from the panel, use as predictors
+For sequence models (LSTM):
 
 ```python
-exp.set_data_environment(
-    mode="data_rich",           # "data_rich" | "data_poor" | "factor_augmented"
-    n_factors=8,                # for factor_augmented mode
-    factor_method="PCA",        # "PCA" | "sparse_PCA" | "targeted"
-)
+from macrocast.pipeline.estimator import SequenceEstimator
+
+class MyLSTM(SequenceEstimator):
+    """X is (T, L, N); y is (T,). L = lookback window."""
+    sequence_length: int = 12
+
+    def fit(self, X: np.ndarray, y: np.ndarray, **kwargs) -> "MyLSTM": ...
+    def predict(self, X: np.ndarray, **kwargs) -> np.ndarray: ...
 ```
 
-### 4.6 Multi-step Forecasting
+### 4.6 Feature Construction (FeatureBuilder)
+
+`FeatureBuilder` constructs the feature matrix `Z_t` from a `MacroFrame`. The regularization component determines the feature space:
 
 ```python
-exp.set_multistep(
-    method="direct",            # "direct" | "iterated" | "both"
-)
+# pipeline/features.py
+class FeatureBuilder:
+    def build(
+        self,
+        frame: MacroFrame,
+        target: str,
+        regularization: Regularization,
+        n_lags_y: int | str = "cv",      # AR lags of target (tuning parameter)
+        n_factors: int | str = "cv",     # PCA factors for ARDI/FACTORS (tuning)
+        sequence_length: int | None = None,  # for LSTM: return 3D array
+    ) -> np.ndarray:
+        ...
 ```
 
-- **Direct**: Estimate separate model for each horizon h
-- **Iterated**: One-step model iterated forward
-- Comparison of direct vs. iterated is itself a design question for macro forecasting
+Feature vectors by regularization type:
+
+- `NONE / RIDGE / LASSO / ...` (data-poor): `Z_t = [y_{t-1}, ..., y_{t-p_y}]`
+- `FACTORS / ARDI` (data-rich): `Z_t = [f_1(t), ..., f_{p_f}(t), y_{t-1}, ..., y_{t-p_y}]` where factors are PCA of the full predictor panel
+- Tuning parameters `{p_y, p_f}` are selected by the CV scheme alongside model hyperparameters
+
+### 4.7 Multi-step Forecasting
+
+All models use **direct forecasting**: a separate model is trained for each horizon h with `y_{t+h}` as the dependent variable. This avoids the simulation requirement of iterated nonlinear forecasting and matches the CLSS 2022 experimental design.
+
+```python
+# Direct: train separate model per horizon
+# y_{t+h} = g(Z_t) + e_{t+h}  for each h in horizons
+exp = ForecastExperiment(..., multistep="direct")  # only option in v1
+```
+
+Iterated forecasting is out of scope for v1.
 
 
 ---

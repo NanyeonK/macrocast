@@ -1,0 +1,89 @@
+site_name: macrocast
+site_description: Decomposing ML Forecast Gains in Macroeconomic Forecasting
+site_author: Chan
+docs_dir: docs
+repo_url: https://github.com/macrocast/macrocast
+repo_name: macrocast/macrocast
+edit_uri: ""
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Data Layer:
+    - Overview: data/index.md
+    - FRED-MD: data/fred-md.md
+    - FRED-QD: data/fred-qd.md
+    - FRED-SD: data/fred-sd.md
+    - Transformations: data/transforms.md
+    - Missing Values: data/missing.md
+    - MacroFrame: data/macroframe.md
+    - Vintage Management: data/vintages.md
+  - Research:
+    - Coulombe Methodology: research/coulombe-methodology.md
+  - API Reference:
+    - macrocast: api/index.md
+    - macrocast.data: api/data.md
+    - macrocast.utils: api/utils.md
+  - Roadmap: roadmap.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/macrocast/macrocast
