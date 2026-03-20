@@ -115,6 +115,8 @@ def marginal_effect_plot(
     Returns
     -------
     matplotlib.figure.Figure
+        The caller is responsible for displaying or saving the figure and calling
+        ``plt.close(fig)`` to free memory.
     """
     # Filter to the requested feature
     df = mc_df.loc[mc_df["feature"] == feature].copy()
@@ -152,6 +154,9 @@ def marginal_effect_plot(
 
     n_rows = len(horizons)
     n_cols = len(models)
+
+    if n_rows == 0 or n_cols == 0:
+        raise ValueError("models and horizons must both be non-empty")
 
     # Default figsize: 2.8 inches per column, 1.8 per row plus header/footer
     if figsize is None:
@@ -313,6 +318,8 @@ def variable_importance_plot(
     Returns
     -------
     matplotlib.figure.Figure
+        The caller is responsible for displaying or saving the figure and calling
+        ``plt.close(fig)`` to free memory.
     """
     # Resolve palette
     palette = dict(_VI_GROUP_PALETTE)
@@ -343,6 +350,9 @@ def variable_importance_plot(
         direct_df = direct_df.loc[direct_df["target"].isin(targets)]
 
     n_panels = len(targets)
+    if n_panels == 0:
+        raise ValueError("targets must be a non-empty list")
+
     if figsize is None:
         figsize = (max(4.0, 3.5 * n_panels), 4.0)
 
@@ -351,9 +361,10 @@ def variable_importance_plot(
     )
 
     # Determine all groups present and their draw order
-    all_groups_in_data = df["group"].unique().tolist()
+    _combined = df["group"].unique().tolist()
     if direct_df is not None:
-        all_groups_in_data += direct_df["group"].unique().tolist()
+        _combined += direct_df["group"].unique().tolist()
+    all_groups_in_data = list(dict.fromkeys(_combined))
     draw_order = [g for g in _VI_GROUP_ORDER if g in all_groups_in_data]
     # Append any unknown groups not in the canonical order
     for g in all_groups_in_data:
@@ -368,6 +379,15 @@ def variable_importance_plot(
             palette[g] = tab10(extra_idx % 10)
             extra_idx += 1
 
+    # Helper: pivot one DataFrame subset into a {group: share} dict
+    def _pivot_shares(sub: pd.DataFrame) -> dict[str, float]:
+        """Average importance share by group."""
+        if sub.empty:
+            return {}
+        return (
+            sub.groupby("group")["importance_share"].mean().to_dict()
+        )
+
     for panel_idx, target in enumerate(targets):
         ax = axes[0][panel_idx]
         target_df = df.loc[df["target"] == target]
@@ -381,15 +401,6 @@ def variable_importance_plot(
 
         x_positions = list(range(len(x_labels)))
         bar_width = 0.7
-
-        # Helper: pivot one DataFrame subset into a {group: share} dict
-        def _pivot_shares(sub: pd.DataFrame) -> dict[str, float]:
-            """Sum importance shares by group (should already be normalised)."""
-            if sub.empty:
-                return {}
-            return (
-                sub.groupby("group")["importance_share"].mean().to_dict()
-            )
 
         # Build per-bar share dicts
         bar_shares: list[dict[str, float]] = []
@@ -513,6 +524,8 @@ def cumulative_squared_error_plot(
     Returns
     -------
     matplotlib.figure.Figure
+        The caller is responsible for displaying or saving the figure and calling
+        ``plt.close(fig)`` to free memory.
     """
     # Detect date column
     date_col: str
@@ -587,8 +600,7 @@ def cumulative_squared_error_plot(
 
     ax.legend(fontsize=8, frameon=False)
 
-    if title := f"Cumulative squared error — {target}, H={horizon}":
-        ax.set_title(title, fontsize=9, pad=4)
+    ax.set_title(f"Cumulative squared error — {target}, H={horizon}", fontsize=9, pad=4)
 
     fig.tight_layout()
     return fig
