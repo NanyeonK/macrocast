@@ -92,6 +92,8 @@ nav:
     - Dual Weights: evaluation/dual.md
     - PBSV: evaluation/pbsv.md
   - CLI: cli.md
+  - Tutorials:
+    - CLSS 2021 Replication: tutorials/clss2021-replication.md
   - Research:
     - Coulombe Methodology: research/coulombe-methodology.md
   - API Reference:
