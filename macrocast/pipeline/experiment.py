@@ -49,6 +49,21 @@ from macrocast.pipeline.estimator import MacrocastEstimator, SequenceEstimator
 from macrocast.pipeline.features import FeatureBuilder
 from macrocast.pipeline.results import ForecastRecord, ResultSet
 
+# Imported lazily inside _run_single to avoid circular imports; only used for
+# isinstance check when wiring AR-specific data.
+_AR_MODEL_CLS: type | None = None
+
+
+def _get_ar_model_cls() -> type | None:
+    global _AR_MODEL_CLS
+    if _AR_MODEL_CLS is None:
+        try:
+            from macrocast.pipeline.r_models import ARModel  # noqa: PLC0415
+            _AR_MODEL_CLS = ARModel
+        except ImportError:
+            pass
+    return _AR_MODEL_CLS
+
 logger = logging.getLogger(__name__)
 
 
@@ -437,6 +452,16 @@ class ForecastExperiment:
 
             # Build and fit model
             model = spec.build()
+
+            # Inject AR-specific data before fit/predict if needed.
+            # ARModel ignores the FeatureBuilder Z matrix and instead operates
+            # on the raw target series; we provide the un-shifted y and lags here.
+            ar_cls = _get_ar_model_cls()
+            if ar_cls is not None and isinstance(model, ar_cls):
+                model._y_train_full = y_train_full  # un-shifted target
+                max_lag = model.model_kwargs.get("max_lag", 12)
+                model._y_test_lags = y_train_full[-max(feat_spec.n_lags, max_lag):]
+
             if is_sequence:
                 model.fit(Z_train, y_tr_aligned)
                 y_hat = float(model.predict(Z_test)[0])

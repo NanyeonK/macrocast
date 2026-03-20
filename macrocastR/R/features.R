@@ -1,6 +1,10 @@
 #' @title Feature construction for the macrocastR pipeline
 #'
 #' @description
+#' **DEPRECATED**: Feature construction is now handled exclusively by the
+#' Python FeatureBuilder in macrocast.pipeline.features.  These functions are
+#' retained for backward compatibility but will be removed in a future version.
+#'
 #' Constructs the predictor matrix Z_t used by all linear models.  Two modes:
 #'
 #' * **Factors mode** (ARDI): Z_t = [PCA factors f_1..f_{p_f}, AR lags y_{t-1}..y_{t-p_y}]
@@ -41,6 +45,10 @@ NULL
 build_features <- function(X_panel, y, n_factors = 8L, n_lags = 4L,
                            use_factors = TRUE, standardize_X = TRUE,
                            pca_fit = NULL, return_pca = FALSE) {
+  .Deprecated("Python FeatureBuilder",
+              msg = paste0("build_features() is deprecated. Feature construction ",
+                           "is now handled by macrocast.pipeline.features.FeatureBuilder ",
+                           "in Python. This function will be removed in a future version."))
   T_obs <- nrow(X_panel)
   N     <- ncol(X_panel)
   p     <- as.integer(n_lags)
@@ -148,6 +156,11 @@ build_features <- function(X_panel, y, n_factors = 8L, n_lags = 4L,
 #'
 #' @export
 marx_transform <- function(Z, X_panel, y, n_lags, p_marx = 1L) {
+  .Deprecated("Python FeatureBuilder",
+              msg = paste0("marx_transform() is deprecated. MARX feature construction ",
+                           "is now handled by macrocast.pipeline.features.FeatureBuilder ",
+                           "in Python (use_marx=True). This function will be removed in ",
+                           "a future version."))
   T_obs  <- nrow(X_panel)
   N      <- ncol(X_panel)
   T_z    <- nrow(Z)   # T_obs - n_lags

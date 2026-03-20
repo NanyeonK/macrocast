@@ -1,6 +1,12 @@
 #' @title macrocastR experiment runner
 #'
 #' @description
+#' **DEPRECATED**: Experiment orchestration is now handled exclusively by
+#' Python's ForecastExperiment in macrocast.pipeline.experiment.  R is
+#' responsible for model fitting only (via macrocastR/inst/bridge.R).
+#' These functions are retained for backward compatibility but will be
+#' removed in a future version.
+#'
 #' Outer pseudo-OOS loop for the R-side linear models.  Mirrors the Python
 #' `ForecastExperiment` class in structure and output format.
 #'
@@ -48,6 +54,11 @@ forecast_record_to_df <- function(experiment_id, model_id,
                                   y_hat, y_true,
                                   n_train, n_factors, n_lags,
                                   hp = list()) {
+  .Deprecated("Python ResultSet",
+              msg = paste0("forecast_record_to_df() is deprecated. Forecast ",
+                           "records are now created by Python's ForecastRecord ",
+                           "and accumulated in ResultSet. This function will be ",
+                           "removed in a future version."))
   # Flatten hp list to scalar columns with prefix "hp_"
   hp_cols <- if (length(hp) > 0) {
     df <- as.data.frame(
@@ -126,6 +137,11 @@ run_experiment <- function(panel, target, dates,
                            group_vec = NULL,
                            experiment_id = NULL,
                            output_path   = NULL) {
+  .Deprecated("Python ForecastExperiment",
+              msg = paste0("run_experiment() is deprecated. Use Python's ",
+                           "macrocast.pipeline.ForecastExperiment with R model ",
+                           "wrappers (e.g. RidgeModel) instead. This function ",
+                           "will be removed in a future version."))
   # --- Argument validation --------------------------------------------------
   if (window == "rolling" && is.null(rolling_size)) {
     stop("rolling_size must be provided when window = 'rolling'.")

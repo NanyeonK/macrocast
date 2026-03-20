@@ -20,6 +20,18 @@ from macrocast.pipeline.models import (
     SVRRBFModel,
     XGBoostModel,
 )
+from macrocast.pipeline.r_models import (
+    ARDIModel,
+    ARModel,
+    AdaptiveLassoModel,
+    BoogingModel,
+    ElasticNetModel,
+    GroupLassoModel,
+    LassoModel,
+    RModelEstimator,
+    RidgeModel,
+    TVPRidgeModel,
+)
 from macrocast.pipeline.results import ForecastRecord, ResultSet
 
 __all__ = [
@@ -38,7 +50,7 @@ __all__ = [
     # results
     "ForecastRecord",
     "ResultSet",
-    # models
+    # Python models
     "KRRModel",
     "SVRRBFModel",
     "SVRLinearModel",
@@ -46,6 +58,17 @@ __all__ = [
     "XGBoostModel",
     "NNModel",
     "LSTMModel",
+    # R model bridge
+    "RModelEstimator",
+    "ARModel",
+    "ARDIModel",
+    "RidgeModel",
+    "LassoModel",
+    "AdaptiveLassoModel",
+    "GroupLassoModel",
+    "ElasticNetModel",
+    "TVPRidgeModel",
+    "BoogingModel",
     # experiment
     "ModelSpec",
     "FeatureSpec",
