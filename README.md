@@ -16,10 +16,8 @@ An open-source Python (+ R) framework for systematic evaluation of machine learn
 | Layer | Version | Status |
 |-------|---------|--------|
 | Data (FRED-MD/QD/SD) | v0.1.0 | Complete |
-| Forecasting Pipeline | v0.2.0 | Planned |
-| Evaluation | v0.3.0 | Planned |
-
-v0.1.0 contains the data layer only: loaders, MacroFrame container, stationarity transformations, missing value handling, and vintage management.
+| Forecasting Pipeline | v0.2.0 | Complete |
+| Evaluation | v0.3.0 | Complete |
 
 ---
 
@@ -77,22 +75,6 @@ sd = mc.load_fred_sd(states=["CA", "TX"], variables=["UR"])
 ## Documentation
 
 Full documentation is available at [macrocast.github.io/macrocast](https://macrocast.github.io/macrocast).
-
----
-
-## Citation
-
-If you use macrocast in your research, please cite:
-
-```bibtex
-@article{macrocast2026,
-  title   = {macrocast: An Open-Source Framework for Decomposing
-             Machine Learning Gains in Macroeconomic Forecasting},
-  author  = {Chan},
-  journal = {International Journal of Forecasting},
-  year    = {2026}
-}
-```
 
 ---
 

@@ -81,6 +81,7 @@ nav:
     - macrocast: api/index.md
     - macrocast.data: api/data.md
     - macrocast.utils: api/utils.md
+  - Design: DESIGN.md
   - Roadmap: roadmap.md
 
 extra:

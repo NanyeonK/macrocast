@@ -11,8 +11,8 @@ macrocast is an open-source Python framework for systematic evaluation of machin
 | Layer | Status | Description |
 |-------|--------|-------------|
 | **Data (v0.1)** | Complete | FRED-MD, FRED-QD, FRED-SD loaders, MacroFrame, transformations, missing value handling, vintage management |
-| **Pipeline (v0.2)** | Planned | ForecastExperiment, four-component decomposition, model zoo |
-| **Evaluation (v0.3)** | Planned | MSFE, MCS, regime-conditional evaluation, decomposition tables |
+| **Pipeline (v0.2)** | Complete | ForecastExperiment, four-component decomposition, model zoo (Python + R) |
+| **Evaluation (v0.3)** | Complete | MSFE, MCS, regime-conditional evaluation, decomposition tables |
 
 ---
 
@@ -74,30 +74,3 @@ macrocast is built around three principles:
 
 **Minimal core, extensible surface.** The package ships with a small set of well-tested models. External models enter through a standard scikit-learn-compatible interface.
 
----
-
-## Citation
-
-If you use macrocast in your research, please cite:
-
-```bibtex
-@article{macrocast2026,
-  title   = {macrocast: An Open-Source Framework for Decomposing
-             Machine Learning Gains in Macroeconomic Forecasting},
-  author  = {Chan},
-  journal = {International Journal of Forecasting},
-  year    = {2026}
-}
-```
-
-The decomposition methodology follows Coulombe et al. (2020):
-
-```bibtex
-@article{coulombe2020,
-  title   = {How is Machine Learning Useful for Macroeconomic Forecasting?},
-  author  = {Coulombe, Philippe Goulet and Leroux, Maxime and
-             Stevanovic, Dalibor and Surprenant, St{\'e}phane},
-  journal = {Journal of Business \& Economic Statistics},
-  year    = {2020}
-}
-```
