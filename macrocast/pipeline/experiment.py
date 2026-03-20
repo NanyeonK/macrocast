@@ -501,17 +501,19 @@ class ForecastExperiment:
 
             # Extract feature importances from sklearn tree-based estimators.
             # Works for RF and gradient-boosted models wrapped in MacrocastEstimator.
-            # The internal sklearn estimator is stored in ``_estimator``; for models
-            # that use GridSearchCV or similar, the fitted estimator is under
-            # ``best_estimator_``.
+            # The internal sklearn estimator is stored in ``_estimator``.  Because
+            # ``_fit_with_cv`` returns ``gs.best_estimator_`` directly, ``_estimator``
+            # already holds the fitted sklearn estimator (not a GridSearchCV wrapper).
+            # We therefore fall back to ``_estimator`` itself when ``best_estimator_``
+            # is not an attribute on it.
             fi: dict[str, float] | None = None
             if not is_sequence and builder._feature_names_out_:
                 estimator = getattr(model, "_estimator", None)
-                best_est = (
-                    getattr(estimator, "best_estimator_", None)
-                    if estimator is not None
-                    else estimator
-                )
+                # ``best_estimator_`` would exist only if the model stored a raw
+                # GridSearchCV rather than its unwrapped best estimator.  In the
+                # current implementation ``_fit_with_cv`` already unwraps it, so
+                # ``estimator`` is directly the fitted sklearn estimator.
+                best_est = getattr(estimator, "best_estimator_", None) or estimator
                 if best_est is not None and hasattr(best_est, "feature_importances_"):
                     fi = dict(
                         zip(builder.feature_names_out_, best_est.feature_importances_.tolist())
