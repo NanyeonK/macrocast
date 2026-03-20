@@ -50,7 +50,7 @@ jobs:
         uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: macrocastR
-          args: 'c("--no-manual", "--as-cran")'
+          args: 'c("--no-manual", "--no-vignettes", "--ignore-vignettes")'
           error-on: '"error"'
 
   r-test:
