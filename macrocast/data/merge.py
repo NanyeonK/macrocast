@@ -22,15 +22,48 @@ Date alignment
 --------------
 The merged DataFrame covers the intersection of all frames' date ranges
 (inner join on DatetimeIndex).
+
+Return value
+------------
+merge_macro_frames returns a MergeResult namedtuple with two fields:
+
+* ``panel`` — the merged pd.DataFrame
+* ``groups`` — dict mapping column name → variable group string
+  (e.g. ``{"INDPRO": "output_income", "UR_CA": "labor", ...}``).
+  Columns with no group metadata map to ``"other"``.
 """
 
 from __future__ import annotations
 
 import warnings
+from typing import NamedTuple
 
 import pandas as pd
 
 from macrocast.data.schema import MacroFrame
+
+# ---------------------------------------------------------------------------
+# Public return type
+# ---------------------------------------------------------------------------
+
+
+class MergeResult(NamedTuple):
+    """Result of merge_macro_frames.
+
+    Attributes
+    ----------
+    panel : pd.DataFrame
+        Merged panel with DatetimeIndex at the requested target frequency,
+        covering the intersection of all frames' date ranges.
+    groups : dict[str, str]
+        Mapping from column name to variable group string
+        (e.g. ``"output_income"``, ``"labor"``, ``"housing"``).
+        Columns absent from any frame's spec default to ``"other"``.
+    """
+
+    panel: pd.DataFrame
+    groups: dict[str, str]
+
 
 # ---------------------------------------------------------------------------
 # Internal frequency normalisation
@@ -116,7 +149,7 @@ def _resample_to_target(df: pd.DataFrame, native: str, target: str) -> pd.DataFr
 # ---------------------------------------------------------------------------
 
 
-def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
+def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> MergeResult:
     """Merge two or more MacroFrame objects into a single panel DataFrame.
 
     Parameters
@@ -135,9 +168,15 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame
-        Merged panel with DatetimeIndex at *target_freq*, covering the
-        intersection of all frames' date ranges (inner join).
+    MergeResult
+        Named tuple with two fields:
+
+        * ``panel`` — merged pd.DataFrame with DatetimeIndex at
+          *target_freq*, covering the intersection of all frames' date
+          ranges (inner join).
+        * ``groups`` — ``dict[str, str]`` mapping each column to its
+          variable group (e.g. ``"labor"``, ``"housing"``).  Columns
+          without group metadata default to ``"other"``.
 
     Warns
     -----
@@ -151,10 +190,17 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
     >>> import macrocast as mc
     >>> md = mc.load_fred_md().transform()
     >>> qd = mc.load_fred_qd().transform()
-    >>> panel = mc.merge_macro_frames(md, qd, target_freq="ME")
+    >>> result = mc.merge_macro_frames(md, qd, target_freq="ME")
+    >>> panel, groups = result          # unpack like a tuple
+    >>> panel.shape
+    (T, N)
+    >>> groups["INDPRO"]
+    'output_income'
 
     >>> sd = mc.load_fred_sd(states=["CA", "TX"], variables=["UR"])
-    >>> panel = mc.merge_macro_frames(md, sd, target_freq="ME")
+    >>> result = mc.merge_macro_frames(md, sd, target_freq="ME")
+    >>> result.groups["UR_CA"]
+    'labor'
     """
     if len(frames) < 1:
         raise ValueError("At least one MacroFrame is required.")
@@ -164,7 +210,7 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
     # ------------------------------------------------------------------
     # Step 1: resample each frame to target frequency
     # ------------------------------------------------------------------
-    resampled: list[tuple[str, str, pd.DataFrame]] = []
+    resampled: list[tuple[str, str, pd.DataFrame, MacroFrame]] = []
 
     for frame in frames:
         native = _frame_native_freq(frame)
@@ -187,7 +233,7 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
             )
             df = _resample_to_target(df, native, target)
 
-        resampled.append((frame.metadata.dataset, native, df))
+        resampled.append((frame.metadata.dataset, native, df, frame))
 
     # ------------------------------------------------------------------
     # Step 2: resolve column conflicts
@@ -197,10 +243,11 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
     # Sort so primary-freq frames come first
     ordered = sorted(resampled, key=lambda x: (0 if x[1] == target else 1))
 
-    seen: dict[str, str] = {}   # column name -> dataset that owns it
+    seen: dict[str, str] = {}          # column name -> dataset that owns it
+    col_frame: dict[str, MacroFrame] = {}  # column name -> source MacroFrame
     clean_frames: list[pd.DataFrame] = []
 
-    for dataset, _native, df in ordered:
+    for dataset, _native, df, frame in ordered:
         conflicts = [c for c in df.columns if c in seen]
         if conflicts:
             owners = [seen[c] for c in conflicts]
@@ -215,6 +262,7 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
 
         for col in df.columns:
             seen[col] = dataset
+            col_frame[col] = frame
         clean_frames.append(df)
 
     # ------------------------------------------------------------------
@@ -223,4 +271,13 @@ def merge_macro_frames(*frames: MacroFrame, target_freq: str) -> pd.DataFrame:
     merged = pd.concat(clean_frames, axis=1, join="inner")
     merged = merged.sort_index()
 
-    return merged
+    # ------------------------------------------------------------------
+    # Step 4: build col -> group mapping from source frame metadata
+    # ------------------------------------------------------------------
+    groups: dict[str, str] = {}
+    for col in merged.columns:
+        frame = col_frame[col]
+        meta = frame.metadata.variables.get(col)
+        groups[col] = meta.group if meta is not None else "other"
+
+    return MergeResult(panel=merged, groups=groups)

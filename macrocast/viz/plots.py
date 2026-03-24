@@ -1,6 +1,6 @@
-"""Visualization functions replicating CLSS 2021 Figures 1, 2, 3, and 6.
+"""Visualization functions for forecast evaluation and CLSS 2021 replication.
 
-Three public functions:
+CLSS 2021 figure functions (Figures 1, 2, 3, 6):
 
     marginal_effect_plot     — Fig 1 (MARX), Fig 2 (path-avg), Fig 4 (MAF),
                                Fig 5 (F): horizontal dot-and-whisker grid
@@ -11,6 +11,18 @@ Three public functions:
 
     cumulative_squared_error_plot — Fig 6: cumulative squared error lines
                                over OOS dates, with optional recession shading.
+
+Horse race visualization functions (works with ExperimentRegistry.compare output
+and evaluation/horserace.py outputs):
+
+    plot_rmsfe_heatmap       — Colour heatmap with rows = model/info-set combos,
+                               columns = horizons.  Values are (relative) MSFE.
+
+    plot_horizon_lines       — One line per model/info-set combo over horizons.
+                               Replaces many-panel bar charts for quick scanning.
+
+    plot_mcs_membership      — Boolean grid: rows = models, columns = horizons,
+                               cells coloured by MCS inclusion at alpha=0.10.
 
 All functions return a matplotlib Figure and do NOT call plt.show().
 Callers are responsible for display or saving.
@@ -601,6 +613,354 @@ def cumulative_squared_error_plot(
     ax.legend(fontsize=8, frameon=False)
 
     ax.set_title(f"Cumulative squared error — {target}, H={horizon}", fontsize=9, pad=4)
+
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Function 4 — plot_rmsfe_heatmap
+# ---------------------------------------------------------------------------
+
+
+def plot_rmsfe_heatmap(
+    rmsfe_table: pd.DataFrame,
+    title: str | None = None,
+    cmap: str = "RdYlGn_r",
+    vmin: float | None = None,
+    vmax: float | None = None,
+    annot: bool = True,
+    fmt: str = ".2f",
+    figsize: tuple[float, float] | None = None,
+) -> plt.Figure:
+    """Colour heatmap of relative MSFE across models and horizons.
+
+    The input is typically the output of ``ExperimentRegistry.compare()`` or
+    ``relative_msfe_table()`` from ``evaluation.horserace``.
+
+    Parameters
+    ----------
+    rmsfe_table : pd.DataFrame
+        Rows = experiment/model identifiers, columns = horizons (int or str).
+        Values are (relative) MSFE.  NaN cells are shown as white.
+    title : str, optional
+        Figure title.
+    cmap : str, default ``"RdYlGn_r"``
+        Matplotlib colormap name.  ``"RdYlGn_r"`` maps high values (worse)
+        to red and low values (better) to green, matching CLSS 2021 style.
+    vmin, vmax : float, optional
+        Colormap limits.  Defaults to data min/max.
+    annot : bool, default True
+        Annotate each cell with its numeric value.
+    fmt : str, default ``".2f"``
+        Number format for cell annotations.
+    figsize : (float, float), optional
+        Override figure size.  Default scales with table dimensions.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    if rmsfe_table.empty:
+        raise ValueError("rmsfe_table is empty.")
+
+    n_rows, n_cols = rmsfe_table.shape
+    if figsize is None:
+        figsize = (max(4.0, 1.4 * n_cols + 2.5), max(3.0, 0.55 * n_rows + 1.5))
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    data = rmsfe_table.values.astype(float)
+    _vmin = float(np.nanmin(data)) if vmin is None else vmin
+    _vmax = float(np.nanmax(data)) if vmax is None else vmax
+
+    im = ax.imshow(
+        data,
+        cmap=cmap,
+        aspect="auto",
+        vmin=_vmin,
+        vmax=_vmax,
+        interpolation="nearest",
+    )
+
+    # Axis ticks
+    col_labels = [str(c) for c in rmsfe_table.columns]
+    row_labels = [str(r) for r in rmsfe_table.index]
+
+    ax.set_xticks(range(n_cols))
+    ax.set_xticklabels(col_labels, fontsize=8, rotation=45, ha="right")
+    ax.set_yticks(range(n_rows))
+    ax.set_yticklabels(row_labels, fontsize=8)
+
+    ax.set_xlabel("Horizon", fontsize=9)
+    ax.set_ylabel("Model / Info set", fontsize=9)
+
+    # Colorbar
+    cbar = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
+    cbar.ax.tick_params(labelsize=7)
+    cbar.set_label("Relative MSFE", fontsize=8)
+
+    # Cell annotations
+    if annot:
+        for row_i in range(n_rows):
+            for col_j in range(n_cols):
+                val = data[row_i, col_j]
+                if not np.isnan(val):
+                    # Choose text colour for contrast
+                    midpoint = (_vmin + _vmax) / 2.0
+                    text_color = "white" if val < midpoint else "black"
+                    ax.text(
+                        col_j,
+                        row_i,
+                        format(val, fmt),
+                        ha="center",
+                        va="center",
+                        fontsize=7,
+                        color=text_color,
+                    )
+
+    if title is not None:
+        ax.set_title(title, fontsize=10, pad=6)
+    else:
+        ax.set_title("Relative MSFE", fontsize=10, pad=6)
+
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Function 5 — plot_horizon_lines
+# ---------------------------------------------------------------------------
+
+
+def plot_horizon_lines(
+    rmsfe_table: pd.DataFrame,
+    highlight_ids: list[str] | None = None,
+    benchmark_line: float | None = 1.0,
+    palette: dict[str, str] | None = None,
+    title: str | None = None,
+    ylabel: str = "Relative MSFE",
+    figsize: tuple[float, float] = (8, 5),
+) -> plt.Figure:
+    """Line plot of (relative) MSFE over horizons, one line per row.
+
+    Useful for scanning how each model/info-set combo's performance evolves
+    as the horizon increases.
+
+    Parameters
+    ----------
+    rmsfe_table : pd.DataFrame
+        Rows = experiment/model identifiers, columns = horizons.
+        Values are (relative) MSFE.  Typically the output of
+        ``ExperimentRegistry.compare()`` or ``relative_msfe_table()``.
+    highlight_ids : list of str, optional
+        Row labels to draw with thicker, solid lines.  All other rows are
+        drawn with thin dashed lines in light grey for context.
+    benchmark_line : float or None, default 1.0
+        Draw a horizontal reference line at this value.  Set to None to
+        suppress.  At 1.0 this marks the benchmark MSFE level when relative
+        MSFE is plotted.
+    palette : dict of str -> str, optional
+        Mapping from row label to hex color.  Unknown labels fall back to
+        matplotlib tab10 cycle.
+    title : str, optional
+        Figure title.
+    ylabel : str, default ``"Relative MSFE"``
+        Y-axis label.
+    figsize : (float, float), default (8, 5)
+        Figure dimensions.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    if rmsfe_table.empty:
+        raise ValueError("rmsfe_table is empty.")
+
+    horizons = [str(c) for c in rmsfe_table.columns]
+    x_pos = list(range(len(horizons)))
+
+    # Build effective palette
+    eff_palette: dict[str, str] = {}
+    if palette is not None:
+        eff_palette.update(palette)
+
+    tab10 = plt.get_cmap("tab10")
+    color_idx = 0
+    for label in rmsfe_table.index:
+        if str(label) not in eff_palette:
+            eff_palette[str(label)] = tab10(color_idx % 10)
+            color_idx += 1
+
+    highlight_set: set[str] = set(highlight_ids) if highlight_ids else set()
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Benchmark reference line
+    if benchmark_line is not None:
+        ax.axhline(
+            benchmark_line,
+            color="black",
+            linewidth=1.0,
+            linestyle="--",
+            zorder=1,
+            label=f"Benchmark ({benchmark_line:.2g})",
+        )
+
+    # Draw non-highlighted rows first (background context)
+    for label in rmsfe_table.index:
+        label_str = str(label)
+        if label_str in highlight_set:
+            continue
+        values = rmsfe_table.loc[label].values.astype(float)
+        ax.plot(
+            x_pos,
+            values,
+            color="#cccccc",
+            linewidth=0.8,
+            linestyle="--",
+            zorder=2,
+        )
+
+    # Draw highlighted rows on top
+    for label in rmsfe_table.index:
+        label_str = str(label)
+        if highlight_set and label_str not in highlight_set:
+            continue
+        values = rmsfe_table.loc[label].values.astype(float)
+        ax.plot(
+            x_pos,
+            values,
+            color=eff_palette.get(label_str, "#333333"),
+            linewidth=2.0,
+            marker="o",
+            markersize=5,
+            zorder=3,
+            label=label_str,
+        )
+
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(horizons, fontsize=8)
+    ax.set_xlabel("Horizon", fontsize=9)
+    ax.set_ylabel(ylabel, fontsize=9)
+    ax.tick_params(labelsize=8)
+    ax.grid(linestyle=":", linewidth=0.5, alpha=0.6)
+    ax.set_axisbelow(True)
+
+    if highlight_set or rmsfe_table.shape[0] <= 10:
+        ax.legend(fontsize=8, frameon=False, loc="best")
+
+    if title is not None:
+        ax.set_title(title, fontsize=10, pad=6)
+    else:
+        ax.set_title("MSFE over horizons", fontsize=10, pad=6)
+
+    fig.tight_layout()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Function 6 — plot_mcs_membership
+# ---------------------------------------------------------------------------
+
+
+def plot_mcs_membership(
+    mcs_table: pd.DataFrame,
+    title: str | None = None,
+    color_in: str = "#2ca02c",
+    color_out: str = "#d62728",
+    figsize: tuple[float, float] | None = None,
+) -> plt.Figure:
+    """Boolean grid showing MCS membership per model and horizon.
+
+    Each cell is coloured green (in MCS) or red (not in MCS).
+
+    Parameters
+    ----------
+    mcs_table : pd.DataFrame
+        Rows = model/info-set identifiers, columns = horizons.
+        Values are boolean (or 0/1).  Typically the output of
+        ``mcs_membership_table()`` from ``evaluation.horserace``.
+    title : str, optional
+        Figure title.
+    color_in : str, default ``"#2ca02c"``
+        Hex color for cells where the model is in the MCS.
+    color_out : str, default ``"#d62728"``
+        Hex color for cells where the model is NOT in the MCS.
+    figsize : (float, float), optional
+        Override figure size.  Default scales with table dimensions.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    if mcs_table.empty:
+        raise ValueError("mcs_table is empty.")
+
+    n_rows, n_cols = mcs_table.shape
+    if figsize is None:
+        figsize = (max(3.0, 0.9 * n_cols + 2.0), max(2.5, 0.5 * n_rows + 1.5))
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Build RGBA image: shape (n_rows, n_cols, 4)
+    import matplotlib.colors as mcolors
+
+    rgba_in = mcolors.to_rgba(color_in)
+    rgba_out = mcolors.to_rgba(color_out)
+    rgba_nan = (0.85, 0.85, 0.85, 1.0)  # light grey for NaN
+
+    raw = mcs_table.values
+    img = np.empty((n_rows, n_cols, 4), dtype=float)
+    for row_i in range(n_rows):
+        for col_j in range(n_cols):
+            v = raw[row_i, col_j]
+            if pd.isna(v):
+                img[row_i, col_j] = rgba_nan
+            elif bool(v):
+                img[row_i, col_j] = rgba_in
+            else:
+                img[row_i, col_j] = rgba_out
+
+    ax.imshow(img, aspect="auto", interpolation="nearest")
+
+    # Axis ticks
+    col_labels = [str(c) for c in mcs_table.columns]
+    row_labels = [str(r) for r in mcs_table.index]
+
+    ax.set_xticks(range(n_cols))
+    ax.set_xticklabels(col_labels, fontsize=8, rotation=45, ha="right")
+    ax.set_yticks(range(n_rows))
+    ax.set_yticklabels(row_labels, fontsize=8)
+
+    ax.set_xlabel("Horizon", fontsize=9)
+    ax.set_ylabel("Model / Info set", fontsize=9)
+
+    # Gridlines between cells
+    ax.set_xticks(np.arange(-0.5, n_cols, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.0)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    # Legend patches
+    from matplotlib.patches import Patch
+
+    legend_handles = [
+        Patch(facecolor=color_in, label="In MCS"),
+        Patch(facecolor=color_out, label="Not in MCS"),
+    ]
+    ax.legend(
+        handles=legend_handles,
+        loc="upper right",
+        fontsize=8,
+        frameon=True,
+        framealpha=0.9,
+    )
+
+    if title is not None:
+        ax.set_title(title, fontsize=10, pad=6)
+    else:
+        ax.set_title("MCS Membership", fontsize=10, pad=6)
 
     fig.tight_layout()
     return fig

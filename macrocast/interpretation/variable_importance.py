@@ -8,8 +8,6 @@ and Surprenant (2021).
 
 from __future__ import annotations
 
-from typing import Union
-
 import pandas as pd
 
 from macrocast.pipeline.results import ForecastRecord, ResultSet
@@ -69,7 +67,7 @@ def _infer_group(name: str) -> str:
 
 
 def extract_vi_dataframe(
-    result_source: Union[ResultSet, list[ForecastRecord]],
+    result_source: ResultSet | list[ForecastRecord],
 ) -> pd.DataFrame:
     """Build a long-form DataFrame of per-feature importances from records.
 

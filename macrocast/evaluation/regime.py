@@ -11,9 +11,66 @@ or recession vs. expansion, following CLSS 2022 Table 5.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+_USREC_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=USREC"
+
+
+def load_nber_recessions(
+    start: str = "1960-01",
+    end: str | None = None,
+    cache_dir: str | Path | None = None,
+    force_download: bool = False,
+) -> pd.Series:
+    """Load NBER recession indicator (USREC) from FRED.
+
+    Downloads the USREC monthly binary series from FRED and returns it as a
+    boolean Series indexed by DatetimeIndex.  The file is cached under
+    ``~/.macrocast/cache/nber/usrec.csv`` and refreshed after 30 days.
+
+    Parameters
+    ----------
+    start : str
+        Sample start in ``"YYYY-MM"`` format.  Default ``"1960-01"``.
+    end : str or None
+        Sample end in ``"YYYY-MM"`` format.  ``None`` returns through the
+        latest available date.
+    cache_dir : str or Path or None
+        Override the default cache root (``~/.macrocast/cache/``).
+    force_download : bool
+        If True, always re-download even if a cached copy exists.
+
+    Returns
+    -------
+    pd.Series
+        Monthly boolean Series (True = recession) indexed by DatetimeIndex,
+        with name ``"USREC"``.
+    """
+    from macrocast.utils.cache import download_file, get_cached_path, is_cached
+
+    cache_path = get_cached_path("nber", "usrec.csv", cache_dir)
+
+    if force_download or not is_cached("nber", "usrec.csv", cache_dir, max_age_days=30):
+        download_file(_USREC_URL, cache_path)
+
+    raw = pd.read_csv(cache_path, parse_dates=["DATE"])
+    raw = raw.rename(columns={"DATE": "date", "USREC": "usrec"})
+    raw = raw.set_index("date")["usrec"]
+    raw.index = pd.to_datetime(raw.index).to_period("M").to_timestamp()
+    raw.name = "USREC"
+
+    usrec = raw.astype(bool)
+
+    start_ts = pd.Timestamp(start)
+    usrec = usrec[usrec.index >= start_ts]
+    if end is not None:
+        end_ts = pd.Timestamp(end) + pd.offsets.MonthEnd(0)
+        usrec = usrec[usrec.index <= end_ts]
+
+    return usrec
 
 
 @dataclass

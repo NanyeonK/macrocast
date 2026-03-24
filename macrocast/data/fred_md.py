@@ -15,8 +15,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from macrocast.data._base import (
+    _MD_HISTORICAL_ZIP_RANGE,
     _build_vintage_url,
     _download_fred_csv,
+    _extract_vintage_from_zip,
     _parse_fred_csv,
 )
 from macrocast.data.schema import (
@@ -83,11 +85,9 @@ def load_fred_md(
     """
     # Determine URL and cache filename
     if vintage is None:
-        url = _CURRENT_URL
         filename = "current.csv"
         max_age = _MAX_AGE_CURRENT
     else:
-        url = _build_vintage_url(_DATASET, vintage)
         filename = f"{vintage}.csv"
         max_age = None  # vintage files never expire
 
@@ -95,7 +95,22 @@ def load_fred_md(
 
     # Download if needed
     if force_download or not is_cached(_DATASET, filename, cache_dir, max_age):
-        _download_fred_csv(url, cache_path, force_download=True)
+        if vintage is None:
+            _download_fred_csv(_CURRENT_URL, cache_path, force_download=True)
+        else:
+            # Try direct URL first; fall back to historical ZIP for vintages
+            # in the 2015-01 to 2024-12 range (direct URLs return HTML).
+            try:
+                resolved_url = _build_vintage_url(_DATASET, vintage)
+                _download_fred_csv(resolved_url, cache_path, force_download=True)
+            except (ValueError, Exception):
+                zip_start, zip_end = _MD_HISTORICAL_ZIP_RANGE
+                if zip_start <= vintage <= zip_end:
+                    _extract_vintage_from_zip(
+                        vintage, cache_path.parent, timeout=120
+                    )
+                else:
+                    raise
 
     # Parse CSV
     df, tcodes_from_file = _parse_fred_csv(cache_path)

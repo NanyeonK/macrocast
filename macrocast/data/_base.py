@@ -12,11 +12,88 @@ loaders (fred_md.py, fred_qd.py) call internally.
 from __future__ import annotations
 
 import re
+import zipfile
 from pathlib import Path
 
 import pandas as pd
 
 from macrocast.utils.cache import download_file
+
+# Historical vintages ZIP (covers 2015-01 to 2024-12).
+# The stlouisfed.org direct URLs for older vintages return HTML (not CSV),
+# so vintages in this range fall back to extracting from the ZIP archive.
+_MD_HISTORICAL_ZIP_URL = (
+    "https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/"
+    "fred-md/historical-vintages-of-fred-md-2015-01-to-2024-12.zip"
+)
+_MD_HISTORICAL_ZIP_RANGE = ("2015-01", "2024-12")
+
+
+def _extract_vintage_from_zip(
+    vintage: str,
+    cache_dir: Path,
+    timeout: int = 120,
+) -> Path:
+    """Download the historical vintages ZIP and extract a specific vintage CSV.
+
+    The ZIP is cached at ``cache_dir/fred_md_historical.zip``.  Extraction
+    writes ``cache_dir/{vintage}.csv`` and returns its path.
+
+    Parameters
+    ----------
+    vintage : str
+        Vintage in ``"YYYY-MM"`` format (must be in 2015-01 to 2024-12).
+    cache_dir : Path
+        Directory where the ZIP and extracted CSV are cached.
+    timeout : int
+        HTTP timeout in seconds for downloading the ZIP.
+
+    Returns
+    -------
+    Path
+        Path to the extracted CSV file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the vintage is not found inside the ZIP.
+    """
+    import requests
+
+    zip_path = cache_dir / "fred_md_historical.zip"
+    if not zip_path.exists():
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; macrocast/0.1; "
+                "+https://github.com/macrocast/macrocast)"
+            )
+        }
+        resp = requests.get(
+            _MD_HISTORICAL_ZIP_URL, headers=headers, timeout=timeout, stream=True
+        )
+        resp.raise_for_status()
+        with open(zip_path, "wb") as fh:
+            for chunk in resp.iter_content(chunk_size=1 << 20):
+                fh.write(chunk)
+
+    out_path = cache_dir / f"{vintage}.csv"
+    with zipfile.ZipFile(zip_path) as zf:
+        # Filenames inside the ZIP vary (e.g. "2018-02.csv", "2018-02-md.csv")
+        candidates = [f"{vintage}.csv", f"{vintage}-md.csv"]
+        matched = None
+        for name in zf.namelist():
+            if any(name.endswith(c) for c in candidates):
+                matched = name
+                break
+        if matched is None:
+            raise FileNotFoundError(
+                f"Vintage '{vintage}' not found in historical ZIP. "
+                f"Available entries (sample): {zf.namelist()[:5]}"
+            )
+        with zf.open(matched) as src:
+            out_path.write_bytes(src.read())
+
+    return out_path
 
 _MD_BASE = (
     "https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/"
@@ -101,7 +178,11 @@ def _build_vintage_url(dataset: str, vintage: str, timeout: int = 30) -> str:
             continue
 
     raise ValueError(
-        f"Could not locate vintage '{vintage}' for {dataset}. Tried: {candidates}"
+        f"Could not locate vintage '{vintage}' for {dataset}. "
+        f"Tried: {candidates}. "
+        f"For FRED-MD vintages in 2015-01 to 2024-12, use "
+        f"load_fred_md(vintage='{vintage}') which will fall back to the "
+        f"historical ZIP archive automatically."
     )
 
 
@@ -135,6 +216,10 @@ def _download_fred_csv(
 ) -> Path:
     """Download a FRED CSV if not already cached (or if forced).
 
+    Raises ``ValueError`` if the response is HTML rather than CSV
+    (stlouisfed.org returns HTTP 200 with an HTML page for unavailable
+    vintage URLs, which would otherwise be silently cached as junk).
+
     Parameters
     ----------
     url : str
@@ -150,10 +235,24 @@ def _download_fred_csv(
     -------
     Path
         Path to the local file (either freshly downloaded or cached).
+
+    Raises
+    ------
+    ValueError
+        If the server returns HTML instead of CSV content.
     """
     if not force_download and cache_path.exists():
         return cache_path
-    return download_file(url, cache_path, timeout=timeout)
+    path = download_file(url, cache_path, timeout=timeout)
+    # Verify the response is CSV, not an HTML error page.
+    with open(path, "rb") as fh:
+        header = fh.read(512)
+    if header.lstrip().startswith((b"<", b"<!",b"<!D")):
+        path.unlink(missing_ok=True)
+        raise ValueError(
+            f"URL returned HTML instead of CSV (vintage unavailable): {url}"
+        )
+    return path
 
 
 def _parse_fred_csv(filepath: Path) -> tuple[pd.DataFrame, dict[str, int]]:

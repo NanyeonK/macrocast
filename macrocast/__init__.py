@@ -1,10 +1,15 @@
 """macrocast: Decomposing ML Forecast Gains in Macroeconomic Forecasting.
 
-Layers
-------
-* Layer 1 (Data):     ``macrocast.data``        — FRED-MD/QD/SD loaders + MacroFrame
-* Layer 2 (Pipeline): ``macrocast.pipeline``    — ForecastExperiment, models, features
-* Layer 3 (Eval):     ``macrocast.evaluation``  — MSFE, PBSV, dual weights, MCS, DM
+Modules
+-------
+* ``macrocast.data``           — FRED-MD/QD/SD loaders + MacroFrame
+* ``macrocast.preprocessing``  — tcode transforms, MARX/MAF, panel preprocessing
+* ``macrocast.pipeline``       — ForecastExperiment, models, features
+* ``macrocast.evaluation``     — MSFE, MCS, DM, CW statistical tests
+* ``macrocast.interpretation`` — dual weights, PBSV, variable importance
+* ``macrocast.viz``            — visualization
+* ``macrocast.utils``          — registry, LaTeX export, cache
+* ``macrocast.replication``    — paper-specific helpers (CLSS 2021 etc.)
 
 Quick start::
 
@@ -16,13 +21,9 @@ __version__ = "0.1.0"
 from macrocast.data import (
     MacroFrame,
     MacroFrameMetadata,
+    MergeResult,
     RealTimePanel,
-    TransformCode,
     VariableMetadata,
-    apply_tcode,
-    apply_tcodes,
-    classify_missing,
-    handle_missing,
     list_available_vintages,
     load_fred_md,
     load_fred_qd,
@@ -30,43 +31,55 @@ from macrocast.data import (
     load_vintage_panel,
     merge_macro_frames,
 )
-
-__all__ = [
-    "__version__",
-    # Loaders
-    "load_fred_md",
-    "load_fred_qd",
-    "load_fred_sd",
-    # Core container
-    "MacroFrame",
-    "MacroFrameMetadata",
-    "VariableMetadata",
-    # Transforms
-    "TransformCode",
-    "apply_tcode",
-    "apply_tcodes",
-    # Missing
-    "classify_missing",
-    "handle_missing",
-    # Vintages
-    "list_available_vintages",
-    "load_vintage_panel",
-    "RealTimePanel",
-    # Multi-dataset merge
-    "merge_macro_frames",
-    # Pipeline (Layer 2) — top-level convenience re-exports
-    "ForecastExperiment",
-    "ModelSpec",
-    "FeatureSpec",
-    "ResultSet",
-    "ForecastRecord",
-]
-
-# Layer 2 convenience re-exports
-from macrocast.pipeline import (  # noqa: E402
+from macrocast.pipeline import (
     FeatureSpec,
     ForecastExperiment,
     ForecastRecord,
     ModelSpec,
     ResultSet,
 )
+from macrocast.preprocessing import (
+    TransformCode,
+    apply_hamilton_filter,
+    apply_maf,
+    apply_marx,
+    apply_pca,
+    apply_tcode,
+    apply_tcodes,
+    apply_x_factors,
+    classify_missing,
+    handle_missing,
+)
+
+__all__ = [
+    "__version__",
+    # data
+    "load_fred_md",
+    "load_fred_qd",
+    "load_fred_sd",
+    "MacroFrame",
+    "MacroFrameMetadata",
+    "VariableMetadata",
+    "list_available_vintages",
+    "load_vintage_panel",
+    "RealTimePanel",
+    "merge_macro_frames",
+    "MergeResult",
+    # preprocessing
+    "TransformCode",
+    "apply_tcode",
+    "apply_tcodes",
+    "apply_marx",
+    "apply_maf",
+    "apply_x_factors",
+    "apply_pca",
+    "apply_hamilton_filter",
+    "classify_missing",
+    "handle_missing",
+    # pipeline
+    "ForecastExperiment",
+    "ModelSpec",
+    "FeatureSpec",
+    "ResultSet",
+    "ForecastRecord",
+]
