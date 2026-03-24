@@ -73,7 +73,7 @@ Exact Shapley enumeration requires `2^N` calls to `forecast_fn`, where N is the 
 ## Example
 
 ```python
-from macrocast.evaluation import oshapley_vi, compute_pbsv
+from macrocast.interpretation import oshapley_vi, compute_pbsv
 
 # Groups: list of column index lists (one per FRED group)
 groups = [

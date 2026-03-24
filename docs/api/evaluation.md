@@ -62,26 +62,32 @@ Full API reference for the evaluation layer modules.
 
 ---
 
-## macrocast.evaluation.dual
+## macrocast.evaluation.combination
 
-::: macrocast.evaluation.dual
+::: macrocast.evaluation.combination
     options:
       members:
-        - krr_dual_weights
-        - tree_dual_weights
-        - nn_dual_weights
-        - effective_history_length
-        - top_analogies
+        - combine_forecasts
       show_root_heading: true
 
 ---
 
-## macrocast.evaluation.pbsv
+## macrocast.evaluation.cw
 
-::: macrocast.evaluation.pbsv
+::: macrocast.evaluation.cw
     options:
       members:
-        - oshapley_vi
-        - compute_pbsv
-        - model_accordance_score
+        - cw_test
+        - CWResult
+      show_root_heading: true
+
+---
+
+## macrocast.evaluation.gw
+
+::: macrocast.evaluation.gw
+    options:
+      members:
+        - gw_test
+        - GWResult
       show_root_heading: true

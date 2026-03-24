@@ -46,22 +46,27 @@ Full API reference for the data layer modules.
 
 ---
 
-## macrocast.data.transforms
+## macrocast.preprocessing.transforms
 
-::: macrocast.data.transforms
+::: macrocast.preprocessing.transforms
     options:
       members:
         - TransformCode
         - apply_tcode
         - apply_tcodes
         - inverse_tcode
+        - apply_marx
+        - apply_maf
+        - apply_x_factors
+        - apply_pca
+        - apply_hamilton_filter
       show_root_heading: true
 
 ---
 
-## macrocast.data.missing
+## macrocast.preprocessing.missing
 
-::: macrocast.data.missing
+::: macrocast.preprocessing.missing
     options:
       members:
         - classify_missing

@@ -109,7 +109,7 @@ Returns `list[list[tuple]]`, where each inner list contains `k` tuples of `(date
 ## Example
 
 ```python
-from macrocast.evaluation import krr_dual_weights, effective_history_length, top_analogies
+from macrocast.interpretation import krr_dual_weights, effective_history_length, top_analogies
 
 # W shape: (T_test, T_train)
 W = krr_dual_weights(X_train, X_test, alpha=0.01, gamma=0.1)

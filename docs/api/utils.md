@@ -15,3 +15,19 @@ API reference for utility modules.
         - download_file
         - clear_cache
       show_root_heading: true
+
+---
+
+## macrocast.utils.registry
+
+::: macrocast.utils.registry
+    options:
+      show_root_heading: true
+
+---
+
+## macrocast.utils.latex
+
+::: macrocast.utils.latex
+    options:
+      show_root_heading: true

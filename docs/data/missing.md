@@ -94,7 +94,7 @@ md_ready = (
 ## Low-Level Functions
 
 ```python
-from macrocast.data.missing import classify_missing, handle_missing
+from macrocast.preprocessing.missing import classify_missing, handle_missing
 
 # Report
 report = classify_missing(df)

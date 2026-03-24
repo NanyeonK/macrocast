@@ -19,7 +19,7 @@ macrocast implements the seven stationarity transformations defined in McCracken
 The `TransformCode` enum provides named constants:
 
 ```python
-from macrocast.data.transforms import TransformCode
+from macrocast.preprocessing.transforms import TransformCode
 
 TransformCode.LEVEL        # 1
 TransformCode.DIFF         # 2
@@ -61,7 +61,7 @@ md_t = mc.load_fred_md(
 
 ```python
 import pandas as pd
-from macrocast.data.transforms import apply_tcode, apply_tcodes
+from macrocast.preprocessing.transforms import apply_tcode, apply_tcodes
 
 # Single series
 series = pd.Series([100.0, 102.0, 101.5, 103.0])
