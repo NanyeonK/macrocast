@@ -40,8 +40,8 @@ class TestHorseRaceGrid:
     def test_run_returns_result_set(self, synthetic_panel, minimal_model_specs):
         X, y = synthetic_panel
         feature_specs = [
-            FeatureSpec(use_factors=False, n_lags=2, label="AR"),
-            FeatureSpec(use_factors=True, n_factors=2, n_lags=2, label="F"),
+            FeatureSpec(factor_type="none", n_lags=2, label="AR"),
+            FeatureSpec(factor_type="X", n_factors=2, n_lags=2, label="F"),
         ]
         grid = HorseRaceGrid(
             panel=X,
@@ -59,8 +59,8 @@ class TestHorseRaceGrid:
     def test_feature_set_labels_populated(self, synthetic_panel, minimal_model_specs):
         X, y = synthetic_panel
         feature_specs = [
-            FeatureSpec(use_factors=False, n_lags=2, label="AR"),
-            FeatureSpec(use_factors=True, n_factors=2, n_lags=2, label="F"),
+            FeatureSpec(factor_type="none", n_lags=2, label="AR"),
+            FeatureSpec(factor_type="X", n_factors=2, n_lags=2, label="F"),
         ]
         grid = HorseRaceGrid(
             panel=X,
@@ -116,8 +116,8 @@ class TestHorseRaceGrid:
     def test_two_specs_double_records(self, synthetic_panel, minimal_model_specs):
         """Two feature specs produce twice as many records as one."""
         X, y = synthetic_panel
-        spec_ar = FeatureSpec(use_factors=False, n_lags=2, label="AR")
-        spec_f = FeatureSpec(use_factors=True, n_factors=2, n_lags=2, label="F")
+        spec_ar = FeatureSpec(factor_type="none", n_lags=2, label="AR")
+        spec_f = FeatureSpec(factor_type="X", n_factors=2, n_lags=2, label="F")
 
         grid_one = HorseRaceGrid(
             panel=X, target=y, horizons=[1],

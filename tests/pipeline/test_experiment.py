@@ -51,7 +51,6 @@ def rf_spec():
         loss_function=LossFunction.L2,
         model_kwargs={
             "n_estimators": 5,
-            "max_depth_grid": [3],
             "min_samples_leaf_grid": [5],
             "cv_folds": 2,
         },
@@ -78,7 +77,7 @@ class TestForecastExperiment:
             target=target,
             horizons=[1],
             model_specs=[krr_spec],
-            feature_spec=FeatureSpec(n_factors=2, n_lags=2, use_factors=True),
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, factor_type="X"),
             window=Window.EXPANDING,
             oos_start="2014-01-01",
             oos_end="2014-03-01",
@@ -95,7 +94,7 @@ class TestForecastExperiment:
             target=target,
             horizons=[1, 3],
             model_specs=[krr_spec],
-            feature_spec=FeatureSpec(n_factors=2, n_lags=2, use_factors=True),
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, factor_type="X"),
             oos_start="2014-01-01",
             oos_end="2014-02-01",
             n_jobs=1,
@@ -111,7 +110,7 @@ class TestForecastExperiment:
             target=target,
             horizons=[1],
             model_specs=[krr_spec, rf_spec],
-            feature_spec=FeatureSpec(n_factors=2, n_lags=2, use_factors=True),
+            feature_spec=FeatureSpec(n_factors=2, n_lags=2, factor_type="X"),
             oos_start="2014-01-01",
             oos_end="2014-02-01",
             n_jobs=1,
@@ -233,7 +232,7 @@ class TestCLSS2021Integration:
     """End-to-end integration tests for CLSS 2021 feature modes."""
 
     def test_marx_maf_path_average_runs_without_error(self, synthetic_panel, krr_spec):
-        """FeatureSpec(use_maf=True, target_scheme='path_average') runs full experiment."""
+        """FeatureSpec(factor_type='MARX', target_scheme='path_average') runs full experiment."""
         panel, target = synthetic_panel
         rs = ForecastExperiment(
             panel=panel,
@@ -243,7 +242,7 @@ class TestCLSS2021Integration:
             feature_spec=FeatureSpec(
                 n_factors=2,
                 n_lags=2,
-                use_maf=True,
+                factor_type="MARX",
                 p_marx=4,
                 target_scheme="path_average",
             ),
@@ -269,7 +268,7 @@ class TestCLSS2021Integration:
             horizons=[1],
             model_specs=[krr_spec],
             feature_spec=FeatureSpec(
-                n_factors=2, n_lags=2, use_factors=True, include_levels=True
+                n_factors=2, n_lags=2, factor_type="X", append_levels=True
             ),
             panel_levels=levels,
             oos_start="2014-01-01",
@@ -287,5 +286,5 @@ class TestCLSS2021Integration:
                 target=target,
                 horizons=[1],
                 model_specs=[krr_spec],
-                feature_spec=FeatureSpec(include_levels=True),
+                feature_spec=FeatureSpec(append_levels=True),
             )

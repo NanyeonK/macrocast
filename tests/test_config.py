@@ -11,6 +11,7 @@ from macrocast.config import (
     ExperimentConfig,
     load_config,
     load_config_from_dict,
+    load_configs_from_dict,
 )
 from macrocast.pipeline.components import (
     CVScheme,
@@ -40,9 +41,9 @@ MINIMAL_CONFIG = {
         "target": "INDPRO",
     },
     "features": {
+        "factor_type": "X",
         "n_factors": 4,
         "n_lags": 2,
-        "use_factors": True,
     },
     "models": [
         {
@@ -111,7 +112,7 @@ class TestLoadConfigFromDict:
         cfg = load_config_from_dict(MINIMAL_CONFIG)
         assert cfg.feature_spec.n_factors == 4
         assert cfg.feature_spec.n_lags == 2
-        assert cfg.feature_spec.use_factors is True
+        assert cfg.feature_spec.factor_type == "X"
 
     def test_auto_experiment_id_when_null(self):
         raw = {**MINIMAL_CONFIG, "experiment": {**MINIMAL_CONFIG["experiment"], "id": None}}
@@ -180,3 +181,160 @@ class TestModelSpecKwargs:
         for spec in cfg.model_specs:
             model = spec.build()
             assert model is not None
+
+
+class TestRModelsInRegistry:
+    """R models should be parseable from config."""
+
+    def _cfg_with_models(self, *names):
+        raw = {**MINIMAL_CONFIG, "models": [{"name": n} for n in names]}
+        return load_config_from_dict(raw)
+
+    def test_ar_model(self):
+        from macrocast.pipeline.r_models import ARModel
+        cfg = self._cfg_with_models("ar")
+        assert cfg.model_specs[0].model_cls is ARModel
+
+    def test_ridge_model(self):
+        from macrocast.pipeline.r_models import RidgeModel
+        cfg = self._cfg_with_models("ridge")
+        assert cfg.model_specs[0].model_cls is RidgeModel
+
+    def test_bvar_model(self):
+        from macrocast.pipeline.r_models import BVARModel
+        cfg = self._cfg_with_models("bvar")
+        assert cfg.model_specs[0].model_cls is BVARModel
+
+    def test_elastic_net_model(self):
+        from macrocast.pipeline.r_models import ElasticNetModel
+        cfg = self._cfg_with_models("elastic_net")
+        assert cfg.model_specs[0].model_cls is ElasticNetModel
+
+
+class TestShortNameAliases:
+    """Short aliases (AL, EN, RF, etc.) must resolve correctly."""
+
+    def _cls(self, alias):
+        raw = {**MINIMAL_CONFIG, "models": [{"name": alias}]}
+        return load_config_from_dict(raw).model_specs[0].model_cls
+
+    def test_al_alias(self):
+        from macrocast.pipeline.r_models import AdaptiveLassoModel
+        assert self._cls("AL") is AdaptiveLassoModel
+
+    def test_en_alias(self):
+        from macrocast.pipeline.r_models import ElasticNetModel
+        assert self._cls("EN") is ElasticNetModel
+
+    def test_rf_short(self):
+        assert self._cls("RF") is RFModel
+
+    def test_bvar_short(self):
+        from macrocast.pipeline.r_models import BVARModel
+        assert self._cls("BVAR") is BVARModel
+
+    def test_string_model_list(self):
+        """models: [RF, EN, AL] flat list must parse."""
+        raw = {**MINIMAL_CONFIG, "models": ["RF", "EN", "AL"]}
+        cfg = load_config_from_dict(raw)
+        assert len(cfg.model_specs) == 3
+
+
+class TestFlatFormat:
+    """Flat (top-level key) YAML format must parse correctly."""
+
+    FLAT = {
+        "experiment_id": "flat-test",
+        "dataset": "fred_md",
+        "target": "PAYEMS",
+        "horizons": [1, 3],
+        "window": "expanding",
+        "n_jobs": 1,
+        "models": ["RF", "EN"],
+    }
+
+    def test_flat_returns_experiment_config(self):
+        cfg = load_config_from_dict(self.FLAT)
+        assert isinstance(cfg, ExperimentConfig)
+
+    def test_flat_experiment_id(self):
+        cfg = load_config_from_dict(self.FLAT)
+        assert cfg.experiment_id == "flat-test"
+
+    def test_flat_target(self):
+        cfg = load_config_from_dict(self.FLAT)
+        assert cfg.data.target == "PAYEMS"
+
+    def test_flat_model_count(self):
+        cfg = load_config_from_dict(self.FLAT)
+        assert len(cfg.model_specs) == 2
+
+
+class TestMultipleTargets:
+    """targets list → load_configs_from_dict returns one config per target."""
+
+    RAW = {
+        "experiment_id": "multi",
+        "dataset": "fred_md",
+        "targets": ["INDPRO", "PAYEMS", "UNRATE"],
+        "horizons": [1, 3],
+        "n_jobs": 1,
+        "models": ["RF"],
+    }
+
+    def test_returns_three_configs(self):
+        cfgs = load_configs_from_dict(self.RAW)
+        assert len(cfgs) == 3
+
+    def test_each_has_different_target(self):
+        cfgs = load_configs_from_dict(self.RAW)
+        targets = [c.data.target for c in cfgs]
+        assert set(targets) == {"INDPRO", "PAYEMS", "UNRATE"}
+
+    def test_experiment_ids_suffixed(self):
+        cfgs = load_configs_from_dict(self.RAW)
+        for cfg in cfgs:
+            assert cfg.data.target in cfg.experiment_id
+
+    def test_all_targets_method(self):
+        cfg = load_config_from_dict(self.RAW)
+        assert set(cfg.data.all_targets()) == {"INDPRO", "PAYEMS", "UNRATE"}
+
+
+class TestSampleStart:
+    def test_sample_start_preserved(self):
+        raw = {**MINIMAL_CONFIG, "data": {**MINIMAL_CONFIG["data"], "sample_start": "1960-01"}}
+        cfg = load_config_from_dict(raw)
+        assert cfg.data.sample_start == "1960-01"
+
+    def test_sample_start_none_by_default(self):
+        cfg = load_config_from_dict(MINIMAL_CONFIG)
+        assert cfg.data.sample_start is None
+
+
+class TestPresetFeatureSpecs:
+    def test_clss2021_preset_loads_multiple_specs(self):
+        raw = {**MINIMAL_CONFIG, "features": {"preset": "clss2021"}}
+        cfg = load_config_from_dict(raw)
+        assert len(cfg.feature_specs) > 1  # CLSS2021 has 16 info sets
+
+    def test_clss2021_preset_feature_spec_is_first(self):
+        raw = {**MINIMAL_CONFIG, "features": {"preset": "clss2021"}}
+        cfg = load_config_from_dict(raw)
+        assert cfg.feature_spec is cfg.feature_specs[0]
+
+    def test_no_preset_single_spec(self):
+        cfg = load_config_from_dict(MINIMAL_CONFIG)
+        assert len(cfg.feature_specs) == 1
+
+    def test_unknown_preset_raises(self):
+        raw = {**MINIMAL_CONFIG, "features": {"preset": "nonexistent"}}
+        with pytest.raises(ValueError, match="Unknown preset"):
+            load_config_from_dict(raw)
+
+    def test_default_config_yaml_parseable_with_new_fields(self):
+        import yaml
+        raw = yaml.safe_load(DEFAULT_CONFIG_YAML)
+        cfg = load_config_from_dict(raw)
+        assert cfg.data.sample_start is None
+        assert cfg.data.targets == []

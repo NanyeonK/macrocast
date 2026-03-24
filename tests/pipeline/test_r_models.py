@@ -26,6 +26,7 @@ from macrocast.pipeline.r_models import (
     ARDIModel,
     ARModel,
     AdaptiveLassoModel,
+    BVARModel,
     BoogingModel,
     ElasticNetModel,
     GroupLassoModel,
@@ -164,6 +165,7 @@ _STANDARD_MODELS = [
     ARDIModel(intercept=True),
     TVPRidgeModel(n_poly=2, cv_folds=5),
     BoogingModel(n_boot=20, prune_quantile=0.5),
+    BVARModel(lambda_=1.0),  # fixed lambda avoids LOO-CV overhead in parametrised test
 ]
 
 
@@ -194,6 +196,61 @@ def test_group_lasso_with_explicit_groups() -> None:
     y_hat = model.predict(X[:1])
     assert y_hat.shape == (1,)
     assert np.isfinite(y_hat[0])
+
+
+# ---------------------------------------------------------------------------
+# 3b. BVARModel tests
+# ---------------------------------------------------------------------------
+
+
+@requires_r
+class TestBVARModel:
+    def test_fixed_lambda_returns_finite(self) -> None:
+        """BVARModel with fixed lambda returns a finite scalar forecast."""
+        X, y = _synthetic_data()
+        model = BVARModel(lambda_=1.0, intercept=True)
+        model.fit(X, y)
+        y_hat = model.predict(X[:1])
+        assert y_hat.shape == (1,)
+        assert np.isfinite(y_hat[0])
+
+    def test_loo_cv_tuning_returns_finite(self) -> None:
+        """BVARModel with lambda_=None tunes by LOO-CV and returns finite forecast."""
+        X, y = _synthetic_data()
+        model = BVARModel(lambda_=None, intercept=True, n_grid=10)
+        model.fit(X, y)
+        y_hat = model.predict(X[:1])
+        assert y_hat.shape == (1,)
+        assert np.isfinite(y_hat[0])
+
+    def test_loo_cv_stores_lambda_hp(self) -> None:
+        """LOO-CV tuned lambda is stored in best_params_['lambda']."""
+        X, y = _synthetic_data()
+        model = BVARModel(lambda_=None, n_grid=10)
+        model.fit(X, y)
+        model.predict(X[:1])
+        assert "lambda" in model.best_params_
+        assert model.best_params_["lambda"] > 0
+
+    def test_fixed_lambda_stored_in_hp(self) -> None:
+        """Fixed lambda is echoed back in best_params_['lambda']."""
+        X, y = _synthetic_data()
+        model = BVARModel(lambda_=5.0)
+        model.fit(X, y)
+        model.predict(X[:1])
+        assert "lambda" in model.best_params_
+        assert abs(model.best_params_["lambda"] - 5.0) < 1e-8
+
+    def test_no_intercept_runs(self) -> None:
+        """BVARModel with intercept=False returns a finite forecast."""
+        X, y = _synthetic_data()
+        model = BVARModel(lambda_=1.0, intercept=False)
+        model.fit(X, y)
+        y_hat = model.predict(X[:1])
+        assert np.isfinite(y_hat[0])
+
+    def test_importable_from_pipeline(self) -> None:
+        from macrocast.pipeline import BVARModel as BV  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +322,7 @@ def test_ridge_in_forecast_experiment() -> None:
         target=target,
         horizons=[1],
         model_specs=[ridge_spec],
-        feature_spec=FeatureSpec(n_factors=2, n_lags=2, use_factors=True),
+        feature_spec=FeatureSpec(n_factors=2, n_lags=2, factor_type="X"),
         oos_start="2013-01-01",
         oos_end="2013-03-01",
         n_jobs=1,

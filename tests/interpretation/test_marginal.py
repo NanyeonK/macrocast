@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.evaluation.marginal import (
+from macrocast.interpretation.marginal import (
     MarginalEffect,
     _Z_95,
     marginal_contribution,

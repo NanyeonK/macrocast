@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.data.missing import (
+from macrocast.preprocessing.missing import (
     classify_missing,
     detect_missing_type,
     handle_missing,

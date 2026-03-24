@@ -26,7 +26,7 @@ from macrocast.data.schema import MacroFrame, MacroFrameMetadata, VariableMetada
 from macrocast.evaluation.decomposition import decompose_treatment_effects
 from macrocast.evaluation.dm import dm_test
 from macrocast.evaluation.metrics import msfe, relative_msfe
-from macrocast.evaluation.pbsv import oshapley_vi
+from macrocast.interpretation.pbsv import oshapley_vi
 from macrocast.pipeline.components import (
     CVScheme,
     LossFunction,
@@ -110,7 +110,6 @@ def small_experiment_result(
         loss_function=LossFunction.L2,
         model_kwargs={
             "n_estimators": 10,
-            "max_depth_grid": [3],
             "min_samples_leaf_grid": [5],
             "cv_folds": 3,
         },
@@ -121,7 +120,7 @@ def small_experiment_result(
         target=synthetic_target,
         horizons=[1],
         model_specs=[krr_spec, rf_spec],
-        feature_spec=FeatureSpec(n_factors=3, n_lags=3, use_factors=True),
+        feature_spec=FeatureSpec(n_factors=3, n_lags=3, factor_type="X"),
         window=Window.EXPANDING,
         oos_start="2014-07-01",
         oos_end="2014-12-01",

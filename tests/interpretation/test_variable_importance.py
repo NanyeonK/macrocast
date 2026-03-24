@@ -8,7 +8,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from macrocast.evaluation.variable_importance import (
+from macrocast.interpretation.variable_importance import (
     CLSS_VI_GROUPS,
     _infer_group,
     average_vi_by_horizon,

@@ -12,7 +12,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.data.transforms import TransformCode, apply_tcode, apply_tcodes
+from macrocast.preprocessing.transforms import (
+    TransformCode,
+    apply_hamilton_filter,
+    apply_pca,
+    apply_tcode,
+    apply_tcodes,
+    apply_x_factors,
+)
 
 
 @pytest.fixture
@@ -128,7 +135,81 @@ class TestApplyTcodes:
 
 class TestInverseTcode:
     def test_raises_not_implemented(self) -> None:
-        from macrocast.data.transforms import inverse_tcode
+        from macrocast.preprocessing.transforms import inverse_tcode
 
         with pytest.raises(NotImplementedError):
             inverse_tcode(pd.Series([1.0]), 1, pd.Series([1.0]))
+
+
+class TestApplyPca:
+    def test_output_shape(self) -> None:
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((50, 10))
+        F = apply_pca(X, k=3)
+        assert F.shape == (50, 3)
+
+    def test_agrees_with_apply_x_factors(self) -> None:
+        rng = np.random.default_rng(1)
+        X = rng.standard_normal((40, 8))
+        np.testing.assert_array_equal(apply_pca(X, k=4), apply_x_factors(X, k=4))
+
+    def test_k_capped_at_min_dim(self) -> None:
+        rng = np.random.default_rng(2)
+        X = rng.standard_normal((5, 3))
+        F = apply_pca(X, k=10)
+        # n_components capped at min(K, T-1) = min(3, 4) = 3
+        assert F.shape[1] <= 3
+
+
+class TestApplyHamiltonFilter:
+    @pytest.fixture
+    def quarterly_series(self) -> pd.Series:
+        rng = np.random.default_rng(42)
+        trend = np.cumsum(rng.standard_normal(120))
+        cycle = rng.standard_normal(120) * 0.5
+        idx = pd.period_range("1990Q1", periods=120, freq="Q")
+        return pd.Series(trend + cycle, index=idx)
+
+    def test_output_shape(self, quarterly_series: pd.Series) -> None:
+        trend, cycle = apply_hamilton_filter(quarterly_series, h=8, p=4)
+        assert len(trend) == len(quarterly_series)
+        assert len(cycle) == len(quarterly_series)
+
+    def test_preserves_index(self, quarterly_series: pd.Series) -> None:
+        trend, cycle = apply_hamilton_filter(quarterly_series, h=8, p=4)
+        assert trend.index.equals(quarterly_series.index)
+        assert cycle.index.equals(quarterly_series.index)
+
+    def test_leading_nans(self, quarterly_series: pd.Series) -> None:
+        h, p = 8, 4
+        trend, cycle = apply_hamilton_filter(quarterly_series, h=h, p=p)
+        # First h+p-1 values must be NaN
+        assert np.all(np.isnan(trend.values[: h + p - 1]))
+        assert np.all(np.isnan(cycle.values[: h + p - 1]))
+        # Values from h+p-1 onwards must be finite
+        assert np.all(np.isfinite(trend.values[h + p - 1 :]))
+
+    def test_trend_plus_cycle_equals_y(self, quarterly_series: pd.Series) -> None:
+        h, p = 8, 4
+        trend, cycle = apply_hamilton_filter(quarterly_series, h=h, p=p)
+        y = quarterly_series.values
+        start = h + p - 1
+        # trend + cycle == y_{t+h} at valid positions
+        np.testing.assert_allclose(
+            trend.values[start:] + cycle.values[start:],
+            y[start:],
+            rtol=1e-10,
+        )
+
+    def test_ndarray_input(self) -> None:
+        rng = np.random.default_rng(7)
+        y = rng.standard_normal(100)
+        trend, cycle = apply_hamilton_filter(y, h=8, p=4)
+        assert isinstance(trend, np.ndarray)
+        assert isinstance(cycle, np.ndarray)
+        assert trend.shape == (100,)
+
+    def test_too_short_raises(self) -> None:
+        y = np.arange(10.0)
+        with pytest.raises(ValueError, match="too short"):
+            apply_hamilton_filter(y, h=8, p=4)

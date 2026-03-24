@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.data.merge import merge_macro_frames
-from macrocast.data.schema import MacroFrame, MacroFrameMetadata
+from macrocast.data.merge import MergeResult, merge_macro_frames
+from macrocast.data.schema import MacroFrame, MacroFrameMetadata, VariableMetadata
 
 
 # ---------------------------------------------------------------------------
@@ -23,6 +23,7 @@ def _make_frame(
     columns: list[str],
     dataset: str,
     meta_freq: str,
+    groups: dict[str, str] | None = None,
 ) -> MacroFrame:
     """Create a minimal MacroFrame for testing."""
     dates = pd.date_range("2000-01", periods=n_periods, freq=freq)
@@ -31,23 +32,40 @@ def _make_frame(
         index=dates,
         columns=columns,
     )
-    meta = MacroFrameMetadata(dataset=dataset, vintage=None, frequency=meta_freq)
+    variables = {}
+    for col in columns:
+        group = (groups or {}).get(col, "other")
+        variables[col] = VariableMetadata(
+            name=col, description=col, group=group, tcode=1, frequency=meta_freq
+        )
+    meta = MacroFrameMetadata(
+        dataset=dataset, vintage=None, frequency=meta_freq, variables=variables
+    )
     return MacroFrame(data, meta)
 
 
 @pytest.fixture()
 def mf_md() -> MacroFrame:
-    return _make_frame(24, "ME", ["A", "B", "C"], "FRED-MD", "monthly")
+    return _make_frame(
+        24, "ME", ["A", "B", "C"], "FRED-MD", "monthly",
+        groups={"A": "output_income", "B": "labor", "C": "housing"},
+    )
 
 
 @pytest.fixture()
 def mf_qd() -> MacroFrame:
-    return _make_frame(8, "QE", ["D", "E"], "FRED-QD", "quarterly")
+    return _make_frame(
+        8, "QE", ["D", "E"], "FRED-QD", "quarterly",
+        groups={"D": "nipa", "E": "financial"},
+    )
 
 
 @pytest.fixture()
 def mf_sd() -> MacroFrame:
-    return _make_frame(24, "ME", ["CA_UR", "TX_UR"], "FRED-SD", "state_monthly")
+    return _make_frame(
+        24, "ME", ["CA_UR", "TX_UR"], "FRED-SD", "state_monthly",
+        groups={"CA_UR": "labor", "TX_UR": "labor"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -58,19 +76,20 @@ def mf_sd() -> MacroFrame:
 class TestMergeBasic:
     def test_single_frame_monthly(self, mf_md: MacroFrame) -> None:
         result = merge_macro_frames(mf_md, target_freq="ME")
-        assert list(result.columns) == ["A", "B", "C"]
-        assert len(result) == 24
+        assert isinstance(result, MergeResult)
+        assert list(result.panel.columns) == ["A", "B", "C"]
+        assert len(result.panel) == 24
 
     def test_two_monthly_frames(self, mf_md: MacroFrame, mf_sd: MacroFrame) -> None:
         result = merge_macro_frames(mf_md, mf_sd, target_freq="ME")
-        assert set(result.columns) == {"A", "B", "C", "CA_UR", "TX_UR"}
-        assert len(result) == 24
+        assert set(result.panel.columns) == {"A", "B", "C", "CA_UR", "TX_UR"}
+        assert len(result.panel) == 24
 
     def test_md_qd_monthly_target(self, mf_md: MacroFrame, mf_qd: MacroFrame) -> None:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             result = merge_macro_frames(mf_md, mf_qd, target_freq="ME")
-        assert set(result.columns) == {"A", "B", "C", "D", "E"}
+        assert set(result.panel.columns) == {"A", "B", "C", "D", "E"}
         # QD upsampled warning expected
         assert any("upsampled" in str(wi.message) for wi in w)
 
@@ -78,11 +97,11 @@ class TestMergeBasic:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             result = merge_macro_frames(mf_md, mf_qd, target_freq="QE")
-        assert set(result.columns) == {"A", "B", "C", "D", "E"}
+        assert set(result.panel.columns) == {"A", "B", "C", "D", "E"}
         # MD downsampled warning expected
         assert any("downsampled" in str(wi.message) for wi in w)
         # Should have 8 quarter-end rows (inner join)
-        assert len(result) == 8
+        assert len(result.panel) == 8
 
 
 # ---------------------------------------------------------------------------
@@ -94,12 +113,12 @@ class TestFreqAliases:
     @pytest.mark.parametrize("alias", ["ME", "monthly", "m", "me"])
     def test_monthly_aliases(self, mf_md: MacroFrame, alias: str) -> None:
         result = merge_macro_frames(mf_md, target_freq=alias)
-        assert len(result) > 0
+        assert len(result.panel) > 0
 
     @pytest.mark.parametrize("alias", ["QE", "quarterly", "q", "qe"])
     def test_quarterly_aliases(self, mf_qd: MacroFrame, alias: str) -> None:
         result = merge_macro_frames(mf_qd, target_freq=alias)
-        assert len(result) > 0
+        assert len(result.panel) > 0
 
     def test_unknown_freq_raises(self, mf_md: MacroFrame) -> None:
         with pytest.raises(ValueError, match="Unknown target_freq"):
@@ -120,8 +139,8 @@ class TestColumnConflicts:
             result = merge_macro_frames(mf_md, mf_overlap, target_freq="ME")
         assert any("conflict" in str(wi.message).lower() for wi in w)
         # A should be present once only, from mf_md (first, primary)
-        assert "A" in result.columns
-        assert result.columns.tolist().count("A") == 1
+        assert "A" in result.panel.columns
+        assert result.panel.columns.tolist().count("A") == 1
 
     def test_primary_freq_wins_conflict(
         self, mf_md: MacroFrame, mf_qd: MacroFrame
@@ -132,8 +151,8 @@ class TestColumnConflicts:
             warnings.simplefilter("always")
             result = merge_macro_frames(mf_md, mf_qd_overlap, target_freq="ME")
         # A from MD (monthly=primary) should survive, not from QD
-        assert "A" in result.columns
-        assert result.columns.tolist().count("A") == 1
+        assert "A" in result.panel.columns
+        assert result.panel.columns.tolist().count("A") == 1
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +166,7 @@ class TestDateAlignment:
         mf1 = _make_frame(24, "ME", ["A"], "MD", "monthly")  # 2000-01 to 2001-12
         mf2 = _make_frame(24, "ME", ["B"], "MD2", "monthly")  # same range
         result = merge_macro_frames(mf1, mf2, target_freq="ME")
-        assert len(result) == 24
+        assert len(result.panel) == 24
 
     def test_no_rows_raises_gracefully(self) -> None:
         """Non-overlapping date ranges produce empty DataFrame."""
@@ -155,10 +174,66 @@ class TestDateAlignment:
         # mf2 starts after mf1 ends
         dates = pd.date_range("2010-01", periods=6, freq="ME")
         data = pd.DataFrame(np.ones((6, 1)), index=dates, columns=["B"])
-        meta = MacroFrameMetadata(dataset="MD2", vintage=None, frequency="monthly")
+        variables = {
+            "B": VariableMetadata(name="B", description="B", group="other", tcode=1, frequency="monthly")
+        }
+        meta = MacroFrameMetadata(dataset="MD2", vintage=None, frequency="monthly", variables=variables)
         mf2 = MacroFrame(data, meta)
         result = merge_macro_frames(mf1, mf2, target_freq="ME")
-        assert result.empty
+        assert result.panel.empty
+
+
+# ---------------------------------------------------------------------------
+# Group metadata
+# ---------------------------------------------------------------------------
+
+
+class TestGroupMetadata:
+    def test_groups_returned(self, mf_md: MacroFrame) -> None:
+        result = merge_macro_frames(mf_md, target_freq="ME")
+        assert isinstance(result.groups, dict)
+        assert set(result.groups.keys()) == {"A", "B", "C"}
+        assert result.groups["A"] == "output_income"
+        assert result.groups["B"] == "labor"
+        assert result.groups["C"] == "housing"
+
+    def test_groups_multi_frame(self, mf_md: MacroFrame, mf_qd: MacroFrame) -> None:
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            result = merge_macro_frames(mf_md, mf_qd, target_freq="ME")
+        # All columns present in groups dict
+        assert set(result.groups.keys()) == set(result.panel.columns)
+        assert result.groups["D"] == "nipa"
+        assert result.groups["E"] == "financial"
+
+    def test_groups_sd_frame(self, mf_sd: MacroFrame) -> None:
+        result = merge_macro_frames(mf_sd, target_freq="ME")
+        assert result.groups["CA_UR"] == "labor"
+        assert result.groups["TX_UR"] == "labor"
+
+    def test_groups_no_metadata_defaults_other(self) -> None:
+        """Columns with no VariableMetadata in spec default to 'other'."""
+        mf = _make_frame(6, "ME", ["Z"], "TEST", "monthly")  # no groups arg → "other"
+        result = merge_macro_frames(mf, target_freq="ME")
+        assert result.groups["Z"] == "other"
+
+    def test_unpack_as_tuple(self, mf_md: MacroFrame) -> None:
+        """MergeResult unpacks like a 2-tuple."""
+        panel, groups = merge_macro_frames(mf_md, target_freq="ME")
+        assert isinstance(panel, pd.DataFrame)
+        assert isinstance(groups, dict)
+
+    def test_conflict_winner_group_preserved(self, mf_md: MacroFrame) -> None:
+        """When a conflict is resolved, the winning frame's group is kept."""
+        # mf_overlap has A with group "prices" — should lose to mf_md's "output_income"
+        mf_overlap = _make_frame(
+            24, "ME", ["A", "X"], "FRED-SD", "state_monthly",
+            groups={"A": "prices", "X": "labor"},
+        )
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            result = merge_macro_frames(mf_md, mf_overlap, target_freq="ME")
+        assert result.groups["A"] == "output_income"  # mf_md wins
 
 
 # ---------------------------------------------------------------------------
@@ -173,4 +248,4 @@ class TestEdgeCases:
 
     def test_state_monthly_treated_as_monthly(self, mf_sd: MacroFrame) -> None:
         result = merge_macro_frames(mf_sd, target_freq="ME")
-        assert len(result) == 24
+        assert len(result.panel) == 24

@@ -14,9 +14,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.evaluation.plots import (
+from macrocast.viz.plots import (
     cumulative_squared_error_plot,
     marginal_effect_plot,
+    plot_horizon_lines,
+    plot_mcs_membership,
+    plot_rmsfe_heatmap,
     variable_importance_plot,
 )
 
@@ -306,5 +309,217 @@ class TestCumulativeSquaredErrorPlot:
             target="INDPRO",
             horizon=1,
         )
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for horse race plot functions
+# ---------------------------------------------------------------------------
+
+
+def _make_rmsfe_table(n_models: int = 4, horizons=None) -> "pd.DataFrame":
+    """Synthetic relative MSFE table (rows=models, cols=horizons)."""
+    if horizons is None:
+        horizons = [1, 3, 6, 12]
+    rng = np.random.default_rng(42)
+    data = rng.uniform(0.7, 1.3, size=(n_models, len(horizons)))
+    index = [f"model_{i}" for i in range(n_models)]
+    return pd.DataFrame(data, index=index, columns=horizons)
+
+
+def _make_mcs_table(n_models: int = 4, horizons=None) -> "pd.DataFrame":
+    """Synthetic MCS membership table (bool values)."""
+    if horizons is None:
+        horizons = [1, 3, 6, 12]
+    rng = np.random.default_rng(42)
+    data = rng.choice([True, False], size=(n_models, len(horizons)))
+    index = [f"model_{i}" for i in range(n_models)]
+    return pd.DataFrame(data, index=index, columns=horizons)
+
+
+# ---------------------------------------------------------------------------
+# Tests: plot_rmsfe_heatmap
+# ---------------------------------------------------------------------------
+
+
+class TestPlotRmsfeHeatmap:
+    def test_returns_figure(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_axes_exist(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl)
+        assert len(fig.get_axes()) >= 1
+        plt.close(fig)
+
+    def test_custom_title(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl, title="My heatmap")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_figsize(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl, figsize=(6, 3))
+        assert fig.get_size_inches()[0] == pytest.approx(6.0)
+        plt.close(fig)
+
+    def test_no_annotations(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl, annot=False)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_vmin_vmax(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_rmsfe_heatmap(tbl, vmin=0.5, vmax=1.5)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_empty_table_raises(self) -> None:
+        empty = pd.DataFrame()
+        with pytest.raises(ValueError, match="empty"):
+            plot_rmsfe_heatmap(empty)
+
+    def test_single_horizon(self) -> None:
+        tbl = _make_rmsfe_table(horizons=[1])
+        fig = plot_rmsfe_heatmap(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_single_model(self) -> None:
+        tbl = _make_rmsfe_table(n_models=1)
+        fig = plot_rmsfe_heatmap(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Tests: plot_horizon_lines
+# ---------------------------------------------------------------------------
+
+
+class TestPlotHorizonLines:
+    def test_returns_figure(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_axes_exist(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl)
+        assert len(fig.get_axes()) >= 1
+        plt.close(fig)
+
+    def test_custom_title(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl, title="Horizon comparison")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_highlight_ids(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl, highlight_ids=["model_0", "model_1"])
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_no_benchmark_line(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl, benchmark_line=None)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_benchmark_line(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl, benchmark_line=0.9)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_palette(self) -> None:
+        tbl = _make_rmsfe_table(n_models=2)
+        palette = {"model_0": "#ff0000", "model_1": "#0000ff"}
+        fig = plot_horizon_lines(tbl, palette=palette)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_ylabel(self) -> None:
+        tbl = _make_rmsfe_table()
+        fig = plot_horizon_lines(tbl, ylabel="Relative RMSFE")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_empty_table_raises(self) -> None:
+        empty = pd.DataFrame()
+        with pytest.raises(ValueError, match="empty"):
+            plot_horizon_lines(empty)
+
+    def test_single_model(self) -> None:
+        tbl = _make_rmsfe_table(n_models=1)
+        fig = plot_horizon_lines(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Tests: plot_mcs_membership
+# ---------------------------------------------------------------------------
+
+
+class TestPlotMcsMembership:
+    def test_returns_figure(self) -> None:
+        tbl = _make_mcs_table()
+        fig = plot_mcs_membership(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_axes_exist(self) -> None:
+        tbl = _make_mcs_table()
+        fig = plot_mcs_membership(tbl)
+        assert len(fig.get_axes()) >= 1
+        plt.close(fig)
+
+    def test_custom_title(self) -> None:
+        tbl = _make_mcs_table()
+        fig = plot_mcs_membership(tbl, title="MCS at alpha=0.10")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_colors(self) -> None:
+        tbl = _make_mcs_table()
+        fig = plot_mcs_membership(tbl, color_in="#1f77b4", color_out="#aec7e8")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_custom_figsize(self) -> None:
+        tbl = _make_mcs_table()
+        fig = plot_mcs_membership(tbl, figsize=(7, 4))
+        assert fig.get_size_inches()[0] == pytest.approx(7.0)
+        plt.close(fig)
+
+    def test_empty_table_raises(self) -> None:
+        empty = pd.DataFrame()
+        with pytest.raises(ValueError, match="empty"):
+            plot_mcs_membership(empty)
+
+    def test_all_in_mcs(self) -> None:
+        tbl = pd.DataFrame(True, index=["m1", "m2"], columns=[1, 3, 6])
+        fig = plot_mcs_membership(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_all_out_mcs(self) -> None:
+        tbl = pd.DataFrame(False, index=["m1", "m2"], columns=[1, 3, 6])
+        fig = plot_mcs_membership(tbl)
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_integer_01_values_accepted(self) -> None:
+        tbl = pd.DataFrame([[1, 0, 1], [0, 1, 0]], index=["m1", "m2"], columns=[1, 3, 6])
+        fig = plot_mcs_membership(tbl)
         assert isinstance(fig, plt.Figure)
         plt.close(fig)

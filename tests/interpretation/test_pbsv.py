@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from macrocast.evaluation.pbsv import compute_pbsv, model_accordance_score, oshapley_vi
+from macrocast.interpretation.pbsv import compute_pbsv, model_accordance_score, oshapley_vi
 
 
 def _linear_forecast_fn(X_train, y_train, X_test):

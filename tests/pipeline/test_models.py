@@ -112,7 +112,6 @@ class TestRFModel:
         X_tr, y_tr, X_te, _ = small_data
         model = RFModel(
             n_estimators=10,
-            max_depth_grid=[3],
             min_samples_leaf_grid=[5],
             cv_folds=2,
         )
