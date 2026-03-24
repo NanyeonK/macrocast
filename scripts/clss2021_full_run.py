@@ -1,14 +1,17 @@
-"""CLSS 2021 focused overnight replication.
+"""CLSS 2021 full production replication.
 
-Runs RF horse race across 6 information sets, 4 targets, 4 horizons.
-Validates that MARX transformation improves RF forecasting.
+Runs RF horse race across 6 information sets, 11 targets, 4 horizons.
+Upgrades overnight run: p_marx=4, n_estimators=200, 11 targets, n_jobs=8.
 
-Specifically replicates:
-  - Fig 1/2 direction: Does MARX transformation help Random Forest?
-  - Relative RMSFE: Does F-X-MARX beat F?
+Key improvements over overnight script:
+  - p_marx=4  (meaningful MARX/MAF; overnight used p_marx=1 which collapses to identity)
+  - n_estimators=200  (more stable forests)
+  - 11 targets  (all CLSS 2021 targets available in FRED-MD)
+  - n_jobs=8  (full parallelisation)
+  - Checkpointing: skips targets whose parquet already exists
 
-Usage: uv run python scripts/clss2021_overnight_run.py
-Results saved to: ~/.macrocast/results/clss2021_overnight/
+Usage: uv run python scripts/clss2021_full_run.py
+Results saved to: ~/.macrocast/results/clss2021_full/
 """
 
 from __future__ import annotations
@@ -30,7 +33,6 @@ from macrocast.pipeline import (
     ModelSpec,
     Regularization,
     RFModel,
-    GBModel,
 )
 
 # ---------------------------------------------------------------------------
@@ -49,27 +51,41 @@ log = logging.getLogger(__name__)
 # Paths
 # ---------------------------------------------------------------------------
 
-RESULTS_DIR = Path.home() / ".macrocast" / "results" / "clss2021_overnight"
+RESULTS_DIR = Path.home() / ".macrocast" / "results" / "clss2021_full"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Experiment parameters
 # ---------------------------------------------------------------------------
 
-TARGETS: list[str] = ["INDPRO", "PAYEMS", "UNRATE", "CPIAUCSL"]
+# All 11 CLSS 2021 targets available in FRED-MD.
+# "S&P 500" has a space in the column name — handled via safe_name() below.
+TARGETS: list[str] = [
+    "INDPRO",            # Industrial production
+    "PAYEMS",            # Nonfarm payroll employment
+    "UNRATE",            # Unemployment rate
+    "CPIAUCSL",          # CPI all items
+    "PCEPI",             # PCE price index
+    "TB3MS",             # 3-month T-bill rate
+    "GS10",              # 10-year Treasury yield
+    "WPSFD49207",        # PPI finished goods
+    "M2REAL",            # Real M2
+    "DPCERA3M086SBEA",   # Real PCE
+    "S&P 500",           # S&P 500 index
+]
+
 HORIZONS: list[int] = [1, 3, 6, 12]
 OOS_START: str = "1999-01-01"
 OOS_END: str = "2017-12-01"
-N_JOBS: int = 4
+N_JOBS: int = 8
 
-# FeatureSpec shared hyper-parameters (CLSS 2021 defaults)
-_FEAT_KWARGS: dict = dict(n_factors=4, n_lags=2, p_marx=1)
+# CLSS 2021 defaults: p_marx=4 is required for meaningful MARX/MAF.
+# p_marx=1 (overnight) collapses MARX to raw differences — same as stationary X.
+_FEAT_KWARGS: dict = dict(n_factors=4, n_lags=2, p_marx=4)
 
 # ---------------------------------------------------------------------------
 # 6 information sets (Table 1 / Fig 1 in CLSS 2021)
 # ---------------------------------------------------------------------------
-# label convention matches _auto_label() in experiment.py, but we set
-# explicit labels to guarantee exact CLSS naming regardless of logic changes.
 
 FEATURE_SPECS: list[FeatureSpec] = [
     # F: factors only, no raw X, no MARX
@@ -97,7 +113,7 @@ FEATURE_SPECS: list[FeatureSpec] = [
         label="X-MARX",
         **_FEAT_KWARGS,
     ),
-    # F-MARX: factors + MARX features (MARX computed from raw X, not used for PCA)
+    # F-MARX: factors + MARX features (PCA on raw X, MARX appended)
     FeatureSpec(
         use_factors=True,
         include_raw_x=False,
@@ -106,7 +122,7 @@ FEATURE_SPECS: list[FeatureSpec] = [
         label="F-MARX",
         **_FEAT_KWARGS,
     ),
-    # F-X-MARX: factors + raw X + MARX (the dominant CLSS 2021 information set)
+    # F-X-MARX: factors + raw X + MARX (dominant CLSS 2021 information set)
     FeatureSpec(
         use_factors=True,
         include_raw_x=True,
@@ -115,7 +131,7 @@ FEATURE_SPECS: list[FeatureSpec] = [
         label="F-X-MARX",
         **_FEAT_KWARGS,
     ),
-    # MAF: factors from MARX-transformed X (MARX used for PCA + MAF flag)
+    # MAF: factors from MARX-transformed X (PCA on MARX panel)
     FeatureSpec(
         use_factors=True,
         include_raw_x=False,
@@ -128,38 +144,34 @@ FEATURE_SPECS: list[FeatureSpec] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Model spec: RF with fast CV settings
+# Model spec: RF with production settings
 # ---------------------------------------------------------------------------
 
 RF_SPEC = ModelSpec(
     model_cls=RFModel,
     model_kwargs=dict(
-        n_estimators=50,
-        max_depth_grid=[3, 5],
-        min_samples_leaf_grid=[5, 10],
-        cv_folds=2,
+        n_estimators=200,
+        max_depth_grid=[3, 5, 7],
+        min_samples_leaf_grid=[5, 10, 20],
+        cv_folds=3,
     ),
     regularization=Regularization.NONE,
-    cv_scheme=CVScheme.KFOLD(k=2),
+    cv_scheme=CVScheme.KFOLD(k=3),
     loss_function=LossFunction.L2,
     model_id="rf",
 )
 
-GB_SPEC = ModelSpec(
-    model_cls=GBModel,
-    model_kwargs=dict(
-        n_estimators=50,
-        max_depth_grid=[3, 5],
-        learning_rate_grid=[0.05, 0.1],
-        cv_folds=2,
-    ),
-    regularization=Regularization.NONE,
-    cv_scheme=CVScheme.KFOLD(k=2),
-    loss_function=LossFunction.L2,
-    model_id="gb",
-)
-
 MODEL_SPECS: list[ModelSpec] = [RF_SPEC]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def safe_name(tgt: str) -> str:
+    """Convert target column name to a filesystem-safe string."""
+    return tgt.replace("&", "").replace(" ", "_").replace("/", "_")
 
 
 # ---------------------------------------------------------------------------
@@ -167,53 +179,23 @@ MODEL_SPECS: list[ModelSpec] = [RF_SPEC]
 # ---------------------------------------------------------------------------
 
 
-def load_data(vintage: str = "2018-02") -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load FRED-MD and return (panel_stationary, panel_levels).
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load FRED-MD current release and return (panel_stationary, panel_levels)."""
+    log.info("Loading FRED-MD (current release) ...")
+    mf_levels = load_fred_md(vintage=None)
+    log.info("Loaded: %d obs x %d vars", *mf_levels.data.shape)
 
-    Attempts the requested vintage first. Falls back to the current release
-    if the vintage is unavailable.
-
-    Parameters
-    ----------
-    vintage : str
-        FRED-MD vintage in YYYY-MM format.
-
-    Returns
-    -------
-    panel_stationary : pd.DataFrame
-        Stationary-transformed predictor panel, DatetimeIndex (monthly).
-    panel_levels : pd.DataFrame
-        Untransformed levels panel (same shape), for FeatureSpecs that need
-        include_levels=True.  Not used in this script's 6 specs but wired
-        in for completeness.
-    """
-    log.info("Loading FRED-MD vintage=%s ...", vintage)
-    try:
-        mf_levels = load_fred_md(vintage=vintage)
-        log.info("Loaded vintage %s: %d obs x %d vars", vintage, *mf_levels.data.shape)
-    except Exception as exc:
-        log.warning(
-            "Could not load vintage %s (%s). Falling back to current release.",
-            vintage,
-            exc,
-        )
-        mf_levels = load_fred_md(vintage=None)
-        log.info("Loaded current release: %d obs x %d vars", *mf_levels.data.shape)
-
-    # Levels panel (before stationarity transforms)
     panel_levels: pd.DataFrame = mf_levels.data.copy()
 
-    # Stationary panel via McCracken-Ng tcodes
     mf_stat = mf_levels.transform()
     panel_stationary: pd.DataFrame = mf_stat.data.copy()
 
     log.info(
-        "Stationary panel: %d obs x %d vars, date range %s to %s",
+        "Stationary panel: %d obs x %d vars, %s to %s",
         *panel_stationary.shape,
-        panel_stationary.index.min(),
-        panel_stationary.index.max(),
+        panel_stationary.index.min().strftime("%Y-%m"),
+        panel_stationary.index.max().strftime("%Y-%m"),
     )
-
     return panel_stationary, panel_levels
 
 
@@ -225,27 +207,23 @@ def load_data(vintage: str = "2018-02") -> tuple[pd.DataFrame, pd.DataFrame]:
 def compute_relative_rmsfe(df: pd.DataFrame) -> pd.DataFrame:
     """Compute relative RMSFE for each feature set vs benchmark F.
 
-    Relative RMSFE = RMSFE(model) / RMSFE(F). Values < 1 indicate
-    improvement over the F benchmark.
-
     Parameters
     ----------
     df : pd.DataFrame
-        Combined results DataFrame from ResultSet.to_dataframe().
+        Combined results DataFrame with columns y_hat, y_true,
+        feature_set, target, horizon.
 
     Returns
     -------
     pd.DataFrame
-        Pivot table: rows = feature_set, columns = horizon, values = rel_rmsfe.
-        Index is sorted by the order in FEATURE_SPECS.
+        Pivot: rows = feature_set, columns = horizon, values = rel_rmsfe.
     """
     if df.empty:
         log.warning("Results DataFrame is empty; cannot compute RMSFE table.")
         return pd.DataFrame()
 
-    # MSFE per feature_set x target x horizon
     df = df.copy()
-    df["sq_err"] = (df["forecast"] - df["realization"]) ** 2
+    df["sq_err"] = (df["y_hat"] - df["y_true"]) ** 2
 
     msfe = (
         df.groupby(["feature_set", "target", "horizon"])["sq_err"]
@@ -254,7 +232,6 @@ def compute_relative_rmsfe(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"sq_err": "msfe"})
     )
 
-    # Benchmark = feature_set "F"
     bench = msfe[msfe["feature_set"] == "F"][["target", "horizon", "msfe"]].rename(
         columns={"msfe": "msfe_bench"}
     )
@@ -263,7 +240,6 @@ def compute_relative_rmsfe(df: pd.DataFrame) -> pd.DataFrame:
     msfe["rmsfe_bench"] = msfe["msfe_bench"] ** 0.5
     msfe["rel_rmsfe"] = msfe["rmsfe"] / msfe["rmsfe_bench"]
 
-    # Average across targets then pivot: feature_set x horizon
     summary = (
         msfe.groupby(["feature_set", "horizon"])["rel_rmsfe"]
         .mean()
@@ -271,10 +247,8 @@ def compute_relative_rmsfe(df: pd.DataFrame) -> pd.DataFrame:
     )
     pivot = summary.pivot(index="feature_set", columns="horizon", values="rel_rmsfe")
 
-    # Sort rows in CLSS presentation order
     ordered_labels = [s.label for s in FEATURE_SPECS]
-    pivot = pivot.reindex([l for l in ordered_labels if l in pivot.index])
-
+    pivot = pivot.reindex([lbl for lbl in ordered_labels if lbl in pivot.index])
     return pivot
 
 
@@ -285,33 +259,38 @@ def compute_relative_rmsfe(df: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     run_start = time.time()
-    log.info("=== CLSS 2021 overnight replication started ===")
-    log.info("Targets: %s", TARGETS)
+    log.info("=== CLSS 2021 full replication started ===")
+    log.info("p_marx=4  n_estimators=200  cv_folds=3")
+    log.info("Targets (%d): %s", len(TARGETS), TARGETS)
     log.info("Horizons: %s", HORIZONS)
     log.info("Feature sets: %s", [s.label for s in FEATURE_SPECS])
     log.info("OOS window: %s — %s", OOS_START, OOS_END)
+    log.info("n_jobs: %d", N_JOBS)
     log.info("Results dir: %s", RESULTS_DIR)
 
-    # Use vintage=None (current FRED-MD release); OOS evaluation ends 2017-12
-    # to match the CLSS 2021 paper period.
-    panel_stat, panel_levels = load_data(vintage=None)
+    panel_stat, panel_levels = load_data()
 
     all_result_dfs: list[pd.DataFrame] = []
 
     for tgt in TARGETS:
+        fname = safe_name(tgt)
+        out_path = RESULTS_DIR / f"{fname}_results.parquet"
+
+        # Checkpointing: skip if result file already exists
+        if out_path.exists():
+            log.info("SKIP %s — %s already exists", tgt, out_path.name)
+            existing = pd.read_parquet(out_path)
+            all_result_dfs.append(existing)
+            continue
+
         tgt_start = time.time()
         log.info("--- Target: %s  [%s] ---", tgt, datetime.now().strftime("%H:%M:%S"))
 
-        # Guard: check target variable is present in the panel
         if tgt not in panel_stat.columns:
-            log.error(
-                "Target '%s' not found in panel columns. Skipping.", tgt
-            )
+            log.error("Target '%s' not in panel. Skipping.", tgt)
             continue
 
         target_series: pd.Series = panel_stat[tgt].dropna()
-        # Predictor panel excludes the target variable (avoid information
-        # leakage; CLSS 2021 follows this convention)
         predictor_panel: pd.DataFrame = panel_stat.drop(columns=[tgt])
         predictor_levels: pd.DataFrame = panel_levels.drop(columns=[tgt], errors="ignore")
 
@@ -332,30 +311,23 @@ def main() -> None:
             result_df = result_set.to_dataframe()
 
             if result_df.empty:
-                log.warning("HorseRaceGrid returned empty results for target %s.", tgt)
+                log.warning("Empty results for target %s.", tgt)
             else:
-                # Tag with target name so we can identify rows after concatenation
                 result_df["target"] = tgt
-
-                # Save intermediate result
-                out_path = RESULTS_DIR / f"{tgt}_results.parquet"
                 result_df.to_parquet(out_path, index=False)
-                log.info("Saved intermediate results: %s", out_path)
-
+                log.info("Saved: %s  (%d rows)", out_path.name, len(result_df))
                 all_result_dfs.append(result_df)
 
-        except Exception as exc:
-            log.exception("ERROR processing target %s: %s", tgt, exc)
-            log.info("Continuing with remaining targets...")
+        except Exception:
+            log.exception("ERROR processing target %s", tgt)
+            log.info("Continuing with remaining targets ...")
             continue
 
         elapsed = time.time() - tgt_start
-        log.info(
-            "Target %s done in %.1f s (%.1f min)", tgt, elapsed, elapsed / 60
-        )
+        log.info("Target %s done in %.1f min", tgt, elapsed / 60)
 
     # ------------------------------------------------------------------
-    # Combine and summarise
+    # Combine
     # ------------------------------------------------------------------
 
     if not all_result_dfs:
@@ -367,7 +339,7 @@ def main() -> None:
 
     combined_path = RESULTS_DIR / "combined_results.parquet"
     combined.to_parquet(combined_path, index=False)
-    log.info("Saved combined results: %s  (%d rows)", combined_path, len(combined))
+    log.info("Saved combined: %s  (%d rows)", combined_path, len(combined))
 
     # ------------------------------------------------------------------
     # Relative RMSFE table
@@ -382,17 +354,15 @@ def main() -> None:
         print("\n" + rmsfe_table.to_string())
         print()
 
-        # Also save the summary table
         rmsfe_path = RESULTS_DIR / "rmsfe_summary.parquet"
         rmsfe_table.to_parquet(rmsfe_path)
+        rmsfe_table.to_csv(RESULTS_DIR / "rmsfe_summary.csv")
         log.info("Saved RMSFE summary: %s", rmsfe_path)
     else:
-        log.warning("RMSFE table is empty; check results.")
+        log.warning("RMSFE table empty; check results.")
 
     total = time.time() - run_start
-    log.info(
-        "=== Run complete in %.1f s (%.1f min) ===", total, total / 60
-    )
+    log.info("=== Run complete in %.1f min ===", total / 60)
 
 
 if __name__ == "__main__":
