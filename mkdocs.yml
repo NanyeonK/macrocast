@@ -103,6 +103,7 @@ nav:
     - Overview: viz/index.md
   - Replication:
     - Overview: replication/index.md
+    - Paper Registry: replication/papers.md
     - CLSS 2021: replication/clss2021.md
   - Tutorials:
     - CLSS 2021 Replication: tutorials/clss2021-replication.md
