@@ -110,37 +110,42 @@ def test_oos_r2_perfect_forecast():
         }
     )
     out = oos_r2_panel(df)
-    # All R² values should be exactly 1
-    np.testing.assert_allclose(out["oos_r2"].values, 1.0, atol=1e-12)
+    # t=0: NaN (no prior data for historical mean benchmark)
+    assert np.isnan(out["oos_r2"].iloc[0])
+    # t>=1: perfect forecast → R² = 1
+    np.testing.assert_allclose(out["oos_r2"].iloc[1:].values, 1.0, atol=1e-12)
 
 
 def test_oos_r2_mean_forecast():
-    """Forecasting the mean gives mean(oos_r2) == 0 over the OOS window.
+    """Forecasting the conditional historical mean gives R²=0 for all t >= 1.
 
-    The pseudo-R² is defined per-row as 1 - e_t² / sigma²_{v,h}.  When
-    y_hat_t = ybar for all t, the average squared error equals sigma²_{v,h}
-    (by definition of variance), so the *mean* of the per-row R² values
-    is 0.  Individual rows will generally not equal 0.
+    When y_hat_t = ybar_{t-1} (the prevailing expanding mean up to t-1),
+    the numerator (y_t - y_hat_t)² equals the denominator exactly, so
+    OOS-R²_t = 0 for every observation except t=0 (NaN, no prior data).
     """
     rng = np.random.default_rng(1)
     n = 30
     y = rng.standard_normal(n)
-    y_mean = np.full(n, y.mean())
+    # Prevailing historical mean: at position t, mean of y[0..t-1]
+    y_hist_mean = np.array(
+        [np.nan] + [y[:t].mean() for t in range(1, n)]
+    )
     df = pd.DataFrame(
         {
-            "model_id": "mean",
+            "model_id": "hist_mean",
             "feature_set": "F",
             "horizon": 1,
             "forecast_date": pd.date_range("2010-01", periods=n, freq="MS"),
-            "y_hat": y_mean,
+            "y_hat": y_hist_mean,
             "y_true": y,
             "target": "GDP",
         }
     )
     out = oos_r2_panel(df)
-    # Mean across all rows: mean(1 - e_t²/sigma²) = 1 - MSE/sigma² = 1 - 1 = 0
-    # The mean of (y - ybar)² equals the population variance (ddof=0) exactly.
-    np.testing.assert_allclose(out["oos_r2"].mean(), 0.0, atol=1e-10)
+    # t=0: NaN for both y_hat and oos_r2
+    assert np.isnan(out["oos_r2"].iloc[0])
+    # t>=1: model IS the benchmark → R² = 0 exactly
+    np.testing.assert_allclose(out["oos_r2"].iloc[1:].values, 0.0, atol=1e-12)
 
 
 def test_oos_r2_zero_variance_group_is_nan():
@@ -162,13 +167,17 @@ def test_oos_r2_zero_variance_group_is_nan():
 
 
 def test_oos_r2_panel_multiple_groups():
-    """sigma² is computed per (target, horizon) group, not globally."""
-    rng = np.random.default_rng(7)
+    """Historical mean is computed per (target, horizon) group, not globally.
+
+    Uses a linearly trending DGP so the historical mean is a stable benchmark
+    and tight forecasts yield R² consistently close to 1.
+    """
     dates = pd.date_range("2010-01", periods=20, freq="MS")
     rows = []
     for target, scale in [("GDP", 1.0), ("CPI", 10.0)]:
-        y = rng.standard_normal(20) * scale
-        y_hat = y + rng.standard_normal(20) * 0.1 * scale
+        # Linearly trending series: historical mean is a well-defined benchmark
+        y = np.linspace(0.0, 5.0, 20) * scale
+        y_hat = y + 0.01 * scale  # tight forecasts
         for d, yt, yh in zip(dates, y, y_hat):
             rows.append(
                 {
@@ -184,11 +193,13 @@ def test_oos_r2_panel_multiple_groups():
     df = pd.DataFrame(rows)
     out = oos_r2_panel(df)
 
-    # Both groups should have well-defined R² close to 1 (tight forecasts)
+    # t=0 of each group: NaN (no prior data for historical mean)
+    # t>=1: well-defined R² close to 1 (tight forecasts, non-trivial denominator)
     for target in ["GDP", "CPI"]:
-        r2_grp = out.loc[out["target"] == target, "oos_r2"]
-        assert r2_grp.notna().all()
-        assert r2_grp.mean() > 0.5
+        r2_grp = out.loc[out["target"] == target, "oos_r2"].reset_index(drop=True)
+        assert np.isnan(r2_grp.iloc[0])
+        assert r2_grp.iloc[1:].notna().all()
+        assert r2_grp.iloc[1:].mean() > 0.5
 
 
 # ---------------------------------------------------------------------------

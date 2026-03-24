@@ -83,53 +83,58 @@ def oos_r2_panel(
     y_true_col: str = "y_true",
     benchmark_col: str | None = None,
 ) -> pd.DataFrame:
-    """Add an ``oos_r2`` column to result_df.
+    """Add an ``oos_r2`` column to result_df (Campbell-Thompson 2008).
 
-    Two modes depending on ``benchmark_col``:
+    OOS-R² = 1 - MSFE_model / MSFE_benchmark
 
-    **Variance-based** (``benchmark_col=None``, default — CLSS 2021 Eq. 11):
-        For each (target, horizon) group the denominator is the OOS variance of
-        the realised series:
+    Two modes for the benchmark depending on ``benchmark_col``:
 
-            sigma²_{v,h} = (1/T_OOS) * sum_t (y_true_t - ybar_h^v)²
+    **Conditional historical mean** (``benchmark_col=None``, default):
+        At each OOS date t the benchmark forecast is the prevailing expanding
+        mean of y_true computed from all prior OOS observations in the group:
 
-        OOS-R²_{t} = 1 - (y_true_t - y_hat_t)² / sigma²_{v,h}
+            ybar_{t-1} = (1 / (t-1)) * sum_{s < t} y_s
 
-    **Benchmark model** (``benchmark_col`` provided — Campbell-Thompson style):
-        Denominator is the squared error of a named benchmark forecast column:
+        Denominator for row t: ``(y_true_t - ybar_{t-1})^2``.
+        The first OOS observation in each group yields NaN (no prior data).
+        This is the standard "historical mean" benchmark of Campbell and
+        Thompson (2008) and Welch and Goyal (2008).
 
-            OOS-R²_{t} = 1 - (y_true_t - y_hat_t)² / (y_true_t - y_bench_t)²
+    **Named benchmark model** (``benchmark_col`` provided):
+        Denominator is the squared error of the specified forecast column:
 
-        The per-row result is then averaged by group to yield a pseudo-R².
-        This allows comparing against AR, ARDI, or any other model in the table.
+            (y_true_t - y_bench_t)^2
+
+        Use this to compare against AR, ARDI, or any other model stored as
+        a column in ``result_df``.
 
     Parameters
     ----------
     result_df : pd.DataFrame
-        Forecast result table.  Required columns: ``y_hat``, ``y_true``,
-        ``horizon`` (and optionally ``target``).
+        Forecast result table with columns: ``y_hat``, ``y_true``,
+        ``forecast_date``, ``horizon`` (and optionally ``target``).
     date_col : str
         Column identifying the OOS forecast date. Default ``"forecast_date"``.
     horizon_col : str
         Column identifying the forecast horizon. Default ``"horizon"``.
     target_col : str or None
-        Column identifying the target variable.  If None or absent, all rows
+        Column identifying the target variable. If None or absent, all rows
         are treated as a single target pool.
     y_hat_col : str
         Column with model point forecasts. Default ``"y_hat"``.
     y_true_col : str
         Column with realised values. Default ``"y_true"``.
     benchmark_col : str or None
-        Column with benchmark model forecasts.  If provided, OOS-R² is computed
-        as ``1 - MSE_model / MSE_benchmark`` using the benchmark's squared
-        errors as denominator (Campbell-Thompson 2008).  If None, the OOS
-        variance of ``y_true`` is used as denominator (CLSS 2021 Eq. 11).
+        Column with benchmark model forecasts. If None (default), the
+        conditional historical mean is used. If a column name is given,
+        that column's forecasts serve as the benchmark.
 
     Returns
     -------
     pd.DataFrame
         Copy of ``result_df`` with an additional ``oos_r2`` column (float).
-        Values can be negative; NaN is returned for groups with zero denominator.
+        Values can be negative; NaN where the denominator is zero or where
+        no prior data exists (first observation of each group).
     """
     df = result_df.copy()
 
@@ -138,32 +143,51 @@ def oos_r2_panel(
     if target_col is not None and target_col in df.columns:
         group_keys = [target_col, horizon_col]
 
-    # Squared errors of the model
     sq_err = (df[y_true_col] - df[y_hat_col]) ** 2
 
     if benchmark_col is not None:
-        # Campbell-Thompson: denominator = benchmark squared errors
         if benchmark_col not in df.columns:
             raise ValueError(
                 f"benchmark_col '{benchmark_col}' not found in result_df. "
                 f"Available columns: {list(df.columns)}"
             )
         sq_err_bench = (df[y_true_col] - df[benchmark_col]) ** 2
-        with np.errstate(invalid="ignore", divide="ignore"):
-            oos_r2_vals = np.where(
-                sq_err_bench == 0,
-                np.nan,
-                1.0 - sq_err.values / sq_err_bench.values,
-            )
     else:
-        # CLSS 2021 Eq. 11: denominator = group-level variance of y_true
-        group_var = df.groupby(group_keys)[y_true_col].transform("var", ddof=0)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            oos_r2_vals = np.where(
-                group_var == 0,
-                np.nan,
-                1.0 - sq_err.values / group_var.values,
-            )
+        # Conditional historical mean: expanding prior mean per group.
+        # Build a unique (group, date) -> y_true table, then compute
+        # prevailing mean at each date using only strictly prior observations.
+        merge_keys = group_keys + [date_col]
+        hist = (
+            df[merge_keys + [y_true_col]]
+            .drop_duplicates(subset=merge_keys)
+            .sort_values(merge_keys)
+            .copy()
+        )
+
+        def _prior_mean(s: pd.Series) -> pd.Series:
+            """Expanding mean using only strictly prior observations."""
+            vals = s.to_numpy(dtype=float)
+            n = np.arange(len(vals), dtype=float)  # 0, 1, 2, ...
+            prior_cum = np.empty(len(vals))
+            prior_cum[0] = np.nan
+            prior_cum[1:] = vals[:-1].cumsum()
+            with np.errstate(invalid="ignore", divide="ignore"):
+                means = np.where(n > 0, prior_cum / n, np.nan)
+            return pd.Series(means, index=s.index)
+
+        hist["_hist_mean"] = hist.groupby(group_keys)[y_true_col].transform(
+            _prior_mean
+        )
+        df = df.merge(hist[merge_keys + ["_hist_mean"]], on=merge_keys, how="left")
+        sq_err_bench = (df[y_true_col] - df["_hist_mean"]) ** 2
+        df = df.drop(columns=["_hist_mean"])
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        oos_r2_vals = np.where(
+            sq_err_bench == 0,
+            np.nan,
+            1.0 - sq_err.values / sq_err_bench.values,
+        )
 
     df["oos_r2"] = oos_r2_vals
     return df
