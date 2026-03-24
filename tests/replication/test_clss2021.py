@@ -129,7 +129,7 @@ class TestCLSS2021ModelSpecs:
         assert spec.regularization == Regularization.NONE
         assert spec.loss_function == LossFunction.L2
         assert spec.model_kwargs["n_estimators"] == 200
-        assert spec.model_kwargs["min_samples_leaf"] == 5
+        assert spec.model_kwargs["min_samples_leaf_grid"] == [5]
 
     def test_en_spec(self) -> None:
         spec = CLSS2021.en_spec()
@@ -156,7 +156,7 @@ class TestCLSS2021ModelSpecs:
     def test_rf_spec_custom_params(self) -> None:
         spec = CLSS2021.rf_spec(n_estimators=100, min_samples_leaf=10)
         assert spec.model_kwargs["n_estimators"] == 100
-        assert spec.model_kwargs["min_samples_leaf"] == 10
+        assert spec.model_kwargs["min_samples_leaf_grid"] == [10]
 
 
 # ---------------------------------------------------------------------------
@@ -226,3 +226,108 @@ def test_horizons() -> None:
 
 def test_table1_labels_count() -> None:
     assert len(CLSS2021.TABLE1_LABELS) == 16
+
+
+# ---------------------------------------------------------------------------
+# End-to-end smoke test: ForecastExperiment with CLSS2021 presets
+# ---------------------------------------------------------------------------
+
+
+def _make_synthetic_panel(
+    T: int = 200, N: int = 20, seed: int = 42
+) -> tuple["pd.DataFrame", "pd.Series"]:
+    """Synthetic FRED-MD-like panel for CI-speed replication smoke tests."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(seed)
+    dates = pd.date_range("2000-01", periods=T, freq="MS")
+    X = rng.standard_normal((T, N))
+    df = pd.DataFrame(X, index=dates, columns=[f"X{i:02d}" for i in range(N)])
+    target = pd.Series(
+        0.5 * X[:, 0] - 0.3 * X[:, 2] + rng.standard_normal(T) * 0.2,
+        index=dates,
+        name="INDPRO",
+    )
+    return df, target
+
+
+class TestCLSS2021EndToEnd:
+    """Smoke tests: full ForecastExperiment run using CLSS2021 presets."""
+
+    def test_rf_e2e_produces_records(self) -> None:
+        """RF with F and F-MARX info sets returns non-empty ResultSet."""
+        import pandas as pd
+        from macrocast.pipeline.components import Window
+        from macrocast.pipeline.experiment import ForecastExperiment
+
+        df, target = _make_synthetic_panel()
+        info_sets = CLSS2021.info_sets(P_Y=2, K=3, P_MARX=2)
+        rf_spec = CLSS2021.rf_spec(n_estimators=20, min_samples_leaf=5)
+
+        results = []
+        for label in ["F", "F-MARX"]:
+            exp = ForecastExperiment(
+                panel=df,
+                target=target,
+                horizons=[1],
+                model_specs=[rf_spec],
+                feature_spec=info_sets[label],
+                window=Window.EXPANDING,
+                oos_start="2012-01",
+                n_jobs=1,
+            )
+            rs = exp.run()
+            df_r = rs.to_dataframe()
+            assert len(df_r) > 0, f"Empty ResultSet for feature set {label!r}"
+            results.append(df_r)
+
+    def test_feature_set_labels_in_output(self) -> None:
+        """ResultSet feature_set column matches the FeatureSpec label."""
+        from macrocast.pipeline.components import Window
+        from macrocast.pipeline.experiment import ForecastExperiment
+
+        df, target = _make_synthetic_panel()
+        info_sets = CLSS2021.info_sets(P_Y=2, K=3, P_MARX=2)
+        rf_spec = CLSS2021.rf_spec(n_estimators=20, min_samples_leaf=5)
+
+        for label in ["F", "F-MARX"]:
+            exp = ForecastExperiment(
+                panel=df,
+                target=target,
+                horizons=[1],
+                model_specs=[rf_spec],
+                feature_spec=info_sets[label],
+                window=Window.EXPANDING,
+                oos_start="2012-01",
+                n_jobs=1,
+            )
+            rs = exp.run()
+            df_r = rs.to_dataframe()
+            assert (df_r["feature_set"] == label).all(), (
+                f"Expected feature_set={label!r}, got {df_r['feature_set'].unique()}"
+            )
+
+    def test_finite_forecasts(self) -> None:
+        """All y_hat values are finite (no NaN/Inf from RF)."""
+        import numpy as np
+        from macrocast.pipeline.components import Window
+        from macrocast.pipeline.experiment import ForecastExperiment
+
+        df, target = _make_synthetic_panel()
+        info_sets = CLSS2021.info_sets(P_Y=2, K=3, P_MARX=2)
+        rf_spec = CLSS2021.rf_spec(n_estimators=20, min_samples_leaf=5)
+
+        exp = ForecastExperiment(
+            panel=df,
+            target=target,
+            horizons=[1],
+            model_specs=[rf_spec],
+            feature_spec=info_sets["F-MARX"],
+            window=Window.EXPANDING,
+            oos_start="2012-01",
+            n_jobs=1,
+        )
+        rs = exp.run()
+        df_r = rs.to_dataframe()
+        assert np.isfinite(df_r["y_hat"].values).all(), "Non-finite forecasts in y_hat"

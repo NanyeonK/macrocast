@@ -115,7 +115,8 @@ class CLSS2021:
         n_estimators : int
             Number of trees (B = 200 in the paper).
         min_samples_leaf : int
-            Minimum node size (5 in the paper).
+            Minimum node size (5 in the paper).  Passed as a single-element
+            grid so ``RFModel`` uses it as a fixed hyperparameter (no tuning).
         max_features : float
             Fraction of features considered per split.  The paper uses
             ``floor(p/3)``; passing ``1/3`` approximates this.
@@ -126,11 +127,11 @@ class CLSS2021:
         return ModelSpec(
             model_cls=RFModel,
             regularization=Regularization.NONE,
-            cv_scheme=CVScheme.BIC,  # placeholder; RF ignores inner CV
+            cv_scheme=CVScheme.KFOLD(k=5),
             loss_function=LossFunction.L2,
             model_kwargs={
                 "n_estimators": n_estimators,
-                "min_samples_leaf": min_samples_leaf,
+                "min_samples_leaf_grid": [min_samples_leaf],
                 "max_features": max_features,
             },
             model_id=model_id,

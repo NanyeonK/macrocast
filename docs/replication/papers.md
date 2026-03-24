@@ -9,7 +9,7 @@ a smoke test (`tests/replication/`) and a demonstration notebook (`examples/`).
 
 | ID | Authors | Year | Journal | Status | Test | Notebook |
 |----|---------|------|---------|--------|------|----------|
-| C1 | Coulombe, Leroux, Stevanovic, Surprenant | 2021 | IJF | In progress | test_clss2021.py | clss2021_replication.ipynb |
+| C1 | Coulombe, Leroux, Stevanovic, Surprenant | 2021 | IJF | Done | test_clss2021.py | clss2021_replication.ipynb |
 | C2 | Coulombe, Leroux, Stevanovic, Surprenant | 2022 | IJF | Planned | test_clss2022.py | clss2022_replication.ipynb |
 | C3 | Coulombe, Goulet-Coulombe, Kichian | 2024 | — | Planned | test_coulombe2024.py | coulombe2024_replication.ipynb |
 
