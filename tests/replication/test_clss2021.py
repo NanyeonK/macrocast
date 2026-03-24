@@ -147,11 +147,11 @@ class TestCLSS2021ModelSpecs:
         assert spec.cv_scheme == CVScheme.BIC
         assert spec.model_id == "FM"
 
-    def test_all_model_specs_returns_four(self) -> None:
+    def test_all_model_specs_returns_six(self) -> None:
         specs = CLSS2021.all_model_specs()
-        assert len(specs) == 4
+        assert len(specs) == 6
         ids = {s.model_id for s in specs}
-        assert ids == {"RF", "EN", "AL", "FM"}
+        assert ids == {"RF", "EN", "AL", "FM", "KRR", "SVR"}
 
     def test_rf_spec_custom_params(self) -> None:
         spec = CLSS2021.rf_spec(n_estimators=100, min_samples_leaf=10)
@@ -331,3 +331,39 @@ class TestCLSS2021EndToEnd:
         rs = exp.run()
         df_r = rs.to_dataframe()
         assert np.isfinite(df_r["y_hat"].values).all(), "Non-finite forecasts in y_hat"
+
+
+class TestCLSS2021NewSpecs:
+    """Tests for krr_spec, svr_spec, and all_model_specs completeness."""
+
+    def test_krr_spec_kwargs(self) -> None:
+        spec = CLSS2021.krr_spec()
+        assert spec.model_id == "KRR"
+        assert spec.model_kwargs["alpha_grid"] == [0.001, 0.01, 0.1, 1.0, 10.0]
+        assert spec.model_kwargs["gamma_grid"] == [0.001, 0.01, 0.1, 1.0]
+        assert spec.model_kwargs["cv_folds"] == 5
+
+    def test_krr_spec_custom_grids(self) -> None:
+        spec = CLSS2021.krr_spec(alpha_grid=[0.1, 1.0], gamma_grid=[0.01])
+        assert spec.model_kwargs["alpha_grid"] == [0.1, 1.0]
+        assert spec.model_kwargs["gamma_grid"] == [0.01]
+
+    def test_svr_spec_kwargs(self) -> None:
+        spec = CLSS2021.svr_spec()
+        assert spec.model_id == "SVR"
+        assert spec.model_kwargs["C_grid"] == [0.1, 1.0, 10.0, 100.0]
+        assert spec.model_kwargs["gamma_grid"] == [0.001, 0.01, 0.1, 1.0]
+        assert spec.model_kwargs["epsilon_grid"] == [0.01, 0.1]
+
+    def test_svr_spec_custom_grids(self) -> None:
+        spec = CLSS2021.svr_spec(C_grid=[1.0, 10.0], epsilon_grid=[0.05])
+        assert spec.model_kwargs["C_grid"] == [1.0, 10.0]
+        assert spec.model_kwargs["epsilon_grid"] == [0.05]
+
+    def test_all_model_specs_count(self) -> None:
+        specs = CLSS2021.all_model_specs()
+        assert len(specs) == 6
+
+    def test_all_model_specs_ids(self) -> None:
+        ids = {s.model_id for s in CLSS2021.all_model_specs()}
+        assert ids == {"RF", "EN", "AL", "FM", "KRR", "SVR"}

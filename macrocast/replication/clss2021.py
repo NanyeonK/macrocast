@@ -6,7 +6,7 @@ Each study class exposes:
 
 Usage
 -----
->>> from macrocast.pipeline.presets import CLSS2021
+>>> from macrocast.replication.clss2021 import CLSS2021
 >>> specs = CLSS2021.info_sets(P_Y=12, K=8, P_MARX=12)
 >>> specs["F-MARX"]
 FeatureSpec(factor_type='X', ..., append_marx=True, ...)
@@ -177,13 +177,101 @@ class CLSS2021:
         )
 
     @classmethod
+    def krr_spec(
+        cls,
+        alpha_grid: list[float] | None = None,
+        gamma_grid: list[float] | None = None,
+        cv_folds: int = 5,
+        model_id: str = "KRR",
+    ) -> ModelSpec:
+        """Kernel Ridge Regression spec matching the paper (Appendix B).
+
+        Parameters
+        ----------
+        alpha_grid : list[float] or None
+            Regularization parameter grid.  Defaults to a log-spaced grid
+            over [0.001, 10].
+        gamma_grid : list[float] or None
+            RBF kernel bandwidth grid.  Defaults to a log-spaced grid
+            over [0.001, 1].
+        cv_folds : int
+            Number of folds for inner K-fold CV.
+        model_id : str
+        """
+        from macrocast.pipeline.models import KRRModel  # noqa: PLC0415
+
+        if alpha_grid is None:
+            alpha_grid = [0.001, 0.01, 0.1, 1.0, 10.0]
+        if gamma_grid is None:
+            gamma_grid = [0.001, 0.01, 0.1, 1.0]
+        return ModelSpec(
+            model_cls=KRRModel,
+            regularization=Regularization.RIDGE,
+            cv_scheme=CVScheme.KFOLD(k=cv_folds),
+            loss_function=LossFunction.L2,
+            model_kwargs={
+                "alpha_grid": alpha_grid,
+                "gamma_grid": gamma_grid,
+                "cv_folds": cv_folds,
+            },
+            model_id=model_id,
+        )
+
+    @classmethod
+    def svr_spec(
+        cls,
+        C_grid: list[float] | None = None,
+        gamma_grid: list[float] | None = None,
+        epsilon_grid: list[float] | None = None,
+        cv_folds: int = 5,
+        model_id: str = "SVR",
+    ) -> ModelSpec:
+        """SVR with RBF kernel spec matching the paper (Appendix B).
+
+        Parameters
+        ----------
+        C_grid : list[float] or None
+            Penalty parameter grid.  Defaults to [0.1, 1, 10, 100].
+        gamma_grid : list[float] or None
+            RBF kernel bandwidth grid.  Defaults to [0.001, 0.01, 0.1, 1].
+        epsilon_grid : list[float] or None
+            Epsilon-insensitive tube grid.  Defaults to [0.01, 0.1].
+        cv_folds : int
+            Number of folds for inner K-fold CV.
+        model_id : str
+        """
+        from macrocast.pipeline.models import SVRRBFModel  # noqa: PLC0415
+
+        if C_grid is None:
+            C_grid = [0.1, 1.0, 10.0, 100.0]
+        if gamma_grid is None:
+            gamma_grid = [0.001, 0.01, 0.1, 1.0]
+        if epsilon_grid is None:
+            epsilon_grid = [0.01, 0.1]
+        return ModelSpec(
+            model_cls=SVRRBFModel,
+            regularization=Regularization.NONE,
+            cv_scheme=CVScheme.KFOLD(k=cv_folds),
+            loss_function=LossFunction.L2,
+            model_kwargs={
+                "C_grid": C_grid,
+                "gamma_grid": gamma_grid,
+                "epsilon_grid": epsilon_grid,
+                "cv_folds": cv_folds,
+            },
+            model_id=model_id,
+        )
+
+    @classmethod
     def all_model_specs(cls) -> list[ModelSpec]:
-        """Return all five paper model specs: RF, EN, AL, FM, BT."""
+        """Return all six paper model specs: RF, EN, AL, FM, KRR, SVR."""
         return [
             cls.rf_spec(),
             cls.en_spec(),
             cls.al_spec(),
             cls.ardi_spec(),
+            cls.krr_spec(),
+            cls.svr_spec(),
         ]
 
     #: All 16 info set labels in Table 1 order
