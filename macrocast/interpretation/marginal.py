@@ -90,15 +90,23 @@ def oos_r2_panel(
     Two modes for the benchmark depending on ``benchmark_col``:
 
     **Conditional historical mean** (``benchmark_col=None``, default):
-        At each OOS date t the benchmark forecast is the prevailing expanding
-        mean of y_true computed from all prior OOS observations in the group:
+        At each OOS date t the benchmark is the prevailing expanding mean of
+        y_true computed from all strictly prior OOS observations in the group:
 
             ybar_{t-1} = (1 / (t-1)) * sum_{s < t} y_s
 
         Denominator for row t: ``(y_true_t - ybar_{t-1})^2``.
         The first OOS observation in each group yields NaN (no prior data).
-        This is the standard "historical mean" benchmark of Campbell and
-        Thompson (2008) and Welch and Goyal (2008).
+
+        This is the Campbell-Thompson (2008) / Welch-Goyal (2008) definition.
+        It directly answers "does the model beat a naive mean forecast?".
+
+        Note: CLSS 2021 Eq. 11 uses a *different* denominator — the full-sample
+        (in-sample + OOS) unconditional variance of y, which is a constant per
+        (target, horizon) group.  That formulation is a scale-normalization
+        device for comparing heterogeneous variables and is not the standard
+        OOS-R² of Campbell and Thompson.  Pass ``benchmark_col`` to replicate
+        CLSS 2021-style comparisons using a named model column.
 
     **Named benchmark model** (``benchmark_col`` provided):
         Denominator is the squared error of the specified forecast column:
@@ -106,7 +114,8 @@ def oos_r2_panel(
             (y_true_t - y_bench_t)^2
 
         Use this to compare against AR, ARDI, or any other model stored as
-        a column in ``result_df``.
+        a column in ``result_df``.  To approximate CLSS 2021 Eq. 11, pass
+        the column containing the factor model (FM) forecasts.
 
     Parameters
     ----------
