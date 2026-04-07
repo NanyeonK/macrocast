@@ -3,7 +3,10 @@
 from macrocast.preprocessing.missing import (
     classify_missing,
     detect_missing_type,
+    em_factor,
     handle_missing,
+    prepare_fredmd,
+    remove_outliers_iqr,
 )
 from macrocast.preprocessing.panel import (
     CustomTransform,
@@ -43,6 +46,9 @@ __all__ = [
     "detect_missing_type",
     "classify_missing",
     "handle_missing",
+    "remove_outliers_iqr",
+    "prepare_fredmd",
+    "em_factor",
     # panel preprocessing
     "PanelTransformer",
     "WinsorizeTransform",

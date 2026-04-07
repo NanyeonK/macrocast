@@ -202,27 +202,61 @@ class MacroFrame:
 
     def transform(
         self,
+        outlier_threshold: float | None = 10.0,
+        em_imputation: bool = True,
+        trim_first_2: bool = True,
         override: dict[str, int] | None = None,
-    ) -> MacroFrame:
-        """Apply stationarity transformations using stored tcodes.
+    ) -> "MacroFrame":
+        """Apply the McCracken-Ng (2016) preprocessing pipeline.
+
+        Pipeline order:
+        1. Apply stationarity tcodes
+        2. Trim first 2 rows (lost to differencing; MATLAB: yt(3:end,:))
+        3. Remove outliers on stationary data (IQR method)
+        4. EM factor imputation (Stock-Watson 2002)
 
         Parameters
         ----------
+        outlier_threshold : float | None
+            IQR multiplier for outlier detection. None = skip outlier removal.
+            Default: 10.0 (McCracken-Ng standard).
+        em_imputation : bool
+            Run EM factor imputation after outlier removal.
+            Default: True.
+        trim_first_2 : bool
+            Drop first 2 rows lost to differencing.
+            Default: True.
         override : dict[str, int], optional
-            Per-variable tcode overrides. Unspecified variables use the
-            default tcode from the spec (or 1 if absent).
+            Per-variable tcode overrides (backward compatible).
 
         Returns
         -------
         MacroFrame
-            New MacroFrame with transformed data. The metadata flag
-            ``is_transformed`` is set to True.
+            New MacroFrame with is_transformed=True and preprocessed data.
         """
+        from macrocast.preprocessing.missing import em_factor, remove_outliers_iqr
+
         effective_tcodes = dict(self._tcodes)
         if override:
             effective_tcodes.update(override)
 
-        transformed = apply_tcodes(self._data, effective_tcodes)
+        # Step 1: apply tcode transforms
+        data = apply_tcodes(self._data, effective_tcodes)
+
+        # Step 2: trim first 2 rows (MATLAB: yt(3:end,:))
+        if trim_first_2:
+            data = data.iloc[2:]
+
+        # Step 3: outlier removal on stationary data
+        if outlier_threshold is not None:
+            data = remove_outliers_iqr(data, threshold=outlier_threshold)
+
+        # Step 4: EM factor imputation
+        if em_imputation:
+            X = data.values
+            _, _, X_filled, _ = em_factor(X, k=8)
+            data = pd.DataFrame(X_filled, index=data.index, columns=data.columns)
+
         new_meta = MacroFrameMetadata(
             dataset=self._metadata.dataset,
             vintage=self._metadata.vintage,
@@ -233,7 +267,8 @@ class MacroFrame:
             download_date=self._metadata.download_date,
             data_through=self._metadata.data_through,
         )
-        return MacroFrame(transformed, new_meta, effective_tcodes)
+        return MacroFrame(data, new_meta, effective_tcodes)
+
 
     def group(self, group_name: str) -> MacroFrame:
         """Return a MacroFrame restricted to variables in *group_name*.

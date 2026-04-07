@@ -23,12 +23,12 @@ import time
 import numpy as np
 import pandas as pd
 
-from macroforecast.data import load_fred_md
-from macroforecast.data.schema import MacroFrame
-from macroforecast.pipeline.components import CVScheme, LossFunction, Regularization, Window
-from macroforecast.pipeline.experiment import ForecastExperiment, FeatureSpec, ModelSpec
-from macroforecast.pipeline.r_models import ARDIModel, ARModel
-from macroforecast.preprocessing.missing import remove_outliers_iqr
+from macrocast.data import load_fred_md
+from macrocast.data.schema import MacroFrame
+from macrocast.pipeline.components import CVScheme, LossFunction, Regularization, Window
+from macrocast.pipeline.experiment import ForecastExperiment, FeatureSpec, ModelSpec
+from macrocast.pipeline.r_models import ARDIModel, ARModel
+from macrocast.preprocessing.missing import remove_outliers_iqr
 
 OOS_START = "1980-01-01"
 OOS_END   = "2017-12-01"
