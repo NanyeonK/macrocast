@@ -1,9 +1,9 @@
 site_name: macrocast
 site_description: Decomposing ML Forecast Gains in Macroeconomic Forecasting
-site_author: Chan
+site_author: yeonchan
 docs_dir: docs
-repo_url: https://github.com/macrocast/macrocast
-repo_name: macrocast/macrocast
+repo_url: https://github.com/NanyeonK/macrocast
+repo_name: NanyeonK/macrocast
 edit_uri: ""
 
 theme:
@@ -21,9 +21,6 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  font:
-    text: Roboto
-    code: Roboto Mono
   features:
     - navigation.sections
     - navigation.expand
@@ -33,21 +30,9 @@ theme:
     - search.highlight
     - search.share
     - content.code.copy
-    - content.code.annotate
 
 plugins:
   - search
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            docstring_style: numpy
-            show_source: true
-            show_root_heading: true
-            show_root_full_path: false
-            members_order: source
-            separate_signature: true
-            show_signature_annotations: true
 
 markdown_extensions:
   - admonition
@@ -68,49 +53,20 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - Data Layer:
-    - Overview: data/index.md
-    - FRED-MD: data/fred-md.md
-    - FRED-QD: data/fred-qd.md
-    - FRED-SD: data/fred-sd.md
-    - MacroFrame: data/macroframe.md
-    - Vintage Management: data/vintages.md
-  - Pipeline Layer:
-    - Overview: pipeline/index.md
-    - Components: pipeline/components.md
-    - Feature Construction: pipeline/features.md
-    - Model Zoo: pipeline/models.md
-    - ForecastExperiment: pipeline/experiment.md
-    - Results: pipeline/results.md
-  - Evaluation Layer:
-    - Overview: evaluation/index.md
-    - Metrics: evaluation/metrics.md
-    - Decomposition: evaluation/decomposition.md
-    - Model Confidence Set: evaluation/mcs.md
-    - Diebold-Mariano Test: evaluation/dm.md
-    - Clark-West Test: evaluation/cw.md
-    - Giacomini-White Test: evaluation/gw.md
-    - Regime-Conditional: evaluation/regime.md
-  - Preprocessing:
-    - Overview: preprocessing/index.md
-    - Transformations: data/transforms.md
-    - Missing Values: data/missing.md
-  - Interpretation:
-    - Overview: interpretation/index.md
-    - Dual Weights: evaluation/dual.md
-    - PBSV: evaluation/pbsv.md
-  - Visualization:
-    - Overview: viz/index.md
-  - Replication:
+  - Tree-Path Architecture:
+    - Design: DESIGN.md
+    - Tree-Path Overhaul: planning/treepath-package-overhaul.md
+    - Migration Map: planning/treepath-migration-map.md
+    - Registries Layer: planning/treepath-registries-layer.md
+    - Recipes Layer: planning/treepath-recipes-layer.md
+    - Compile Integration: planning/treepath-compile-integration.md
+    - Benchmark Redesign: planning/treepath-benchmark-redesign.md
+    - Runs Layer: planning/treepath-runs-layer.md
+    - CLSS Migration: planning/treepath-clss-migration.md
+  - Replication and Recipes:
     - Overview: replication/index.md
-    - Paper Registry: replication/papers.md
-    - CLSS 2021: replication/clss2021.md
-  - Tutorials:
-    - CLSS 2021 Replication: tutorials/clss2021-replication.md
-  - Research:
-    - Coulombe Methodology: research/coulombe-methodology.md
+    - CLSS 2021 Tutorial (migration note): tutorials/clss2021-replication.md
   - API Reference:
-    - Overview: api/index.md
     - macrocast.data: api/data.md
     - macrocast.preprocessing: api/preprocessing.md
     - macrocast.pipeline: api/pipeline.md
@@ -118,10 +74,4 @@ nav:
     - macrocast.interpretation: api/interpretation.md
     - macrocast.viz: api/viz.md
     - macrocast.utils: api/utils.md
-  - Design: DESIGN.md
   - Roadmap: roadmap.md
-
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/macrocast/macrocast

@@ -1,20 +1,21 @@
-# Replication
+# Replication and Recipes
 
-The `macrocast.replication` module provides named presets for reproducing results
-from published papers using the macrocast pipeline.
+Replication should not organize the package.
+Instead, replication studies should appear as recipes/paths through the generic package.
 
-## Available Replication Studies
+## Current rule
 
-| Module | Paper | Status |
-|--------|-------|--------|
-| `clss2021` | Coulombe, Leroux, Stevanovic, Surprenant (2021), IJF | Implemented |
+- package architecture first
+- paper recipe second
+- paper-specific helpers only as migration scaffolding
 
-## Design
+## Current CLSS status
 
-Each study class exposes:
-- `info_sets(**params)` — dict of `FeatureSpec` objects matching the paper's information sets
-- Model spec constructors for the paper's model grid
+Preferred architectural artifact:
+- `recipes/papers/clss2021.yaml`
 
-This allows exact reproduction of the experimental design without hard-coding parameters
-in scripts. See the [CLSS 2021 tutorial](../tutorials/clss2021-replication.md) for a
-full worked example.
+Temporary scaffolding still present:
+- `macrocast.replication.clss2021`
+- `macrocast.replication.clss2021_runner`
+
+These helpers exist only to bridge from the old package state to the new tree-path package state.
