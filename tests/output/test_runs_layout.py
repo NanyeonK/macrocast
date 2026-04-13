@@ -15,12 +15,13 @@ def test_runs_layout_for_taxonomy_path() -> None:
     assert 'runs/paths/data=fred_md/model=random_forest/run_2' in str(dirs['root'])
 
 
-def test_manifest_includes_recipe_and_taxonomy_path(tmp_path: Path) -> None:
+def test_manifest_includes_recipe_taxonomy_and_tree_context(tmp_path: Path) -> None:
     manifest = build_run_manifest(
         run_id='run_1',
         experiment_id='exp_1',
         recipe_id='minimal_fred_md',
         taxonomy_path={'data': 'fred_md', 'model': 'random_forest'},
+        tree_context={'compile_path': 'recipe_native_experiment_config', 'fixed_axes': ['dataset', 'target'], 'sweep_axes': ['horizon']},
         config_hash='abc123',
         code_version='v1',
         dataset_ids=['fred_md'],
@@ -32,3 +33,4 @@ def test_manifest_includes_recipe_and_taxonomy_path(tmp_path: Path) -> None:
     loaded = yaml.safe_load(p.read_text())
     assert loaded['recipe_id'] == 'minimal_fred_md'
     assert loaded['taxonomy_path']['data'] == 'fred_md'
+    assert loaded['tree_context']['compile_path'] == 'recipe_native_experiment_config'

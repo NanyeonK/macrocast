@@ -83,4 +83,4 @@ class TestForecastExperiment:
         panel, target = synthetic_panel
         exp = ForecastExperiment(panel=panel, target=target, horizons=[1], model_specs=[broken_spec], feature_spec=FeatureSpec(n_factors=2, n_lags=2), oos_start="2014-01-01", oos_end="2014-01-01", n_jobs=1, output_dir=tmp_path)
         exp.run()
-        assert len(list(tmp_path.glob('*.failures.parquet'))) == 1
+        assert len(list((tmp_path / 'runs').rglob('failures.parquet'))) == 1
