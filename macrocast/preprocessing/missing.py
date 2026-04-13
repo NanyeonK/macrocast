@@ -114,7 +114,7 @@ def handle_missing(
     if method == "forward_fill":
         return df.ffill()
     if method == "factor":
-        from macroforecast.preprocessing.imputation import factor_impute
+        from macrocast.preprocessing.imputation import factor_impute
 
         return factor_impute(df, **kwargs)
     if method == "em":

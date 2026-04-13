@@ -335,6 +335,8 @@ class ForecastExperiment:
         n_jobs: int = 1,
         experiment_id: str | None = None,
         output_dir: Path | str | None = None,
+        recipe_id: str | None = None,
+        taxonomy_path: dict[str, Any] | None = None,
     ) -> None:
         self.panel = panel
         self.target = target
@@ -347,6 +349,8 @@ class ForecastExperiment:
         self.n_jobs = n_jobs
         self.experiment_id = experiment_id or str(uuid.uuid4())
         self.output_dir = Path(output_dir) if output_dir else None
+        self.recipe_id = recipe_id
+        self.taxonomy_path = taxonomy_path
 
         # Validate and resolve OOS range
         dates = panel.index
@@ -437,11 +441,13 @@ class ForecastExperiment:
         )
 
         if self.output_dir is not None:
-            out_path = self.output_dir / f"{self.experiment_id}.parquet"
+            from macrocast.output.paths import ensure_output_dirs
+            dirs = ensure_output_dirs(self.output_dir, self.experiment_id, recipe_id=self.recipe_id, taxonomy_path=self.taxonomy_path)
+            out_path = dirs["forecasts"] / "records.parquet"
             result_set.to_parquet(out_path)
             logger.info("Results written to %s", out_path)
             if result_set.failures:
-                failure_path = self.output_dir / f"{self.experiment_id}.failures.parquet"
+                failure_path = dirs["manifests"] / "failures.parquet"
                 result_set.failures_dataframe().to_parquet(failure_path, index=False)
                 logger.info("Failure log written to %s", failure_path)
 
