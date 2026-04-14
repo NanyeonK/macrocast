@@ -1,24 +1,86 @@
-"""macrocast public package API."""
+"""macrocast.
 
-from macrocast.config import load_config, load_config_from_dict, load_configs
-from macrocast.data import *  # noqa: F403
-from macrocast.pipeline import *  # noqa: F403
-from macrocast.preprocessing import *  # noqa: F403
-from macrocast.specs import (
-    CompiledExperimentSpec,
-    compile_experiment_spec,
-    compile_experiment_spec_from_dict,
-    compile_experiment_spec_from_recipe,
+Given a standardized macro dataset adapter and a fixed forecasting recipe,
+compare forecasting tools under identical information set, sample split,
+benchmark, and evaluation protocol.
+"""
+
+from .raw import (
+    RawArtifactRecord,
+    RawDatasetMetadata,
+    RawLoadResult,
+    RawVersionRequest,
+    append_raw_manifest_entry,
+    build_raw_artifact_record,
+    get_manifest_path,
+    get_raw_cache_root,
+    get_raw_file_path,
+    list_vintages,
+    load_fred_md,
+    load_fred_qd,
+    load_fred_sd,
+    normalize_version_request,
+    parse_fred_csv,
+    read_raw_manifest,
 )
-from macrocast.start import macrocast_start
+from .recipes import (
+    RecipeExecutionError,
+    RecipeSpec,
+    RecipeValidationError,
+    RunSpec,
+    build_recipe_spec,
+    build_run_spec,
+    check_recipe_completeness,
+    recipe_summary,
+)
+from .stage0 import (
+    ComparisonContract,
+    FixedDesign,
+    ReplicationInput,
+    Stage0Frame,
+    VaryingDesign,
+    build_stage0_frame,
+    check_stage0_completeness,
+    resolve_route_owner,
+    stage0_from_dict,
+    stage0_summary,
+    stage0_to_dict,
+)
 
 __all__ = [
-    "load_config",
-    "load_config_from_dict",
-    "load_configs",
-    "CompiledExperimentSpec",
-    "compile_experiment_spec",
-    "compile_experiment_spec_from_dict",
-    "compile_experiment_spec_from_recipe",
-    "macrocast_start",
+    "build_stage0_frame",
+    "check_stage0_completeness",
+    "resolve_route_owner",
+    "stage0_summary",
+    "stage0_to_dict",
+    "stage0_from_dict",
+    "FixedDesign",
+    "VaryingDesign",
+    "ComparisonContract",
+    "ReplicationInput",
+    "Stage0Frame",
+    "normalize_version_request",
+    "list_vintages",
+    "get_raw_cache_root",
+    "get_manifest_path",
+    "get_raw_file_path",
+    "build_raw_artifact_record",
+    "append_raw_manifest_entry",
+    "read_raw_manifest",
+    "parse_fred_csv",
+    "load_fred_md",
+    "load_fred_qd",
+    "load_fred_sd",
+    "RawVersionRequest",
+    "RawDatasetMetadata",
+    "RawArtifactRecord",
+    "RawLoadResult",
+    "build_recipe_spec",
+    "build_run_spec",
+    "check_recipe_completeness",
+    "recipe_summary",
+    "RecipeExecutionError",
+    "RecipeValidationError",
+    "RecipeSpec",
+    "RunSpec",
 ]

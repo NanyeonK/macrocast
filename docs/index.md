@@ -1,29 +1,20 @@
 # macrocast
 
-`macrocast` is moving toward a generic tree-path forecasting package.
+> Given a standardized macro dataset adapter and a fixed forecasting recipe, compare forecasting tools under identical information set, sample split, benchmark, and evaluation protocol.
 
-Target package structure:
-- `taxonomy/`: selectable forecasting choice universe
-- `registries/`: backing defaults/adapters/contracts
-- `recipes/`: named studies/baselines/benchmarks/ablations
-- `runs/`: realized outputs keyed by resolved path or recipe
+macrocast is a forecasting package being rebuilt from first principles.
 
-The package should be generic first.
-Paper studies such as CLSS 2021 should be expressed as one recipe/path through the package, not as package-defining core logic.
+This documentation site will describe the public package interface and usage once the rebuilt architecture is stable.
 
-## Current migration state
 
-Completed first-pass migration layers:
-- taxonomy bundle
-- registries layer skeleton
-- recipes layer skeleton
-- recipe-aware compile path
-- benchmark family/options redesign
-- runs layer skeleton
+## Current public docs
 
-## Start here
+- [Stage 0 guide](stage0.md)
+- [Raw data guide](raw.md)
+- [Recipes and execution guide](recipes.md)
+- [API reference](api/index.md)
 
-- package direction: `docs/planning/treepath-package-overhaul.md`
-- migration buckets: `docs/planning/treepath-migration-map.md`
-- baseline recipe example: `recipes/baselines/minimal_fred_md.yaml`
-- paper recipe example: `recipes/papers/clss2021.yaml`
+## Rebuild status
+
+The first documented package surface is `macrocast.stage0`.
+It exists to fix study grammar before later registry expansion, raw-data integration, and forecasting execution layers are added.
