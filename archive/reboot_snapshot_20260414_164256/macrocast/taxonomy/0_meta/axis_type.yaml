@@ -1,8 +1,0 @@
-axis_types:
-  - fixed
-  - sweep
-  - nested_sweep
-  - conditional
-  - derived
-  - eval_only
-  - report_only
