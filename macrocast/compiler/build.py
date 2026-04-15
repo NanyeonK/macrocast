@@ -331,8 +331,14 @@ def _execution_status(
     warnings: list[str] = []
     blocked: list[str] = []
     selection_map = _selection_map(selections)
+    registry = get_axis_registry()
 
     for selection in selections:
+        entry = registry[selection.axis_name]
+        if selection.selection_mode == "sweep" and entry.default_policy == "fixed":
+            warnings.append(
+                f"fixed-policy axis '{selection.axis_name}' placed in sweep_axes; grammar allows representation, but governance expects a fixed selection for this axis"
+            )
         if selection.selection_mode in {"sweep", "conditional"} and len(selection.selected_values) > 1:
             warnings.append(
                 f"axis {selection.axis_name} uses internal sweep values {selection.selected_values}; internal sweep runtime not yet operational"

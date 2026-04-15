@@ -210,7 +210,7 @@ class ExperimentUnitEntry(EnumRegistryEntry):
 
 ---
 
-## Issue 1-2: Register axis_type axis [BLOCKED on 0-4]
+## Issue 1-2: Register axis_type axis [DONE]
 pri:high | size:S | deps: 0-4
 
 ### What
@@ -235,8 +235,8 @@ report_only          registry_only
 - Compiler should warn if a `fixed`-policy axis is placed in sweep_axes
 
 ### Acceptance criteria
-- [ ] Axis registered
-- [ ] Compiler validates axis_type consistency
+- [x] Axis registered
+- [x] Compiler validates axis_type consistency
 
 ---
 

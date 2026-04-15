@@ -619,3 +619,45 @@ def test_compile_recipe_preserves_explicit_experiment_unit() -> None:
     compile_result = compile_recipe_dict(recipe)
     assert compile_result.manifest["tree_context"]["experiment_unit"] == "single_target_single_model"
     assert compile_result.compiled.stage0.experiment_unit == "single_target_single_model"
+
+
+
+def test_axis_governance_table_includes_axis_type() -> None:
+    table = axis_governance_table()
+    by_name = {row["axis_name"]: row for row in table}
+    assert by_name["axis_type"]["current_status"]["fixed"] == "operational"
+    assert by_name["axis_type"]["current_status"]["nested_sweep"] == "planned"
+
+
+def test_compile_warns_when_fixed_policy_axis_is_placed_in_sweep_axes() -> None:
+    recipe = {
+        "recipe_id": "fixed-policy-swept-axis",
+        "path": {
+            "0_meta": {"fixed_axes": {"study_mode": "single_path_benchmark_study"}},
+            "1_data_task": {
+                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level", "tcode_policy": "raw_only",
+                "target_missing_policy": "none", "x_missing_policy": "none", "target_outlier_policy": "none", "x_outlier_policy": "none",
+                "scaling_policy": "none", "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable", "inverse_transform_policy": "none", "evaluation_scale": "raw_level"
+            }},
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding", "benchmark_family": "zero_change", "model_family": "ar"
+                },
+                "sweep_axes": {
+                    "feature_builder": ["autoreg_lagged_target", "raw_feature_panel"]
+                },
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    compile_result = compile_recipe_dict(recipe)
+    assert any("fixed-policy axis 'feature_builder' placed in sweep_axes" in warning for warning in compile_result.manifest["warnings"])
+    assert compile_result.compiled.execution_status == "representable_but_not_executable"

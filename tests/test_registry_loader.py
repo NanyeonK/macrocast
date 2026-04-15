@@ -7,7 +7,7 @@ from macrocast.registry.types import AxisRegistryEntry
 
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 26
+    assert len(registry) == 27
     assert {"study_mode", "dataset", "info_set", "task", "model_family", "importance_method"}.issubset(registry)
 
 
@@ -45,3 +45,20 @@ def test_base_registry_types_available() -> None:
     )
     assert isinstance(entry, BaseRegistryEntry)
     assert definition.entries[0].id == "demo"
+
+
+
+def test_registry_loader_discovers_axis_type_meta_axis() -> None:
+    registry = get_axis_registry()
+    assert len(registry) == 27
+    assert "axis_type" in registry
+    entry = get_axis_registry_entry("axis_type")
+    assert entry.allowed_values == (
+        "fixed",
+        "sweep",
+        "nested_sweep",
+        "conditional",
+        "derived",
+        "eval_only",
+        "report_only",
+    )
