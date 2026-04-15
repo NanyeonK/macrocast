@@ -51,6 +51,7 @@ The current compiler-to-runtime path supports:
 Important caveat
 - fixed single feature-builder runs are executable
 - the current multi-target slice requires explicit `leaf_config.targets` and keeps one shared model/benchmark/preprocess environment across all targets
+- wrapper-owned studies are not executable runs; compiler emits `wrapper_handoff` instead and requires `leaf_config.wrapper_family` plus `leaf_config.bundle_label`
 - internal multi-value feature-builder sweeps are still representable but not executable in one compiled run
 - incompatible requests such as `model_family='ar'` with `feature_builder='raw_feature_panel'` are explicitly blocked
 - `custom_benchmark` is executable only through the first plugin-ready bridge and currently requires `benchmark_config.plugin_path` plus `benchmark_config.callable_name`

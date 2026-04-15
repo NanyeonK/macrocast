@@ -269,6 +269,28 @@ def _execution_status(
     return "representable_but_not_executable", tuple(warnings), ()
 
 
+def _build_wrapper_handoff(stage0, recipe_spec: RecipeSpec, run_spec: RunSpec, leaf_config: dict[str, Any]) -> dict[str, Any]:
+    if run_spec.route_owner != "wrapper":
+        return {}
+    wrapper_family = leaf_config.get("wrapper_family")
+    bundle_label = leaf_config.get("bundle_label")
+    if wrapper_family not in {"multi_target_separate_runs", "benchmark_suite", "ablation_study"}:
+        raise CompileValidationError("wrapper_bundle_plan requires leaf_config.wrapper_family in {'multi_target_separate_runs', 'benchmark_suite', 'ablation_study'}")
+    if not isinstance(bundle_label, str) or not bundle_label.strip():
+        raise CompileValidationError("wrapper_bundle_plan requires non-empty leaf_config.bundle_label")
+    return {
+        "wrapper_family": wrapper_family,
+        "bundle_label": bundle_label,
+        "route_owner": run_spec.route_owner,
+        "execution_posture": stage0.execution_posture,
+        "experiment_unit": stage0.experiment_unit,
+        "recipe_id": recipe_spec.recipe_id,
+        "artifact_subdir": run_spec.artifact_subdir,
+        "targets": list(recipe_spec.targets),
+        "horizons": list(recipe_spec.horizons),
+    }
+
+
 def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     if not recipe_dict.get("recipe_id"):
         raise CompileValidationError("recipe_id is required")
@@ -292,6 +314,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     preprocess_contract = _build_preprocess_contract(selection_map)
     stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)
     execution_status, warnings, blocked = _execution_status(selections, preprocess_contract)
+    wrapper_handoff = _build_wrapper_handoff(stage0, recipe_spec, run_spec, leaf_config)
 
     compiled = CompiledRecipeSpec(
         recipe_id=recipe_dict["recipe_id"],
@@ -305,6 +328,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
         execution_status=execution_status,
         warnings=warnings,
         blocked_reasons=blocked,
+        wrapper_handoff=wrapper_handoff,
     )
     manifest = compiled_spec_to_dict(compiled)
     return CompileResult(compiled=compiled, manifest=manifest)
@@ -347,6 +371,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
             "artifact_subdir": compiled.run_spec.artifact_subdir,
             "route_owner": compiled.run_spec.route_owner,
         },
+        "wrapper_handoff": dict(compiled.wrapper_handoff),
     }
 
 

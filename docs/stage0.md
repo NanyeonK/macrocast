@@ -167,6 +167,7 @@ Possible return values in v1:
 - `replication`
 
 Use this when later code must decide whether the study should remain a single-run object or move into wrapper-managed execution.
+For wrapper-owned studies in the current package, compiler now emits a minimal `wrapper_handoff` payload instead of pretending the study is directly executable.
 
 ### `check_stage0_completeness()`
 

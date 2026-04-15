@@ -34,4 +34,4 @@ Current operational subset
   - current supported routes: `ridge`, `lasso`, `randomforest` on `raw_feature_panel`
 
 Current roadmap focus
-- next major widening target is continued Phase G execution-surface work, specifically honest multi-target point-forecast execution on top of the new explicit-vintage real-time support.
+- next major widening target is post-Phase-G architecture: wrapper/orchestrator handoff design for wider multi-target, benchmark-suite, and ablation families on top of the current single-run slices.

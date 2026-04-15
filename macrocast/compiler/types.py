@@ -22,6 +22,7 @@ class CompiledRecipeSpec:
     execution_status: str
     warnings: tuple[str, ...] = ()
     blocked_reasons: tuple[str, ...] = ()
+    wrapper_handoff: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
