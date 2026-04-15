@@ -369,7 +369,11 @@ def _build_stage0_and_recipe(
     info_set_token = {
         "revised": "revised_monthly",
         "real_time_vintage": "real_time_vintage",
-    }[information_set_type]
+        "pseudo_oos_revised": "pseudo_oos_revised",
+        "pseudo_oos_vintage_aware": "pseudo_oos_vintage_aware",
+        "release_calendar_aware": "release_calendar_aware",
+        "publication_lag_aware": "publication_lag_aware",
+    }.get(information_set_type, information_set_type)
 
     stage0 = build_stage0_frame(
         study_mode=study_mode,
