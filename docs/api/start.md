@@ -15,6 +15,7 @@ This slice is intentionally narrow:
 - it inspects compile status
 - it exposes `tree_context` provenance
 - it previews run/manifest paths only when the route is executable
+- it adds a minimal staged selector when `yaml_path` is omitted
 - it does not perform hidden execution
 - it does not pretend wrapper-owned or internal-sweep routes are runnable single paths
 
@@ -23,9 +24,11 @@ This slice is intentionally narrow:
 ```python
 def macrocast_single_run(
     *,
-    yaml_path: str,
+    yaml_path: str | None = None,
     stages: str | Iterable[str] | None = None,
     output_root: str = "/tmp/macrocast_single_run_preview",
+    recipe_path: str = "examples/recipes/model-benchmark.yaml",
+    max_steps: int | None = None,
 ) -> dict:
     ...
 ```
@@ -84,3 +87,22 @@ out["tree_context"]
 
 This is a route-inspection slice, not a full guided YAML-building wizard restore.
 The live repo no longer contains the archived pre-reboot wizard support stack, so this surface stays aligned to the current compiler/runtime architecture rather than recreating obsolete helper layers.
+
+## Minimal staged selector
+
+When `yaml_path` is omitted, `macrocast_single_run()` now starts a minimal step-by-step selector on top of the live example recipe.
+
+Current staged choices are intentionally small:
+- `study_mode`
+- `task`
+- `target` or `targets`
+- `model_family`
+- `feature_builder`
+
+Behavior:
+- writes the YAML file immediately
+- refreshes route preview after every completed step
+- stops early when the route becomes wrapper-owned
+- uses `max_steps` for partial test slices
+
+This is still not the old full archived wizard restore. It is only the first live-compatible staged selector.

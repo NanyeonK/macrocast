@@ -46,3 +46,5 @@ Execution architecture
 
 Single-run route inspection
 - `macrocast_single_run(yaml_path=...)` now exposes route preview, compile preview, tree-context preview, and honest blocking of run/manifest previews for non-executable or wrapper-owned routes.
+
+- omitting `yaml_path` now starts a minimal staged selector that rewrites YAML step-by-step and refreshes route preview after each completed choice.

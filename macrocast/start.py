@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from .compiler import compile_recipe_yaml
+import yaml
+
+from .compiler import CompileValidationError, compile_recipe_dict, compile_recipe_yaml, load_recipe_yaml
 
 _AVAILABLE_STAGES = (
     "route_preview",
@@ -11,6 +13,15 @@ _AVAILABLE_STAGES = (
     "tree_context",
     "runs_preview",
     "manifest_preview",
+)
+
+_WIZARD_KEYS = (
+    "study_mode",
+    "task",
+    "target",
+    "targets",
+    "model_family",
+    "feature_builder",
 )
 
 
@@ -38,6 +49,99 @@ def _tree_context_summary(tree_context: dict[str, Any]) -> str:
         f"sweep_axes=[{sweep_names}]; "
         f"conditional_axes=[{conditional_names}]"
     )
+
+
+def _recipe_leaf(recipe: dict[str, Any], layer: str) -> dict[str, Any]:
+    return recipe.setdefault("path", {}).setdefault(layer, {}).setdefault("leaf_config", {})
+
+
+def _recipe_fixed(recipe: dict[str, Any], layer: str) -> dict[str, Any]:
+    return recipe.setdefault("path", {}).setdefault(layer, {}).setdefault("fixed_axes", {})
+
+
+def _read_wizard_value(recipe: dict[str, Any], key: str) -> Any:
+    if key == "study_mode":
+        return _recipe_fixed(recipe, "0_meta").get("study_mode")
+    if key == "task":
+        return _recipe_fixed(recipe, "1_data_task").get("task")
+    if key in {"target", "targets"}:
+        return _recipe_leaf(recipe, "1_data_task").get(key)
+    if key in {"model_family", "feature_builder"}:
+        return _recipe_fixed(recipe, "3_training").get(key)
+    raise KeyError(key)
+
+
+def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
+    if key == "study_mode":
+        _recipe_fixed(recipe, "0_meta")["study_mode"] = value
+        return
+    leaf = _recipe_leaf(recipe, "1_data_task")
+    if key == "task":
+        _recipe_fixed(recipe, "1_data_task")["task"] = value
+        if value == "multi_target_point_forecast":
+            if "target" in leaf:
+                leaf.pop("target", None)
+            leaf.setdefault("targets", [])
+        else:
+            if "targets" in leaf:
+                targets = list(leaf.get("targets", []))
+                leaf.pop("targets", None)
+                if targets:
+                    leaf["target"] = targets[0]
+            leaf.setdefault("target", "INDPRO")
+        return
+    if key == "target":
+        leaf["target"] = str(value)
+        leaf.pop("targets", None)
+        return
+    if key == "targets":
+        targets = [item.strip() for item in str(value).split(",") if item.strip()]
+        leaf["targets"] = targets
+        leaf.pop("target", None)
+        return
+    if key in {"model_family", "feature_builder"}:
+        _recipe_fixed(recipe, "3_training")[key] = value
+        return
+    raise KeyError(key)
+
+
+def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
+    task = _recipe_fixed(recipe, "1_data_task").get("task", "single_target_point_forecast")
+    target_key = "targets" if task == "multi_target_point_forecast" else "target"
+    return [
+        {
+            "key": "study_mode",
+            "prompt": "Study mode",
+            "options": [
+                "single_path_benchmark_study",
+                "controlled_variation_study",
+                "orchestrated_bundle_study",
+            ],
+        },
+        {
+            "key": "task",
+            "prompt": "Forecast task",
+            "options": [
+                "single_target_point_forecast",
+                "multi_target_point_forecast",
+            ],
+        },
+        {
+            "key": target_key,
+            "prompt": "Targets" if target_key == "targets" else "Target",
+            "options": [] if target_key == "targets" else ["INDPRO", "RPI", "UNRATE"],
+        },
+        {
+            "key": "model_family",
+            "prompt": "Model family",
+            "options": ["ar", "ridge", "lasso", "randomforest"],
+        },
+        {
+            "key": "feature_builder",
+            "prompt": "Feature builder",
+            "options": ["autoreg_lagged_target", "raw_feature_panel"],
+        },
+    ]
 
 
 def _route_preview(compile_manifest: dict[str, Any]) -> dict[str, Any]:
@@ -74,6 +178,48 @@ def _route_preview(compile_manifest: dict[str, Any]) -> dict[str, Any]:
         "blocked_reasons": blocked_reasons,
         "tree_context_summary": _tree_context_summary(tree_context) if tree_context else "",
         "wrapper_handoff": dict(compile_manifest.get("wrapper_handoff", {})),
+    }
+
+
+def _draft_route_preview(recipe: dict[str, Any], error: str) -> dict[str, Any]:
+    study_mode = _recipe_fixed(recipe, "0_meta").get("study_mode", "single_path_benchmark_study")
+    task = _recipe_fixed(recipe, "1_data_task").get("task", "single_target_point_forecast")
+    route_owner = "wrapper" if study_mode == "orchestrated_bundle_study" else "single_run"
+    if route_owner == "wrapper":
+        wizard_status = "wrapper_required"
+        continue_in_single_run = False
+        message = "Wrapper-owned route chosen. Single-run wizard stops here; use current YAML as handoff seed for a future wrapper/orchestrator."
+    else:
+        wizard_status = "draft_incomplete"
+        continue_in_single_run = True
+        message = error
+    return {
+        "route_owner": route_owner,
+        "execution_status": "draft_incomplete",
+        "wizard_status": wizard_status,
+        "continue_in_single_run": continue_in_single_run,
+        "message": message,
+        "warnings": [error],
+        "blocked_reasons": [],
+        "tree_context_summary": f"route_owner={route_owner}; study_mode={study_mode}; task={task}",
+        "wrapper_handoff": {},
+    }
+
+
+def _preview_recipe_dict(recipe: dict[str, Any]) -> dict[str, Any]:
+    try:
+        compile_result = compile_recipe_dict(recipe)
+    except CompileValidationError as exc:
+        return {
+            "compile_preview": None,
+            "tree_context": {},
+            "route_preview": _draft_route_preview(recipe, str(exc)),
+        }
+    compile_manifest = compile_result.manifest
+    return {
+        "compile_preview": compile_manifest,
+        "tree_context": dict(compile_manifest.get("tree_context", {})),
+        "route_preview": _route_preview(compile_manifest),
     }
 
 
@@ -124,12 +270,95 @@ def _manifest_preview(compile_manifest: dict[str, Any], *, output_root: str | Pa
     }
 
 
+def _write_recipe_yaml(recipe: dict[str, Any], yaml_path: str | Path) -> Path:
+    path = Path(yaml_path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _interactive_wizard(*, recipe_path: str, yaml_path: str | None, max_steps: int | None) -> dict[str, Any]:
+    recipe = load_recipe_yaml(recipe_path)
+    if yaml_path is None:
+        yaml_path = input("YAML file path to write [custom_recipe.yaml]: ").strip() or "custom_recipe.yaml"
+    recipe["recipe_id"] = Path(yaml_path).stem
+    write_path = _write_recipe_yaml(recipe, yaml_path)
+
+    completed: list[dict[str, Any]] = []
+    stop_reason: str | None = None
+    current_choice: dict[str, Any] | None = None
+    preview = _preview_recipe_dict(recipe)
+    step_count = 0
+
+    while True:
+        stack = _wizard_choice_stack(recipe)
+        remaining = [choice for choice in stack if choice["key"] not in {item["key"] for item in completed}]
+        if not remaining:
+            current_choice = None
+            break
+        current_choice = remaining[0]
+        if max_steps is not None and step_count >= max_steps:
+            break
+
+        current = _read_wizard_value(recipe, current_choice["key"])
+        options = list(current_choice["options"])
+        if options:
+            for idx, option in enumerate(options, 1):
+                print(f"{idx}. {option}")
+        prompt = f"{current_choice['prompt']}"
+        if current is not None:
+            prompt += f" [current={current}]"
+        prompt += ": "
+        answer = input(prompt).strip()
+        if answer.lower() == "q":
+            stop_reason = "Wizard stopped by user."
+            break
+        if answer == "":
+            selected = current
+        elif options and answer.isdigit() and 1 <= int(answer) <= len(options):
+            selected = options[int(answer) - 1]
+        else:
+            selected = answer
+        if selected is None:
+            continue
+        _apply_wizard_value(recipe, current_choice["key"], selected)
+        write_path = _write_recipe_yaml(recipe, write_path)
+        step_count += 1
+        completed.append({"key": current_choice["key"], "value": _read_wizard_value(recipe, current_choice["key"])})
+        preview = _preview_recipe_dict(recipe)
+        if not preview["route_preview"]["continue_in_single_run"]:
+            stop_reason = preview["route_preview"]["message"]
+            current_choice = None
+            break
+
+    out = {
+        "selected_stages": ["wizard"],
+        "interactive": True,
+        "yaml_path": str(write_path),
+        "recipe_dict": recipe,
+        "recipe_yaml": yaml.safe_dump(recipe, sort_keys=False),
+        "completed_choices": completed,
+        "current_choice": current_choice,
+        "route_preview": preview["route_preview"],
+        "stop_reason": stop_reason,
+    }
+    if preview["compile_preview"] is not None:
+        out["compile_preview"] = preview["compile_preview"]
+        out["tree_context"] = preview["tree_context"]
+    return out
+
+
 def macrocast_single_run(
     *,
-    yaml_path: str,
+    yaml_path: str | None = None,
     stages: str | Iterable[str] | None = None,
     output_root: str = "/tmp/macrocast_single_run_preview",
+    recipe_path: str = "examples/recipes/model-benchmark.yaml",
+    max_steps: int | None = None,
 ) -> dict[str, Any]:
+    if yaml_path is None:
+        return _interactive_wizard(recipe_path=recipe_path, yaml_path=yaml_path, max_steps=max_steps)
+
     selected = _normalize_stages(stages)
     compile_result = compile_recipe_yaml(yaml_path)
     compile_manifest = compile_result.manifest
