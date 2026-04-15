@@ -42,13 +42,13 @@ Current behavior:
 - writes `importance_minimal.json`
 - manifest records `importance_spec` and `importance_file`
 - currently implemented for:
-  - non-AR linear route: `ridge`
+  - non-AR linear routes: `ridge`, `lasso`
   - tree route: `randomforest`
 - current minimal importance requires `feature_builder='raw_feature_panel'`
 - unsupported importance requests fail explicitly at runtime
 
 Current implementation semantics:
-- ridge importance = absolute coefficient magnitude from the final fitted training window
+- ridge/lasso importance = absolute coefficient magnitude from the final fitted training window
 - randomforest importance = `feature_importances_` from the final fitted training window
 
 ## Current operational feature builders

@@ -498,7 +498,7 @@ def _compute_minimal_importance(
 ) -> dict[str, object]:
     model_family = _model_family(recipe)
     feature_builder = _feature_builder(recipe)
-    if model_family not in {"ridge", "randomforest"}:
+    if model_family not in {"ridge", "lasso", "randomforest"}:
         raise ExecutionError(f"minimal_importance not implemented for model_family {model_family!r}")
     if feature_builder != "raw_feature_panel":
         raise ExecutionError(f"minimal_importance currently requires feature_builder='raw_feature_panel', got {feature_builder!r}")
@@ -515,6 +515,10 @@ def _compute_minimal_importance(
 
     if model_family == "ridge":
         model = Ridge(alpha=1.0)
+        model.fit(X_train, y_train)
+        importance_values = np.abs(model.coef_)
+    elif model_family == "lasso":
+        model = Lasso(alpha=1e-4, max_iter=10000)
         model.fit(X_train, y_train)
         importance_values = np.abs(model.coef_)
     else:

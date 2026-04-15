@@ -31,6 +31,7 @@ Executable importance methods:
 Current minimal-importance rule:
 - compiler preserves the request as `importance_spec`
 - runtime currently supports the first operational slice on compatible fixed single-run routes
+- current supported model families are `ridge`, `lasso`, and `randomforest` on `raw_feature_panel`
 - unsupported importance requests still fail explicitly at runtime rather than silently degrading
 
 ## Current executable slice

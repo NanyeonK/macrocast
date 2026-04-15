@@ -31,6 +31,7 @@ Current operational subset
   - `cw`
 - operational importance methods:
   - `minimal_importance`
+  - current supported routes: `ridge`, `lasso`, `randomforest` on `raw_feature_panel`
 
 Current roadmap focus
 - next major widening target is broader importance coverage on top of the current preprocessing/comparison/stat-test/benchmark layer, before any SHAP work.

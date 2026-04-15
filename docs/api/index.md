@@ -29,7 +29,7 @@ Evaluation / testing / importance
 - metrics: `msfe`, `relative_msfe`, `oos_r2`, `csfe`
 - always-written comparison artifact: `comparison_summary.json`
 - operational stat tests: `dm`, `cw`
-- operational importance: `minimal_importance`
+- operational importance: `minimal_importance` for `ridge`, `lasso`, and `randomforest` on `raw_feature_panel`
 
 Execution architecture
 - separate model executor and benchmark executor contracts
