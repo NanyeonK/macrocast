@@ -34,4 +34,5 @@ Current operational subset
   - current supported routes: `ridge`, `lasso`, `randomforest` on `raw_feature_panel`
 
 Current roadmap focus
-- next major widening target is post-Phase-G architecture: wrapper/orchestrator handoff design for wider multi-target, benchmark-suite, and ablation families on top of the current single-run slices.
+- post-wrapper provenance slice now records deterministic `tree_context` payloads in compile/run artifacts so fixed-vs-sweep semantics remain explicit.
+- next major widening target after that is wizard/runtime UX around tree-path selection rather than another hidden execution fallback.

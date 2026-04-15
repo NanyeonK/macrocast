@@ -103,6 +103,8 @@ The manifest preserves:
 - `stat_test_spec`
 - `importance_spec`
 - optional compiler provenance payload
+- top-level `tree_context` payload when compiler provenance is passed through execution
+- summary text can include a compact `tree_context=` line for fixed-vs-sweep route inspection
 
 ## Current limitation
 

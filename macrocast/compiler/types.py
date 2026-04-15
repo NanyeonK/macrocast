@@ -22,6 +22,7 @@ class CompiledRecipeSpec:
     execution_status: str
     warnings: tuple[str, ...] = ()
     blocked_reasons: tuple[str, ...] = ()
+    tree_context: dict[str, Any] = field(default_factory=dict)
     wrapper_handoff: dict[str, Any] = field(default_factory=dict)
 
 

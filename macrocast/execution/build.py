@@ -678,6 +678,19 @@ def _compute_multi_target_metrics(predictions: pd.DataFrame, recipe: RecipeSpec)
     }
 
 
+def _tree_context_summary(tree_context: dict[str, object]) -> str:
+    fixed_names = ",".join(sorted(tree_context.get("fixed_axes", {}))) or "none"
+    sweep_names = ",".join(sorted(tree_context.get("sweep_axes", {}))) or "none"
+    conditional_names = ",".join(sorted(tree_context.get("conditional_axes", {}))) or "none"
+    return (
+        f"tree_context=route_owner={tree_context.get('route_owner', 'unknown')}; "
+        f"execution_posture={tree_context.get('execution_posture', 'unknown')}; "
+        f"fixed_axes=[{fixed_names}]; "
+        f"sweep_axes=[{sweep_names}]; "
+        f"conditional_axes=[{conditional_names}]"
+    )
+
+
 def _build_multi_target_comparison_summary(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str, object]:
     comparison_by_target = {}
     for target, group in predictions.groupby("target", sort=True):
@@ -765,14 +778,15 @@ def execute_recipe(
     if provenance_payload:
         manifest.update(provenance_payload)
     (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    (run_dir / "summary.txt").write_text(
-        recipe_summary(recipe)
-        + "\n"
-        + preprocess_summary(preprocess)
-        + "\n"
-        + f"forecast_engine={_model_spec(recipe)['executor_name']}; benchmark={_benchmark_family(recipe)}; prediction_rows={len(predictions)}\n",
-        encoding="utf-8",
-    )
+    tree_context = manifest.get("tree_context", {})
+    summary_lines = [
+        recipe_summary(recipe),
+        preprocess_summary(preprocess),
+        f"forecast_engine={_model_spec(recipe)['executor_name']}; benchmark={_benchmark_family(recipe)}; prediction_rows={len(predictions)}",
+    ]
+    if tree_context:
+        summary_lines.append(_tree_context_summary(tree_context))
+    (run_dir / "summary.txt").write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
     raw_result.data.head(20).to_csv(run_dir / "data_preview.csv")
     predictions.to_csv(run_dir / "predictions.csv", index=False)
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")

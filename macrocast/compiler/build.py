@@ -16,7 +16,7 @@ from ..preprocessing import (
 )
 from ..recipes import build_recipe_spec, build_run_spec
 from ..registry import AxisSelection, get_axis_registry, get_canonical_layer_order
-from ..stage0 import build_stage0_frame
+from ..stage0 import build_stage0_frame, resolve_route_owner, stage0_to_dict
 
 _ALLOWED_SELECTION_MODES = ("fixed_axes", "sweep_axes", "conditional_axes", "leaf_config")
 
@@ -150,6 +150,72 @@ def _model_spec(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
         "model_family_values": list(model_values),
         "feature_builder_values": list(feature_values),
     }
+
+
+def _selection_values(selection: AxisSelection) -> Any:
+    if selection.selection_mode == "fixed" and len(selection.selected_values) == 1:
+        return selection.selected_values[0]
+    return list(selection.selected_values)
+
+
+def _json_like(value: Any) -> Any:
+    if isinstance(value, tuple):
+        return [_json_like(item) for item in value]
+    if isinstance(value, list):
+        return [_json_like(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_like(item) for key, item in value.items()}
+    return value
+
+
+def _build_tree_context(
+    stage0,
+    run_spec: RunSpec,
+    selections: tuple[AxisSelection, ...],
+    leaf_config: dict[str, Any],
+) -> dict[str, Any]:
+    stage0_payload = stage0_to_dict(stage0)
+    fixed_axes: dict[str, Any] = {}
+    sweep_axes: dict[str, Any] = {}
+    conditional_axes: dict[str, Any] = {}
+    axis_layers: dict[str, str] = {}
+    for selection in selections:
+        axis_layers[selection.axis_name] = selection.layer
+        value = _selection_values(selection)
+        if selection.selection_mode == "fixed":
+            fixed_axes[selection.axis_name] = value
+        elif selection.selection_mode == "sweep":
+            sweep_axes[selection.axis_name] = value
+        elif selection.selection_mode == "conditional":
+            conditional_axes[selection.axis_name] = value
+    return {
+        "study_mode": stage0.study_mode,
+        "design_shape": stage0.design_shape,
+        "execution_posture": stage0.execution_posture,
+        "experiment_unit": stage0.experiment_unit,
+        "route_owner": resolve_route_owner(stage0),
+        "fixed_design": _json_like(stage0_payload["fixed_design"]),
+        "varying_design": _json_like(stage0_payload["varying_design"]),
+        "comparison_contract": _json_like(stage0_payload["comparison_contract"]),
+        "fixed_axes": _json_like(fixed_axes),
+        "sweep_axes": _json_like(sweep_axes),
+        "conditional_axes": _json_like(conditional_axes),
+        "axis_layers": _json_like(axis_layers),
+        "leaf_config": _json_like(dict(leaf_config)),
+    }
+
+
+def _tree_context_summary(tree_context: dict[str, Any]) -> str:
+    fixed_names = ",".join(sorted(tree_context["fixed_axes"])) or "none"
+    sweep_names = ",".join(sorted(tree_context["sweep_axes"])) or "none"
+    conditional_names = ",".join(sorted(tree_context["conditional_axes"])) or "none"
+    return (
+        f"tree_context=route_owner={tree_context['route_owner']}; "
+        f"execution_posture={tree_context['execution_posture']}; "
+        f"fixed_axes=[{fixed_names}]; "
+        f"sweep_axes=[{sweep_names}]; "
+        f"conditional_axes=[{conditional_names}]"
+    )
 
 
 def _build_stage0_and_recipe(
@@ -314,6 +380,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     preprocess_contract = _build_preprocess_contract(selection_map)
     stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)
     execution_status, warnings, blocked = _execution_status(selections, preprocess_contract)
+    tree_context = _build_tree_context(stage0, run_spec, selections, leaf_config)
     wrapper_handoff = _build_wrapper_handoff(stage0, recipe_spec, run_spec, leaf_config)
 
     compiled = CompiledRecipeSpec(
@@ -328,6 +395,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
         execution_status=execution_status,
         warnings=warnings,
         blocked_reasons=blocked,
+        tree_context=tree_context,
         wrapper_handoff=wrapper_handoff,
     )
     manifest = compiled_spec_to_dict(compiled)
@@ -371,6 +439,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
             "artifact_subdir": compiled.run_spec.artifact_subdir,
             "route_owner": compiled.run_spec.route_owner,
         },
+        "tree_context": dict(compiled.tree_context),
         "wrapper_handoff": dict(compiled.wrapper_handoff),
     }
 
@@ -390,5 +459,5 @@ def run_compiled_recipe(
         preprocess=compiled.preprocess_contract,
         output_root=output_root,
         local_raw_source=local_raw_source,
-        provenance_payload={"compiler": compiled_spec_to_dict(compiled)},
+        provenance_payload={"compiler": compiled_spec_to_dict(compiled), "tree_context": dict(compiled.tree_context)},
     )
