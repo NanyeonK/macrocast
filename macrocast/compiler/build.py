@@ -165,8 +165,12 @@ def _build_stage0_and_recipe(
     framework = _selection_value(selection_map, "framework")
     target = leaf_config["target"]
     horizons = tuple(leaf_config["horizons"])
+    data_vintage = leaf_config.get("data_vintage")
     model_axis = selection_map["model_family"]
     feature_builders = selection_map["feature_builder"].selected_values
+
+    if info_set == "real_time" and not data_vintage:
+        raise CompileValidationError("info_set='real_time' requires leaf_config.data_vintage")
 
     sample_split = {
         "expanding": "expanding_window_oos",
@@ -212,6 +216,7 @@ def _build_stage0_and_recipe(
         horizons=horizons,
         raw_dataset=dataset,
         benchmark_config=benchmark_spec,
+        data_vintage=data_vintage,
     )
     run_spec = build_run_spec(recipe_spec)
     return stage0, recipe_spec, run_spec

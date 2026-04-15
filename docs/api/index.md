@@ -20,6 +20,10 @@ Training
 - model families: `ar`, `ridge`, `lasso`, `elasticnet`, `randomforest`
 - feature builders: `autoreg_lagged_target`, `raw_feature_panel`
 
+Data / task
+- info sets: `revised`, `real_time` (current real-time slice requires explicit `data_vintage`)
+- task currently operational: `single_target_point_forecast`
+
 Preprocessing
 - explicit `raw_only`
 - train-only raw-panel path: `extra_preprocess_without_tcode + x_missing_policy=em_impute + scaling_policy=standard`

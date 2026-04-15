@@ -34,4 +34,4 @@ Current operational subset
   - current supported routes: `ridge`, `lasso`, `randomforest` on `raw_feature_panel`
 
 Current roadmap focus
-- next major widening target is broader importance coverage on top of the current preprocessing/comparison/stat-test/benchmark layer, before any SHAP work.
+- next major widening target is continued Phase G execution-surface work, specifically the smallest honest multi-target point-forecast slice on top of the new explicit-vintage real-time support.

@@ -7,9 +7,9 @@ It sits behind an explicit compiler boundary, preserves preprocessing semantics 
 
 ## Current role
 
-The current runtime now supports a first importance layer in addition to frameworks, preprocessing, DM testing, CW testing, a plugin-ready custom benchmark bridge, and a baseline comparison summary artifact.
+The current runtime now supports a first importance layer in addition to frameworks, preprocessing, DM testing, CW testing, a plugin-ready custom benchmark bridge, a baseline comparison summary artifact, and a first explicit-vintage real-time slice.
 It executes a benchmark-respecting slice with:
-- revised-data single-target point forecast
+- revised-data or explicit-vintage real-time single-target point forecast
 - explicit benchmark family from recipe grammar
 - deterministic prediction, metric, and comparison artifacts
 - two operational feature-builder families
@@ -103,8 +103,10 @@ The manifest preserves:
 
 ## Current limitation
 
-Even though minimal importance is now operational, the current runtime still has explicit boundaries:
+Even though the execution surface is broader than before, the current runtime still has explicit boundaries:
 - only `minimal_importance` is operational in the importance layer
-- current importance support is intentionally limited to one linear family and one tree family on the raw-panel path
+- current importance support is intentionally limited to `ridge`, `lasso`, and `randomforest` on the raw-panel path
 - `custom_benchmark` currently uses only the first plugin-ready local Python bridge, not a broader package/plugin registry
+- `real_time` currently means one explicit vintage per run, not a rolling historical real-time evaluation engine
+- multi-target execution remains future work
 - SHAP remains future work

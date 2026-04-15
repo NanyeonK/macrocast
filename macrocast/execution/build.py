@@ -45,12 +45,13 @@ def build_execution_spec(
 
 
 def _load_raw_for_recipe(recipe: RecipeSpec, local_raw_source: str | Path | None, cache_root: Path):
+    vintage = recipe.data_vintage
     if recipe.raw_dataset == "fred_md":
-        return load_fred_md(cache_root=cache_root, local_source=local_raw_source)
+        return load_fred_md(vintage=vintage, cache_root=cache_root, local_source=local_raw_source)
     if recipe.raw_dataset == "fred_qd":
-        return load_fred_qd(cache_root=cache_root, local_source=local_raw_source)
+        return load_fred_qd(vintage=vintage, cache_root=cache_root, local_source=local_raw_source)
     if recipe.raw_dataset == "fred_sd":
-        return load_fred_sd(cache_root=cache_root, local_source=local_raw_source)
+        return load_fred_sd(vintage=vintage, cache_root=cache_root, local_source=local_raw_source)
     raise ExecutionError(f"unsupported raw_dataset={recipe.raw_dataset!r}")
 
 

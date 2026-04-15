@@ -14,6 +14,7 @@ def build_recipe_spec(
     horizons: tuple[int, ...],
     raw_dataset: str,
     benchmark_config: dict[str, Any] | None = None,
+    data_vintage: str | None = None,
 ) -> RecipeSpec:
     return RecipeSpec(
         recipe_id=recipe_id,
@@ -22,4 +23,5 @@ def build_recipe_spec(
         horizons=tuple(horizons),
         raw_dataset=raw_dataset,
         benchmark_config=dict(benchmark_config or {}),
+        data_vintage=data_vintage,
     )

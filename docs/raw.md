@@ -45,6 +45,13 @@ It also includes a shared CSV parser:
 - supports current and explicit vintage requests at the API level
 - current implementation should be treated as provisional until broader live-source verification is complete
 
+## Current executable real-time slice
+
+- runtime now supports the first explicit-vintage real-time slice for single-target studies
+- current route requires `info_set='real_time'` plus explicit `leaf_config.data_vintage`
+- raw loader provenance switches from `version_mode='current'` to `version_mode='vintage'`
+- this is not yet a historical rolling real-time panel engine
+
 ## Shared CSV format
 
 FRED-MD and FRED-QD use a similar CSV layout, and the parser now accepts both of the relevant row orderings:

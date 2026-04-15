@@ -41,6 +41,7 @@ The current compiler-to-runtime path supports:
 - benchmarks: `historical_mean`, `zero_change`, `ar_bic`, `custom_benchmark`
 - model families: `ar`, `ridge`, `lasso`, `elasticnet`, `randomforest`
 - feature builders: `autoreg_lagged_target`, `raw_feature_panel`
+- info sets: `revised` and the first `real_time` explicit-vintage slice
 - preprocessing: `raw_only` plus train-only impute+standardize and train-only impute+robust-scale raw-panel paths
 - always-written comparison artifact: `comparison_summary.json`
 - statistical tests: `dm`, `cw`
@@ -51,3 +52,4 @@ Important caveat
 - internal multi-value feature-builder sweeps are still representable but not executable in one compiled run
 - incompatible requests such as `model_family='ar'` with `feature_builder='raw_feature_panel'` are explicitly blocked
 - `custom_benchmark` is executable only through the first plugin-ready bridge and currently requires `benchmark_config.plugin_path` plus `benchmark_config.callable_name`
+- the current `real_time` slice is explicit-vintage only and requires `leaf_config.data_vintage`; it is not yet a rolling historical real-time panel engine

@@ -55,7 +55,7 @@ _AXIS_REGISTRY: dict[str, AxisRegistryEntry] = {
         allowed_values=("revised", "real_time"),
         current_status={
             "revised": "operational",
-            "real_time": "planned",
+            "real_time": "operational",
         },
         default_policy="fixed",
         compatible_with={},
