@@ -1078,3 +1078,42 @@ def test_compile_recipe_accepts_stage2_preprocess_axes() -> None:
     assert compile_result.compiled.execution_status == "executable"
     assert compile_result.manifest["preprocess_contract"]["x_missing_policy"] == "mean_impute"
     assert compile_result.manifest["preprocess_contract"]["representation_policy"] == "raw_only"
+
+
+
+def test_compiled_manifest_records_stage3_training_defaults() -> None:
+    compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
+    spec = compile_result.manifest["training_spec"]
+    assert spec["outer_window"] == "expanding"
+    assert spec["refit_policy"] == "refit_every_step"
+    assert spec["horizon_modelization"] == "separate_model_per_h"
+
+
+def test_compile_recipe_accepts_stage3_training_axes() -> None:
+    recipe = {
+        "recipe_id": "stage3-training-axes",
+        "path": {
+            "0_meta": {"fixed_axes": {"study_mode": "single_path_benchmark_study"}},
+            "1_data_task": {
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level", "tcode_policy": "raw_only",
+                "target_missing_policy": "none", "x_missing_policy": "none", "target_outlier_policy": "none", "x_outlier_policy": "none",
+                "scaling_policy": "none", "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable", "inverse_transform_policy": "none", "evaluation_scale": "raw_level"
+            }},
+            "3_training": {"fixed_axes": {
+                "framework": "expanding", "outer_window": "expanding", "refit_policy": "refit_every_step", "benchmark_family": "historical_mean",
+                "feature_builder": "autoreg_lagged_target", "model_family": "ols", "search_algorithm": "grid_search", "seed_policy": "fixed_seed"
+            }},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    compile_result = compile_recipe_dict(recipe)
+    assert compile_result.compiled.execution_status == "representable_but_not_executable"
+    assert compile_result.manifest["training_spec"]["search_algorithm"] == "grid_search"

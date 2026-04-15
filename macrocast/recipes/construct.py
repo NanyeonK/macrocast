@@ -15,6 +15,7 @@ def build_recipe_spec(
     raw_dataset: str,
     benchmark_config: dict[str, Any] | None = None,
     data_task_spec: dict[str, Any] | None = None,
+    training_spec: dict[str, Any] | None = None,
     data_vintage: str | None = None,
     targets: tuple[str, ...] | None = None,
 ) -> RecipeSpec:
@@ -26,6 +27,7 @@ def build_recipe_spec(
         raw_dataset=raw_dataset,
         benchmark_config=dict(benchmark_config or {}),
         data_task_spec=dict(data_task_spec or {}),
+        training_spec=dict(training_spec or {}),
         data_vintage=data_vintage,
         targets=tuple(targets or ()),
     )

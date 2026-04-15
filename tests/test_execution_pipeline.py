@@ -692,3 +692,43 @@ def test_execute_recipe_supports_lasso_feature_selection_path(tmp_path: Path) ->
     manifest = json.loads((run_dir / "manifest.json").read_text())
     assert manifest["preprocess_contract"]["feature_selection_policy"] == "lasso_select"
     assert manifest["prediction_rows"] > 0
+
+
+
+def test_execute_recipe_supports_ols_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="ols", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "ols"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_xgboost_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="xgboost", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "xgboost"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_lightgbm_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="lightgbm", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "lightgbm"
+    assert manifest["prediction_rows"] > 0

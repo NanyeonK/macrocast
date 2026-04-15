@@ -60,3 +60,6 @@ Important caveat
 - incompatible requests such as `model_family='ar'` with `feature_builder='raw_feature_panel'` are explicitly blocked
 - `custom_benchmark` is executable only through the first plugin-ready bridge and currently requires `benchmark_config.plugin_path` plus `benchmark_config.callable_name`
 - the current `real_time` slice is explicit-vintage only and requires `leaf_config.data_vintage`; it is not yet a rolling historical real-time panel engine
+
+
+Stage 3 note: compiler now records `training_spec` defaults and accepts outer-window, refit, validation, tuning, feature-construction, and execution-runtime training axes as explicit provenance even when the current runtime slice remains narrower than the full grammar.

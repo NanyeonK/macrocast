@@ -7,7 +7,7 @@ from macrocast.registry.types import AxisRegistryEntry
 
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert {"study_mode", "dataset", "information_set_type", "task", "model_family", "importance_method", "data_domain", "dataset_source"}.issubset(registry)
 
 
@@ -15,7 +15,9 @@ def test_registry_loader_preserves_legacy_entry_contract() -> None:
     entry = get_axis_registry_entry("model_family")
     assert isinstance(entry, AxisRegistryEntry)
     assert entry.layer == "3_training"
-    assert entry.allowed_values == ("ar", "ridge", "lasso", "elasticnet", "randomforest")
+    assert entry.allowed_values[:5] == ("ar", "ols", "ridge", "lasso", "elasticnet")
+    assert "xgboost" in entry.allowed_values
+    assert entry.current_status["xgboost"] == "operational"
     assert entry.current_status["randomforest"] == "operational"
     assert entry.default_policy == "sweep"
 
@@ -50,7 +52,7 @@ def test_base_registry_types_available() -> None:
 
 def test_registry_loader_discovers_axis_type_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert "axis_type" in registry
     entry = get_axis_registry_entry("axis_type")
     assert entry.allowed_values == (
@@ -67,7 +69,7 @@ def test_registry_loader_discovers_axis_type_meta_axis() -> None:
 
 def test_registry_loader_discovers_registry_type_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert "registry_type" in registry
     entry = get_axis_registry_entry("registry_type")
     assert entry.allowed_values == (
@@ -102,7 +104,7 @@ def test_axis_definition_defaults_registry_type_to_enum_registry() -> None:
 
 def test_registry_loader_discovers_reproducibility_mode_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert "reproducibility_mode" in registry
     entry = get_axis_registry_entry("reproducibility_mode")
     assert entry.allowed_values == (
@@ -116,7 +118,7 @@ def test_registry_loader_discovers_reproducibility_mode_meta_axis() -> None:
 
 def test_registry_loader_discovers_failure_policy_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert "failure_policy" in registry
     entry = get_axis_registry_entry("failure_policy")
     assert entry.allowed_values == (
@@ -134,7 +136,7 @@ def test_registry_loader_discovers_failure_policy_meta_axis() -> None:
 
 def test_registry_loader_discovers_compute_mode_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 66
+    assert len(registry) == 91
     assert "compute_mode" in registry
     entry = get_axis_registry_entry("compute_mode")
     assert entry.allowed_values == (
@@ -242,3 +244,43 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     assert dimred.current_status["static_factor"] == "operational"
     assert feature_selection.current_status["correlation_filter"] == "operational"
     assert feature_selection.current_status["lasso_select"] == "operational"
+
+
+
+def test_registry_loader_discovers_stage3_training_axes() -> None:
+    registry = get_axis_registry()
+    expected = {
+        "outer_window",
+        "refit_policy",
+        "data_richness_mode",
+        "sequence_framework",
+        "horizon_modelization",
+        "validation_size_rule",
+        "validation_location",
+        "embargo_gap",
+        "split_family",
+        "shuffle_rule",
+        "alignment_fairness",
+        "search_algorithm",
+        "tuning_objective",
+        "tuning_budget",
+        "hp_space_style",
+        "seed_policy",
+        "early_stopping",
+        "convergence_handling",
+        "y_lag_count",
+        "factor_count",
+        "lookback",
+        "logging_level",
+        "checkpointing",
+        "cache_policy",
+        "execution_backend",
+    }
+    assert expected.issubset(registry)
+
+
+def test_registry_loader_expands_stage3_model_family_axis() -> None:
+    entry = get_axis_registry_entry("model_family")
+    for value in ("ols", "bayesianridge", "extratrees", "gbm", "xgboost", "lightgbm", "mlp"):
+        assert value in entry.allowed_values
+        assert entry.current_status[value] == "operational"

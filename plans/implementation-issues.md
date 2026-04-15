@@ -783,8 +783,8 @@ pri:medium | size:M | deps: 0-4
 
 # Epic 4: Stage 3 — Training / Forecasting Expansion
 
-> Current: 4 axes, 14 values, 12 operational.
-> Target: 22 axes, ~200 values, ~60 operational.
+> Current: Stage 3 training registry bundle registered, training provenance defaults recorded, and model-family runtime widened across core linear/tree/boosting/MLP slices.
+> Status: Epic 4 completed with provenance-first training axes plus operational executor expansion for selected Stage 3 model families.
 
 ## Issue 4-1: Register outer_window expansion [DONE]
 pri:high | size:M | deps: 0-4

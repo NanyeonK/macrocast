@@ -322,6 +322,39 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     }
 
 
+def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
+    framework = _first_selected_value(selection_map, "framework", "expanding")
+    feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
+    model_family = _first_selected_value(selection_map, "model_family", "ar")
+    return {
+        "outer_window": _selection_value(selection_map, "outer_window", default=framework),
+        "refit_policy": _selection_value(selection_map, "refit_policy", default="refit_every_step"),
+        "data_richness_mode": _selection_value(selection_map, "data_richness_mode", default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "full_high_dimensional_X")),
+        "sequence_framework": _selection_value(selection_map, "sequence_framework", default="not_sequence"),
+        "horizon_modelization": _selection_value(selection_map, "horizon_modelization", default="separate_model_per_h"),
+        "validation_size_rule": _selection_value(selection_map, "validation_size_rule", default="ratio"),
+        "validation_location": _selection_value(selection_map, "validation_location", default="last_block"),
+        "embargo_gap": _selection_value(selection_map, "embargo_gap", default="none"),
+        "split_family": _selection_value(selection_map, "split_family", default="time_split"),
+        "shuffle_rule": _selection_value(selection_map, "shuffle_rule", default="forbidden_for_time_series"),
+        "alignment_fairness": _selection_value(selection_map, "alignment_fairness", default="same_split_across_models"),
+        "search_algorithm": _selection_value(selection_map, "search_algorithm", default="grid_search"),
+        "tuning_objective": _selection_value(selection_map, "tuning_objective", default="validation_mse"),
+        "tuning_budget": _selection_value(selection_map, "tuning_budget", default="max_trials"),
+        "hp_space_style": _selection_value(selection_map, "hp_space_style", default="discrete_grid"),
+        "seed_policy": _selection_value(selection_map, "seed_policy", default="fixed_seed"),
+        "early_stopping": _selection_value(selection_map, "early_stopping", default="none"),
+        "convergence_handling": _selection_value(selection_map, "convergence_handling", default="mark_fail"),
+        "y_lag_count": _selection_value(selection_map, "y_lag_count", default=("IC_select" if model_family == "ar" else "fixed")),
+        "factor_count": _selection_value(selection_map, "factor_count", default="fixed"),
+        "lookback": _selection_value(selection_map, "lookback", default="fixed_lookback"),
+        "logging_level": _selection_value(selection_map, "logging_level", default="silent"),
+        "checkpointing": _selection_value(selection_map, "checkpointing", default="none"),
+        "cache_policy": _selection_value(selection_map, "cache_policy", default="no_cache"),
+        "execution_backend": _selection_value(selection_map, "execution_backend", default="local_cpu"),
+    }
+
+
 def _build_stage0_and_recipe(
     recipe_dict: dict[str, Any],
     selection_map: dict[str, AxisSelection],
@@ -425,6 +458,7 @@ def _build_stage0_and_recipe(
         raw_dataset=dataset,
         benchmark_config=benchmark_spec,
         data_task_spec=_data_task_spec(selection_map, leaf_config),
+        training_spec=_training_spec(selection_map, leaf_config),
         data_vintage=data_vintage,
         targets=targets,
     )
@@ -624,6 +658,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
             "compute_mode": _selection_value(selection_map, "compute_mode", default="serial"),
         },
         "data_task_spec": _data_task_spec(selection_map, compiled.leaf_config),
+        "training_spec": _training_spec(selection_map, compiled.leaf_config),
         "stat_test_spec": {
             "stat_test": _selection_value(selection_map, "stat_test"),
         },
