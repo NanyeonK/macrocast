@@ -1318,3 +1318,8 @@ Phase 7: Tests + Output + Importance (Epics 6, 7, 8)
 | 8. Stage 7 importance | 8 | 1S + 3M + 2L + 1M + 1L |
 | **Total** | **72** | |
 
+
+
+## Stage 3 deep-expansion follow-up
+- Completed additional model-family widening from `plans/stage3-deep-expansion.md`: `adaptivelasso`, `svr_linear`, `svr_rbf`, `huber`, `catboost` now operational in current runtime slice.
+- Remaining deep Stage 3 work still open: factor builders (`factors_plus_AR`, `factor_pca`), full tuning engine, split/validation runtime, refit-policy runtime, and outer-window deep variants.

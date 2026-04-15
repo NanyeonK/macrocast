@@ -281,6 +281,6 @@ def test_registry_loader_discovers_stage3_training_axes() -> None:
 
 def test_registry_loader_expands_stage3_model_family_axis() -> None:
     entry = get_axis_registry_entry("model_family")
-    for value in ("ols", "bayesianridge", "extratrees", "gbm", "xgboost", "lightgbm", "mlp"):
+    for value in ("ols", "bayesianridge", "huber", "adaptivelasso", "svr_linear", "svr_rbf", "extratrees", "gbm", "xgboost", "lightgbm", "catboost", "mlp"):
         assert value in entry.allowed_values
         assert entry.current_status[value] == "operational"

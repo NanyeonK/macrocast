@@ -732,3 +732,135 @@ def test_execute_recipe_supports_lightgbm_raw_panel_model(tmp_path: Path) -> Non
     manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
     assert manifest["model_spec"]["model_family"] == "lightgbm"
     assert manifest["prediction_rows"] > 0
+
+
+
+def test_execute_recipe_supports_adaptivelasso_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="adaptivelasso", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "adaptivelasso"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_svr_linear_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="svr_linear", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "svr_linear"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_svr_rbf_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="svr_rbf", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "svr_rbf"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_huber_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="huber", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "huber"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_catboost_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="catboost", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "catboost"
+    assert manifest["prediction_rows"] > 0
+
+
+
+def test_execute_recipe_supports_adaptivelasso_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="adaptivelasso", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "adaptivelasso"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_svr_linear_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="svr_linear", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "svr_linear"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_svr_rbf_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="svr_rbf", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "svr_rbf"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_huber_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="huber", feature_builder="raw_feature_panel", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "huber"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_catboost_autoreg_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(model_family="catboost", feature_builder="autoreg_lagged_target", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "catboost"
+    assert manifest["prediction_rows"] > 0

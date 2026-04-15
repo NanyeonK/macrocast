@@ -63,3 +63,5 @@ Important caveat
 
 
 Stage 3 note: compiler now records `training_spec` defaults and accepts outer-window, refit, validation, tuning, feature-construction, and execution-runtime training axes as explicit provenance even when the current runtime slice remains narrower than the full grammar.
+
+Deep Stage 3 note: additional deep-expansion models from `plans/stage3-deep-expansion.md` are now partially operational in current runtime slice: `adaptivelasso`, `svr_linear`, `svr_rbf`, `huber`, and `catboost`. Factor-builder and tuning-engine deep expansion remain future work.
