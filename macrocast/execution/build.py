@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import warnings
@@ -452,6 +453,11 @@ def _failure_policy_spec(provenance_payload: dict | None) -> dict[str, object]:
     return dict(compiler.get("failure_policy_spec", {"failure_policy": "fail_fast"}))
 
 
+def _compute_mode_spec(provenance_payload: dict | None) -> dict[str, object]:
+    compiler = (provenance_payload or {}).get("compiler", {}) if provenance_payload else {}
+    return dict(compiler.get("compute_mode_spec", {"compute_mode": "serial"}))
+
+
 def _write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -558,8 +564,14 @@ def _compute_minimal_importance(
     }
 
 
-def _build_predictions(raw_frame: pd.DataFrame, target_series: pd.Series, recipe: RecipeSpec, contract: PreprocessContract) -> pd.DataFrame:
-    rows: list[dict[str, object]] = []
+def _build_predictions(
+    raw_frame: pd.DataFrame,
+    target_series: pd.Series,
+    recipe: RecipeSpec,
+    contract: PreprocessContract,
+    *,
+    compute_mode: str = "serial",
+) -> pd.DataFrame:
     minimum_train_size = _minimum_train_size(recipe)
     benchmark_family = _benchmark_family(recipe)
     model_spec = _model_spec(recipe)
@@ -570,7 +582,8 @@ def _build_predictions(raw_frame: pd.DataFrame, target_series: pd.Series, recipe
     rolling = recipe.stage0.fixed_design.sample_split == "rolling_window_oos"
     rolling_window_size = _rolling_window_size(recipe)
 
-    for horizon in recipe.horizons:
+    def _rows_for_horizon(horizon: int) -> list[dict[str, object]]:
+        horizon_rows: list[dict[str, object]] = []
         for origin_idx in range(minimum_train_size - 1, len(target_series) - horizon):
             start_idx = max(0, origin_idx + 1 - rolling_window_size) if rolling else 0
             train = target_series.iloc[start_idx : origin_idx + 1]
@@ -580,7 +593,7 @@ def _build_predictions(raw_frame: pd.DataFrame, target_series: pd.Series, recipe
             y_true = float(target_series.iloc[origin_idx + horizon])
             error = y_true - y_pred
             benchmark_error = y_true - benchmark_pred
-            rows.append(
+            horizon_rows.append(
                 {
                     "target": target_series.name,
                     "model_name": model_spec["executor_name"],
@@ -604,6 +617,17 @@ def _build_predictions(raw_frame: pd.DataFrame, target_series: pd.Series, recipe
                     "benchmark_squared_error": benchmark_error**2,
                 }
             )
+        return horizon_rows
+
+    rows: list[dict[str, object]] = []
+    if compute_mode == "parallel_by_horizon" and len(recipe.horizons) > 1:
+        with ThreadPoolExecutor(max_workers=min(len(recipe.horizons), 4)) as ex:
+            futures = [ex.submit(_rows_for_horizon, horizon) for horizon in recipe.horizons]
+            for future in futures:
+                rows.extend(future.result())
+    else:
+        for horizon in recipe.horizons:
+            rows.extend(_rows_for_horizon(horizon))
 
     if not rows:
         raise ExecutionError("no forecast rows were produced for the requested horizons")
@@ -743,22 +767,49 @@ def execute_recipe(
     stat_test_spec = _stat_test_spec(provenance_payload)
     importance_spec = _importance_spec(provenance_payload)
     failure_policy_spec = _failure_policy_spec(provenance_payload)
+    compute_mode_spec = _compute_mode_spec(provenance_payload)
     failure_policy = str(failure_policy_spec.get("failure_policy", "fail_fast"))
+    compute_mode = str(compute_mode_spec.get("compute_mode", "serial"))
     prediction_frames = []
     failed_components: list[dict[str, object]] = []
     successful_targets: list[str] = []
     target_series = None
-    for target in targets:
+    def _target_job(target: str):
         target_recipe = _recipe_for_target(recipe, target)
-        try:
-            target_series = _get_target_series(raw_result.data, target, _minimum_train_size(target_recipe))
-            prediction_frames.append(_build_predictions(raw_result.data, target_series, target_recipe, preprocess))
-            successful_targets.append(target)
-        except Exception as exc:
-            if failure_policy in {"skip_failed_model", "save_partial_results"}:
-                failed_components.append({"stage": "prediction_build", "target": target, "error": str(exc)})
-                continue
-            raise
+        target_series_local = _get_target_series(raw_result.data, target, _minimum_train_size(target_recipe))
+        frame = _build_predictions(raw_result.data, target_series_local, target_recipe, preprocess, compute_mode=compute_mode)
+        return target, target_series_local, frame
+
+    if compute_mode == "parallel_by_model" and len(targets) > 1:
+        with ThreadPoolExecutor(max_workers=min(len(targets), 4)) as ex:
+            futures = [ex.submit(_target_job, target) for target in targets]
+            for future in futures:
+                try:
+                    target, target_series_local, frame = future.result()
+                    target_series = target_series_local
+                    prediction_frames.append(frame)
+                    successful_targets.append(target)
+                except Exception as exc:
+                    err = str(exc)
+                    target_name = None
+                    if "target '" in err:
+                        target_name = err.split("target '", 1)[1].split("'", 1)[0]
+                    if failure_policy in {"skip_failed_model", "save_partial_results"}:
+                        failed_components.append({"stage": "prediction_build", "target": target_name, "error": err})
+                        continue
+                    raise
+    else:
+        for target in targets:
+            try:
+                target, target_series_local, frame = _target_job(target)
+                target_series = target_series_local
+                prediction_frames.append(frame)
+                successful_targets.append(target)
+            except Exception as exc:
+                if failure_policy in {"skip_failed_model", "save_partial_results"}:
+                    failed_components.append({"stage": "prediction_build", "target": target, "error": str(exc)})
+                    continue
+                raise
     if not prediction_frames:
         raise ExecutionError("all target/model executions failed; no predictions available to save")
     predictions = pd.concat(prediction_frames, ignore_index=True)
@@ -792,6 +843,7 @@ def execute_recipe(
         "stat_test_spec": stat_test_spec,
         "importance_spec": importance_spec,
         "failure_policy_spec": failure_policy_spec,
+        "compute_mode_spec": compute_mode_spec,
         "lag_selection": _LAG_SELECTION,
         "max_lag": _max_ar_lag(recipe),
         "minimum_train_size": _minimum_train_size(recipe),

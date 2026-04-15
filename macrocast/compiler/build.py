@@ -374,7 +374,7 @@ def _execution_status(
             f"failure_policy {failure_policy!r} is representable but not executable in the current runtime slice"
         )
     compute_mode = _selection_value(selection_map, "compute_mode", default="serial")
-    if compute_mode != "serial":
+    if compute_mode not in {"serial", "parallel_by_model", "parallel_by_horizon"}:
         warnings.append(
             f"compute_mode {compute_mode!r} is representable but not executable in the current runtime slice"
         )

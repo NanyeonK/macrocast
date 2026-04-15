@@ -531,3 +531,63 @@ def test_execute_recipe_save_partial_results_keeps_metrics_when_optional_artifac
     assert manifest["failure_log_file"] == "failures.json"
     assert manifest.get("importance_file") is None
     assert any(item["stage"] == "importance_artifact" for item in failures)
+
+
+
+def test_execute_recipe_parallel_by_horizon_writes_manifest(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(framework="expanding", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+        provenance_payload={"compiler": {"compute_mode_spec": {"compute_mode": "parallel_by_horizon"}}},
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    predictions = __import__("pandas").read_csv(run_dir / "predictions.csv")
+    assert manifest["compute_mode_spec"]["compute_mode"] == "parallel_by_horizon"
+    assert set(predictions["horizon"].unique()) == {1, 3}
+
+
+def test_execute_recipe_parallel_by_model_runs_multi_target_slice(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    stage0 = build_stage0_frame(
+        study_mode="single_path_benchmark_study",
+        fixed_design={
+            "dataset_adapter": "fred_md",
+            "information_set": "revised_monthly",
+            "sample_split": "expanding_window_oos",
+            "benchmark": "zero_change",
+            "evaluation_protocol": "point_forecast_core",
+            "forecast_task": "multi_target_point_forecast",
+        },
+        comparison_contract={
+            "information_set_policy": "identical",
+            "sample_split_policy": "identical",
+            "benchmark_policy": "identical",
+            "evaluation_policy": "identical",
+        },
+        varying_design={"model_families": ("ar",), "feature_recipes": ("autoreg_lagged_target",), "horizons": ("h1",)},
+    )
+    recipe = build_recipe_spec(
+        recipe_id="fred_md_multi_parallel_model",
+        stage0=stage0,
+        target="",
+        targets=("INDPRO", "RPI"),
+        horizons=(1, 3),
+        raw_dataset="fred_md",
+        benchmark_config={"minimum_train_size": 5},
+    )
+    result = execute_recipe(
+        recipe=recipe,
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+        provenance_payload={"compiler": {"compute_mode_spec": {"compute_mode": "parallel_by_model"}}},
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    predictions = __import__("pandas").read_csv(run_dir / "predictions.csv")
+    assert manifest["compute_mode_spec"]["compute_mode"] == "parallel_by_model"
+    assert set(predictions["target"].unique()) == {"INDPRO", "RPI"}

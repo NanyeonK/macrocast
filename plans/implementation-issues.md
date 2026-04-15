@@ -319,7 +319,7 @@ hard_error               operational
 
 ---
 
-## Issue 1-6: Register compute_mode axis [PARTIALLY COMPLETE]
+## Issue 1-6: Register compute_mode axis [DONE]
 pri:medium | size:M | deps: 0-4
 
 ### File to create
@@ -346,8 +346,8 @@ distributed_cluster      registry_only
 ### Acceptance criteria
 - [x] Axis registered
 - [x] `serial` works (current behavior)
-- [ ] `parallel_by_model` operational with joblib backend (provenance-only so far)
-- [ ] `parallel_by_horizon` operational with joblib backend (provenance-only so far)
+- [x] `parallel_by_model` operational with thread-pool backend for current executable slice
+- [x] `parallel_by_horizon` operational with thread-pool backend for current executable slice
 
 ---
 
