@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fixed',
             description='fixed',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='cv_select',
             description='cv select',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='BaiNg_rule',
             description='BaiNg rule',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

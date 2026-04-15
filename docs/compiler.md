@@ -65,3 +65,5 @@ Important caveat
 Stage 3 note: compiler now records `training_spec` defaults and accepts outer-window, refit, validation, tuning, feature-construction, and execution-runtime training axes as explicit provenance even when the current runtime slice remains narrower than the full grammar.
 
 Deep Stage 3 note: additional deep-expansion models from `plans/stage3-deep-expansion.md` are now partially operational in current runtime slice: `adaptivelasso`, `svr_linear`, `svr_rbf`, `huber`, and `catboost`. Factor-builder and tuning-engine deep expansion remain future work.
+
+Deep Stage 3 continuation: factor-oriented training paths (`factor_pca`, `factors_plus_AR`, `pcr`, `pls`, `factor_augmented_linear`) are now executable in the current runtime slice, and optional tuning/validation machinery is available through `macrocast.tuning` plus `training_spec` defaults/config passthrough. Outer-window/refit deepening is partially operational through `anchored_rolling`, `refit_every_k_steps`, and `fit_once_predict_many` train-window semantics.

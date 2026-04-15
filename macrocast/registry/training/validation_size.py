@@ -12,19 +12,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='ratio',
             description='ratio',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='fixed_n',
             description='fixed n',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='fixed_years',
             description='fixed years',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

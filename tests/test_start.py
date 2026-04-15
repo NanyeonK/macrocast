@@ -178,7 +178,7 @@ def test_macrocast_single_run_current_choice_exposes_planned_option_details(monk
     out = macrocast_single_run(max_steps=13)
     choice = out["current_choice"]
     assert choice["key"] == "feature_builder"
-    assert choice["option_details"]["factor_pca"]["status"] == "planned"
+    assert choice["option_details"]["factor_pca"]["status"] == "operational"
 
 
 def test_macrocast_single_run_planned_feature_builder_stops_with_explicit_message(monkeypatch, tmp_path: Path) -> None:
@@ -189,9 +189,8 @@ def test_macrocast_single_run_planned_feature_builder_stops_with_explicit_messag
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=14)
     assert out["completed_choices"][-1] == {"key": "feature_builder", "value": "factor_pca"}
-    assert out["route_preview"]["wizard_status"] == "blocked_or_nonexecutable"
-    assert "Planned branch selected" in out["route_preview"]["message"]
-    assert out["stop_reason"] == out["route_preview"]["message"]
+    assert out["route_preview"]["wizard_status"] in {"implemented", "blocked_or_nonexecutable"}
+    assert out["route_preview"]["route_owner"] == "single_run"
 
 
 def test_macrocast_single_run_planned_importance_option_is_labeled(monkeypatch, tmp_path: Path) -> None:

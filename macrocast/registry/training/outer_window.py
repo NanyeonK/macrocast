@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='anchored_rolling',
             description='anchored rolling',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

@@ -24,6 +24,7 @@ from statsmodels.tsa.ar_model import AutoReg
 
 from .errors import ExecutionError
 from .types import ExecutionResult, ExecutionSpec
+from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
 from ..preprocessing import (
     PreprocessContract,
     is_operational_preprocess_contract,
@@ -126,8 +127,14 @@ def _model_executor_name(model_family: str, feature_builder: str) -> str:
             "lightgbm": "lightgbm_autoreg_v0",
             "catboost": "catboost_autoreg_v0",
             "mlp": "mlp_autoreg_v0",
+            "componentwise_boosting": "componentwise_boosting_autoreg_v0",
+            "boosting_ridge": "boosting_ridge_autoreg_v0",
+            "boosting_lasso": "boosting_lasso_autoreg_v0",
+            "pcr": "pcr_autoreg_v0",
+            "pls": "pls_autoreg_v0",
+            "factor_augmented_linear": "factor_augmented_linear_autoreg_v0",
         }[model_family]
-    if feature_builder in {"raw_feature_panel", "raw_X_only"}:
+    if feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
         return {
             "ols": "ols_raw_feature_panel_v0",
             "ridge": "ridge_raw_feature_panel_v0",
@@ -145,6 +152,12 @@ def _model_executor_name(model_family: str, feature_builder: str) -> str:
             "lightgbm": "lightgbm_raw_feature_panel_v0",
             "catboost": "catboost_raw_feature_panel_v0",
             "mlp": "mlp_raw_feature_panel_v0",
+            "componentwise_boosting": "componentwise_boosting_raw_feature_panel_v0",
+            "boosting_ridge": "boosting_ridge_raw_feature_panel_v0",
+            "boosting_lasso": "boosting_lasso_raw_feature_panel_v0",
+            "pcr": "pcr_raw_feature_panel_v0",
+            "pls": "pls_raw_feature_panel_v0",
+            "factor_augmented_linear": "factor_augmented_linear_raw_feature_panel_v0",
         }[model_family]
     raise ExecutionError(f"feature_builder {feature_builder!r} is not executable in current runtime slice")
 
@@ -184,10 +197,16 @@ def _get_model_executor(recipe: RecipeSpec):
             "lightgbm": _run_lightgbm_autoreg_executor,
             "catboost": _run_catboost_autoreg_executor,
             "mlp": _run_mlp_autoreg_executor,
+            "componentwise_boosting": _run_componentwise_boosting_autoreg_executor,
+            "boosting_ridge": _run_boosting_ridge_autoreg_executor,
+            "boosting_lasso": _run_boosting_lasso_autoreg_executor,
+            "pcr": _run_pcr_autoreg_executor,
+            "pls": _run_pls_autoreg_executor,
+            "factor_augmented_linear": _run_factor_augmented_linear_autoreg_executor,
         }
         if model_family in dispatch:
             return dispatch[model_family]
-    if feature_builder in {"raw_feature_panel", "raw_X_only"}:
+    if feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
         dispatch = {
             "ols": _run_ols_raw_panel_executor,
             "ridge": _run_ridge_raw_panel_executor,
@@ -205,6 +224,12 @@ def _get_model_executor(recipe: RecipeSpec):
             "lightgbm": _run_lightgbm_raw_panel_executor,
             "catboost": _run_catboost_raw_panel_executor,
             "mlp": _run_mlp_raw_panel_executor,
+            "componentwise_boosting": _run_componentwise_boosting_raw_panel_executor,
+            "boosting_ridge": _run_boosting_ridge_raw_panel_executor,
+            "boosting_lasso": _run_boosting_lasso_raw_panel_executor,
+            "pcr": _run_pcr_raw_panel_executor,
+            "pls": _run_pls_raw_panel_executor,
+            "factor_augmented_linear": _run_factor_augmented_linear_raw_panel_executor,
         }
         if model_family in dispatch:
             return dispatch[model_family]
@@ -481,42 +506,31 @@ def _run_ar_model_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, c
     }
 
 
-def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model) -> tuple[int, np.ndarray, np.ndarray, object]:
+def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model_family: str, model) -> tuple[int, np.ndarray, np.ndarray, object, dict[str, object]]:
     lag_order = _lag_order(recipe, train)
     X, y = _build_lagged_supervised_matrix(train, lag_order)
-    model.fit(X, y)
-    return lag_order, X, y, model
+    fitted, tuning_payload = fit_with_optional_tuning(model_family, X, y, recipe.training_spec)
+    return lag_order, X, y, fitted, tuning_payload
 
 
-def _fit_adaptive_lasso(X: np.ndarray, y: np.ndarray) -> object:
-    init = Ridge(alpha=1.0).fit(X, y)
-    weights = 1.0 / (np.abs(init.coef_) + 1e-6)
-    model = Lasso(alpha=1e-3, max_iter=10000)
-    model.fit(X / weights, y)
-    model._adaptive_weights = weights
-    return model
-
-
-def _predict_adaptive_lasso(model, X: np.ndarray) -> np.ndarray:
-    return model.predict(X / model._adaptive_weights)
 
 
 def _recursive_predict_adaptive_lasso(model, train: pd.Series, horizon: int, lag_order: int) -> float:
     history = list(train.to_numpy(dtype=float))
     for _ in range(horizon):
         features = np.asarray(history[-lag_order:][::-1], dtype=float).reshape(1, -1)
-        pred = float(_predict_adaptive_lasso(model, features)[0])
+        pred = float(predict_adaptive_lasso(model, features)[0])
         history.append(pred)
     return float(history[-1])
 
 
 def _run_ols_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, LinearRegression())
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "ols", LinearRegression())
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, Ridge(alpha=1.0))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "ridge", Ridge(alpha=1.0))
     return {
         "y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order),
         "selected_lag": lag_order,
@@ -525,178 +539,315 @@ def _run_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 
 def _run_lasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, Lasso(alpha=1e-4, max_iter=10000))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "lasso", Lasso(alpha=1e-4, max_iter=10000))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_elasticnet_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_randomforest_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, RandomForestRegressor(n_estimators=200, random_state=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "randomforest", RandomForestRegressor(n_estimators=200, random_state=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_bayesianridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, BayesianRidge())
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "bayesianridge", BayesianRidge())
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_huber_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, HuberRegressor())
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "huber", HuberRegressor())
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_adaptivelasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     lag_order = _lag_order(recipe, train)
     X, y = _build_lagged_supervised_matrix(train, lag_order)
-    model = _fit_adaptive_lasso(X, y)
+    model = fit_adaptive_lasso(X, y)
     return {"y_pred": _recursive_predict_adaptive_lasso(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_svr_linear_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_svr_rbf_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_extratrees_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, ExtraTreesRegressor(n_estimators=200, random_state=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_gbm_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, GradientBoostingRegressor(random_state=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "gbm", GradientBoostingRegressor(random_state=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_xgboost_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=42, verbosity=0))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=42, verbosity=0))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_lightgbm_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=42, verbosity=-1))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=42, verbosity=-1))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_catboost_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
 def _run_mlp_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model = _fit_autoreg_sklearn(train, recipe, MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=42))
+    lag_order, _, _, model, _ = _fit_autoreg_sklearn(train, recipe, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=42))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan}
 
 
-def _fit_raw_panel_model(raw_frame: pd.DataFrame, recipe: RecipeSpec, horizon: int, start_idx: int, origin_idx: int, contract: PreprocessContract, model) -> tuple[np.ndarray, np.ndarray, np.ndarray, object]:
+def _fit_raw_panel_model(raw_frame: pd.DataFrame, recipe: RecipeSpec, horizon: int, start_idx: int, origin_idx: int, contract: PreprocessContract, model_family: str, model) -> tuple[np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
     X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
-    model.fit(X_train, y_train)
-    return X_train, y_train, X_pred, model
+    fitted, tuning_payload = fit_with_optional_tuning(model_family, X_train, y_train, recipe.training_spec)
+    return X_train, y_train, X_pred, fitted, tuning_payload
 
 
 def _run_ols_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, LinearRegression())
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ols", LinearRegression())
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_ridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, Ridge(alpha=1.0))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ridge", Ridge(alpha=1.0))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_lasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, Lasso(alpha=1e-4, max_iter=10000))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lasso", Lasso(alpha=1e-4, max_iter=10000))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_elasticnet_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_randomforest_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, RandomForestRegressor(n_estimators=200, random_state=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "randomforest", RandomForestRegressor(n_estimators=200, random_state=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_bayesianridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, BayesianRidge())
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "bayesianridge", BayesianRidge())
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_huber_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, HuberRegressor())
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "huber", HuberRegressor())
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_adaptivelasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
     X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
-    model = _fit_adaptive_lasso(X_train, y_train)
-    return {"y_pred": float(_predict_adaptive_lasso(model, X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
+    model = fit_adaptive_lasso(X_train, y_train)
+    return {"y_pred": float(predict_adaptive_lasso(model, X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_svr_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_svr_rbf_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_extratrees_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, ExtraTreesRegressor(n_estimators=200, random_state=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_gbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, GradientBoostingRegressor(random_state=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "gbm", GradientBoostingRegressor(random_state=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_xgboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=42, verbosity=0))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=42, verbosity=0))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_lightgbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=42, verbosity=-1))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=42, verbosity=-1))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_catboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _run_mlp_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=42))
+    _, _, X_pred, model, _ = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=42))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _linear_boosting_fit(X: np.ndarray, y: np.ndarray, base: str) -> tuple[np.ndarray, float]:
+    residuals = y.copy().astype(float)
+    intercept = float(np.mean(y))
+    residuals -= intercept
+    coef = np.zeros(X.shape[1], dtype=float)
+    n_iter = 50
+    lr = 0.1
+    for _ in range(n_iter):
+        if base == "componentwise":
+            best_j, best_coef, best_sse = 0, 0.0, float("inf")
+            for j in range(X.shape[1]):
+                xj = X[:, j]
+                c = float(np.dot(xj, residuals) / (np.dot(xj, xj) + 1e-10))
+                sse = float(np.sum((residuals - c * xj) ** 2))
+                if sse < best_sse:
+                    best_j, best_coef, best_sse = j, c, sse
+            coef[best_j] += lr * best_coef
+            residuals -= lr * best_coef * X[:, best_j]
+        elif base == "ridge":
+            m = Ridge(alpha=1.0).fit(X, residuals)
+            coef += lr * m.coef_
+            residuals -= lr * m.predict(X)
+        else:
+            m = Lasso(alpha=1e-4, max_iter=10000).fit(X, residuals)
+            coef += lr * m.coef_
+            residuals -= lr * m.predict(X)
+    return coef, intercept
+
+
+def _run_componentwise_boosting_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    coef, intercept = _linear_boosting_fit(X, y, "componentwise")
+    history = list(train.to_numpy(dtype=float))
+    for _ in range(horizon):
+        features = np.asarray(history[-lag_order:][::-1], dtype=float)
+        pred = float(features @ coef + intercept)
+        history.append(pred)
+    return {"y_pred": float(history[-1]), "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_boosting_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    coef, intercept = _linear_boosting_fit(X, y, "ridge")
+    history = list(train.to_numpy(dtype=float))
+    for _ in range(horizon):
+        features = np.asarray(history[-lag_order:][::-1], dtype=float)
+        pred = float(features @ coef + intercept)
+        history.append(pred)
+    return {"y_pred": float(history[-1]), "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_boosting_lasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    coef, intercept = _linear_boosting_fit(X, y, "lasso")
+    history = list(train.to_numpy(dtype=float))
+    for _ in range(horizon):
+        features = np.asarray(history[-lag_order:][::-1], dtype=float)
+        pred = float(features @ coef + intercept)
+        history.append(pred)
+    return {"y_pred": float(history[-1]), "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_pcr_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    pred, _ = fit_factor_model("pcr", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=False)
+    return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_pls_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    pred, _ = fit_factor_model("pls", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=False)
+    return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_factor_augmented_linear_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    lag_order = _lag_order(recipe, train)
+    X, y = _build_lagged_supervised_matrix(train, lag_order)
+    pred, _ = fit_factor_model("factor_augmented_linear", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=True)
+    return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan}
+
+
+def _run_componentwise_boosting_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+    coef, intercept = _linear_boosting_fit(X_train, y_train, "componentwise")
+    return {"y_pred": float(X_pred[0] @ coef + intercept), "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _run_boosting_ridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+    coef, intercept = _linear_boosting_fit(X_train, y_train, "ridge")
+    return {"y_pred": float(X_pred[0] @ coef + intercept), "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+    coef, intercept = _linear_boosting_fit(X_train, y_train, "lasso")
+    return {"y_pred": float(X_pred[0] @ coef + intercept), "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
+    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    pred, _ = fit_factor_model("pcr", X_train, y_train, X_pred, recipe.training_spec, include_ar_lags=False)
+    return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
+    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    pred, _ = fit_factor_model("pls", X_train, y_train, X_pred, recipe.training_spec, include_ar_lags=False)
+    return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan}
+
+
+def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    assert raw_frame is not None and origin_idx is not None
+    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
+    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    pred, _ = fit_factor_model("factor_augmented_linear", X_train, y_train, X_pred, recipe.training_spec, include_ar_lags=True)
+    return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan}
 
 
 def _historical_mean_prediction(train: pd.Series) -> float:
@@ -911,13 +1062,39 @@ def _build_predictions(
     aligned_frame = raw_frame.loc[target_series.index]
     rolling = recipe.stage0.fixed_design.sample_split == "rolling_window_oos"
     rolling_window_size = _rolling_window_size(recipe)
+    outer_window = str(recipe.training_spec.get("outer_window", "rolling" if rolling else "expanding"))
+    refit_policy = str(recipe.training_spec.get("refit_policy", "refit_every_step"))
+    anchored_max_window_size = int(recipe.training_spec.get("anchored_max_window_size", rolling_window_size))
+    refit_k_steps = int(recipe.training_spec.get("refit_k_steps", 3))
 
     def _rows_for_horizon(horizon: int) -> list[dict[str, object]]:
         horizon_rows: list[dict[str, object]] = []
+        locked_start_idx = None
+        locked_origin_idx = None
         for origin_idx in range(minimum_train_size - 1, len(target_series) - horizon):
-            start_idx = max(0, origin_idx + 1 - rolling_window_size) if rolling else 0
-            train = target_series.iloc[start_idx : origin_idx + 1]
-            model_output = model_executor(train, horizon, recipe, contract, aligned_frame, origin_idx, start_idx)
+            base_start_idx = max(0, origin_idx + 1 - rolling_window_size) if rolling else 0
+            if outer_window == "anchored_rolling":
+                if origin_idx + 1 > anchored_max_window_size:
+                    base_start_idx = max(0, origin_idx + 1 - anchored_max_window_size)
+                else:
+                    base_start_idx = 0
+            if refit_policy == "fit_once_predict_many":
+                if locked_start_idx is None:
+                    locked_start_idx = base_start_idx
+                    locked_origin_idx = origin_idx
+                start_idx = locked_start_idx
+                effective_origin_idx = locked_origin_idx
+            elif refit_policy == "refit_every_k_steps":
+                if locked_start_idx is None or (origin_idx - (minimum_train_size - 1)) % refit_k_steps == 0:
+                    locked_start_idx = base_start_idx
+                    locked_origin_idx = origin_idx
+                start_idx = locked_start_idx
+                effective_origin_idx = locked_origin_idx
+            else:
+                start_idx = base_start_idx
+                effective_origin_idx = origin_idx
+            train = target_series.iloc[start_idx : effective_origin_idx + 1]
+            model_output = model_executor(train, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx)
             y_pred = float(model_output["y_pred"])
             benchmark_pred = float(benchmark_executor(train, horizon, recipe))
             y_true = float(target_series.iloc[origin_idx + horizon])
@@ -931,6 +1108,7 @@ def _build_predictions(
                     "horizon": horizon,
                     "origin_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
                     "target_date": target_series.index[origin_idx + horizon].strftime("%Y-%m-%d"),
+                    "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
                     "selected_lag": int(model_output["selected_lag"]),
                     "selected_bic": float(model_output["selected_bic"]),
                     "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),

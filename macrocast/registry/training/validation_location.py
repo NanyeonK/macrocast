@@ -12,25 +12,25 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='last_block',
             description='last block',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='rolling_blocks',
             description='rolling blocks',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='expanding_validation',
             description='expanding validation',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='blocked_cv',
             description='blocked cv',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

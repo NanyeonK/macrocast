@@ -26,7 +26,7 @@ def test_axis_governance_table_matches_discovered_registry() -> None:
     table = axis_governance_table()
     by_name = {row["axis_name"]: row for row in table}
     assert by_name["importance_method"]["current_status"]["minimal_importance"] == "operational"
-    assert by_name["feature_builder"]["current_status"]["factor_pca"] == "planned"
+    assert by_name["feature_builder"]["current_status"]["factor_pca"] == "operational"
 
 
 def test_base_registry_types_available() -> None:
@@ -281,6 +281,6 @@ def test_registry_loader_discovers_stage3_training_axes() -> None:
 
 def test_registry_loader_expands_stage3_model_family_axis() -> None:
     entry = get_axis_registry_entry("model_family")
-    for value in ("ols", "bayesianridge", "huber", "adaptivelasso", "svr_linear", "svr_rbf", "extratrees", "gbm", "xgboost", "lightgbm", "catboost", "mlp"):
+    for value in ("ols", "bayesianridge", "huber", "adaptivelasso", "svr_linear", "svr_rbf", "componentwise_boosting", "boosting_ridge", "boosting_lasso", "pcr", "pls", "factor_augmented_linear", "extratrees", "gbm", "xgboost", "lightgbm", "catboost", "mlp"):
         assert value in entry.allowed_values
         assert entry.current_status[value] == "operational"

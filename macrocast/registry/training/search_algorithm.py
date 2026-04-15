@@ -12,25 +12,25 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='grid_search',
             description='grid search',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='random_search',
             description='random search',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='bayesian_optimization',
             description='bayesian optimization',
-            status='registry_only',
+            status='operational',
             priority='B',
         ),
         EnumRegistryEntry(
             id='genetic_algorithm',
             description='genetic algorithm',
-            status='future',
+            status='operational',
             priority='B',
         ),
         EnumRegistryEntry(

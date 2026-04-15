@@ -24,19 +24,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='blocked_kfold',
             description='blocked kfold',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='expanding_cv',
             description='expanding cv',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='rolling_cv',
             description='rolling cv',
-            status='planned',
+            status='operational',
             priority='A',
         ),
     ),

@@ -12,19 +12,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='validation_mse',
             description='validation mse',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='validation_rmse',
             description='validation rmse',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='validation_mae',
             description='validation mae',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

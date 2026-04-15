@@ -1115,5 +1115,14 @@ def test_compile_recipe_accepts_stage3_training_axes() -> None:
         },
     }
     compile_result = compile_recipe_dict(recipe)
-    assert compile_result.compiled.execution_status == "representable_but_not_executable"
+    assert compile_result.compiled.execution_status == "executable"
     assert compile_result.manifest["training_spec"]["search_algorithm"] == "grid_search"
+
+
+
+def test_compiled_manifest_records_training_config_passthrough_defaults() -> None:
+    compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
+    spec = compile_result.manifest["training_spec"]
+    assert spec["validation_ratio"] == 0.2
+    assert spec["max_trials"] == 6
+    assert spec["fixed_factor_count"] == 3

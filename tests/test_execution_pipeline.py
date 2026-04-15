@@ -864,3 +864,34 @@ def test_execute_recipe_supports_catboost_autoreg_model(tmp_path: Path) -> None:
     manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
     assert manifest["model_spec"]["model_family"] == "catboost"
     assert manifest["prediction_rows"] > 0
+
+
+
+def test_execute_recipe_supports_pcr_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    recipe = _recipe(model_family="pcr", feature_builder="factor_pca", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5})
+    recipe = __import__("dataclasses").replace(recipe, training_spec={**recipe.training_spec, "fixed_factor_count": 2})
+    result = execute_recipe(recipe=recipe, preprocess=_preprocess_raw_only(), output_root=tmp_path, local_raw_source=fixture)
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "pcr"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_pls_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    recipe = _recipe(model_family="pls", feature_builder="factor_pca", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5})
+    recipe = __import__("dataclasses").replace(recipe, training_spec={**recipe.training_spec, "fixed_factor_count": 2})
+    result = execute_recipe(recipe=recipe, preprocess=_preprocess_raw_only(), output_root=tmp_path, local_raw_source=fixture)
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "pls"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_factor_augmented_linear_raw_panel_model(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    recipe = _recipe(model_family="factor_augmented_linear", feature_builder="factors_plus_AR", benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5})
+    recipe = __import__("dataclasses").replace(recipe, training_spec={**recipe.training_spec, "fixed_factor_count": 2, "factor_ar_lags": 1})
+    result = execute_recipe(recipe=recipe, preprocess=_preprocess_raw_only(), output_root=tmp_path, local_raw_source=fixture)
+    manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
+    assert manifest["model_spec"]["model_family"] == "factor_augmented_linear"
+    assert manifest["prediction_rows"] > 0

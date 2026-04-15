@@ -326,6 +326,7 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
     framework = _first_selected_value(selection_map, "framework", "expanding")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     model_family = _first_selected_value(selection_map, "model_family", "ar")
+    training_cfg = dict(leaf_config.get("training_config", {}))
     return {
         "outer_window": _selection_value(selection_map, "outer_window", default=framework),
         "refit_policy": _selection_value(selection_map, "refit_policy", default="refit_every_step"),
@@ -352,6 +353,20 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
         "checkpointing": _selection_value(selection_map, "checkpointing", default="none"),
         "cache_policy": _selection_value(selection_map, "cache_policy", default="no_cache"),
         "execution_backend": _selection_value(selection_map, "execution_backend", default="local_cpu"),
+        "validation_ratio": training_cfg.get("validation_ratio", 0.2),
+        "validation_n": training_cfg.get("validation_n", 5),
+        "validation_years": training_cfg.get("validation_years", 1),
+        "obs_per_year": training_cfg.get("obs_per_year", 12),
+        "max_trials": training_cfg.get("max_trials", 6),
+        "max_time_seconds": training_cfg.get("max_time_seconds", 15.0),
+        "early_stop_trials": training_cfg.get("early_stop_trials", 3),
+        "embargo_gap_size": training_cfg.get("embargo_gap_size", 0),
+        "fixed_factor_count": training_cfg.get("fixed_factor_count", 3),
+        "max_factors": training_cfg.get("max_factors", 5),
+        "factor_ar_lags": training_cfg.get("factor_ar_lags", 1),
+        "refit_k_steps": training_cfg.get("refit_k_steps", 3),
+        "anchored_max_window_size": training_cfg.get("anchored_max_window_size", 60),
+        "random_seed": leaf_config.get("random_seed", 42),
     }
 
 
@@ -508,8 +523,8 @@ def _execution_status(
         predictor_family = _selection_value(selection_map, "predictor_family", default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "all_macro_vars"))
         if predictor_family == "target_lags_only" and feature_builder != "autoreg_lagged_target":
             blocked.append("predictor_family='target_lags_only' requires feature_builder='autoreg_lagged_target' in the current runtime slice")
-        if predictor_family == "all_macro_vars" and feature_builder != "raw_feature_panel":
-            blocked.append("predictor_family='all_macro_vars' requires feature_builder='raw_feature_panel' in the current runtime slice")
+        if predictor_family == "all_macro_vars" and feature_builder not in {"raw_feature_panel", "factor_pca", "factors_plus_AR"}:
+            blocked.append("predictor_family='all_macro_vars' requires feature_builder in {'raw_feature_panel', 'factor_pca', 'factors_plus_AR'} in the current runtime slice")
 
     if failure_policy not in {"fail_fast", "hard_error", "skip_failed_model", "save_partial_results"}:
         warnings.append(

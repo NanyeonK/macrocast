@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='refit_every_k_steps',
             description='refit every k steps',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='fit_once_predict_many',
             description='fit once predict many',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='max_trials',
             description='max trials',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='max_time',
             description='max time',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
@@ -36,7 +36,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='early_stop_trials',
             description='early stop trials',
-            status='planned',
+            status='operational',
             priority='A',
         ),
     ),

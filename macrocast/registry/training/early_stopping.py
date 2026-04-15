@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='validation_patience',
             description='validation patience',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='loss_plateau',
             description='loss plateau',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(

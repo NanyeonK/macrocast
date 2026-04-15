@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fallback_to_safe_hp',
             description='fallback to safe hp',
-            status='planned',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
