@@ -92,7 +92,7 @@ The live repo no longer contains the archived pre-reboot wizard support stack, s
 
 When `yaml_path` is omitted, `macrocast_single_run()` now starts a minimal step-by-step selector on top of the live example recipe.
 
-Current staged choices now cover the first executable single-run block:
+Current staged choices now cover most of the current executable single-run block:
 - `study_mode`
 - `task`
 - `target` or `targets`
@@ -106,6 +106,10 @@ Current staged choices now cover the first executable single-run block:
 - `preprocess_fit_scope`
 - `model_family`
 - `feature_builder`
+- `primary_metric`
+- `manifest_mode`
+- `stat_test`
+- `importance_method`
 
 Behavior:
 - writes the YAML file immediately

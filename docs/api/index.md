@@ -50,3 +50,5 @@ Single-run route inspection
 - omitting `yaml_path` now starts a minimal staged selector that rewrites YAML step-by-step and refreshes route preview after each completed choice.
 
 - the staged selector now covers framework / benchmark / narrow operational preprocessing choices before model-path choices.
+
+- the staged selector now also covers evaluation / output / stat-test / importance choices in the current executable single-run subset.

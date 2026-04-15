@@ -31,6 +31,10 @@ _WIZARD_KEYS = (
     "preprocess_fit_scope",
     "model_family",
     "feature_builder",
+    "primary_metric",
+    "manifest_mode",
+    "stat_test",
+    "importance_method",
 )
 
 
@@ -83,6 +87,14 @@ def _read_wizard_value(recipe: dict[str, Any], key: str) -> Any:
         return _recipe_fixed(recipe, "3_training").get(key)
     if key in {"tcode_policy", "x_missing_policy", "scaling_policy", "preprocess_order", "preprocess_fit_scope"}:
         return _recipe_fixed(recipe, "2_preprocessing").get(key)
+    if key == "primary_metric":
+        return _recipe_fixed(recipe, "4_evaluation").get(key)
+    if key == "manifest_mode":
+        return _recipe_leaf(recipe, "5_output_provenance").get(key)
+    if key == "stat_test":
+        return _recipe_fixed(recipe, "6_stat_tests").get(key)
+    if key == "importance_method":
+        return _recipe_fixed(recipe, "7_importance").get(key)
     if key == "benchmark_plugin_path":
         return _benchmark_config(recipe).get("plugin_path")
     if key == "benchmark_callable_name":
@@ -125,6 +137,18 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
             cfg = _benchmark_config(recipe)
             cfg.pop("plugin_path", None)
             cfg.pop("callable_name", None)
+        return
+    if key == "primary_metric":
+        _recipe_fixed(recipe, "4_evaluation")[key] = value
+        return
+    if key == "manifest_mode":
+        _recipe_leaf(recipe, "5_output_provenance")[key] = value
+        return
+    if key == "stat_test":
+        _recipe_fixed(recipe, "6_stat_tests")[key] = value
+        return
+    if key == "importance_method":
+        _recipe_fixed(recipe, "7_importance")[key] = value
         return
     if key in {"tcode_policy", "x_missing_policy", "scaling_policy", "preprocess_order", "preprocess_fit_scope"}:
         preprocess[key] = value
@@ -227,6 +251,26 @@ def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
             "key": "feature_builder",
             "prompt": "Feature builder",
             "options": ["autoreg_lagged_target", "raw_feature_panel"],
+        },
+        {
+            "key": "primary_metric",
+            "prompt": "Primary metric",
+            "options": ["msfe", "relative_msfe", "oos_r2", "csfe"],
+        },
+        {
+            "key": "manifest_mode",
+            "prompt": "Manifest mode",
+            "options": ["full"],
+        },
+        {
+            "key": "stat_test",
+            "prompt": "Stat test",
+            "options": ["none", "dm", "cw"],
+        },
+        {
+            "key": "importance_method",
+            "prompt": "Importance method",
+            "options": ["none", "minimal_importance"],
         },
     ])
     return stack
@@ -405,6 +449,10 @@ def _interactive_wizard(*, recipe_path: str, yaml_path: str | None, max_steps: i
             selected = current
         elif options and answer.isdigit() and 1 <= int(answer) <= len(options):
             selected = options[int(answer) - 1]
+        elif options and answer in options:
+            selected = answer
+        elif options:
+            selected = current
         else:
             selected = answer
         if selected is None:

@@ -38,4 +38,5 @@ Current roadmap focus
 - route-inspection preview slice now exists through `macrocast_single_run(yaml_path=...)`, exposing route owner, compile status, and tree-context preview without hidden execution.
 - a first minimal staged selector now also exists when `yaml_path` is omitted; it rewrites YAML incrementally for route-defining choices and refreshes route preview after each step.
 - staged selector now reaches into framework / benchmark / narrow operational preprocessing choices while continuing to refresh compile/tree preview after every step.
-- next major widening target after that is broader staged YAML-building beyond this first executable single-run block.
+- staged selector now also reaches evaluation / output / stat-test / importance choices in the current executable single-run subset.
+- next major widening target after that is broader staged YAML-building beyond this current executable block.
