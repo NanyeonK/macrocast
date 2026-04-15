@@ -22,7 +22,8 @@ Training
 
 Preprocessing
 - explicit `raw_only`
-- first train-only path: `extra_preprocess_without_tcode + x_missing_policy=em_impute + scaling_policy=standard`
+- train-only raw-panel path: `extra_preprocess_without_tcode + x_missing_policy=em_impute + scaling_policy=standard`
+- train-only raw-panel path: `extra_preprocess_without_tcode + x_missing_policy=em_impute + scaling_policy=robust`
 
 Evaluation / testing / importance
 - metrics: `msfe`, `relative_msfe`, `oos_r2`, `csfe`

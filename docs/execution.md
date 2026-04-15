@@ -13,7 +13,7 @@ It executes a benchmark-respecting slice with:
 - explicit benchmark family from recipe grammar
 - deterministic prediction, metric, and comparison artifacts
 - two operational feature-builder families
-- one nontrivial train-only raw-panel preprocessing path
+- one narrow family of train-only raw-panel preprocessing paths
 - operational statistical tests: DM and CW
 - first operational custom benchmark bridge via local Python callable loading
 - first operational importance layer: minimal importance
@@ -59,10 +59,10 @@ Current implementation semantics:
 ## Current operational preprocessing paths
 
 - explicit `raw_only`
-- one train-only raw-panel extra-preprocess path:
+- train-only raw-panel extra-preprocess path:
   - `tcode_policy = extra_preprocess_without_tcode`
   - `x_missing_policy = em_impute`
-  - `scaling_policy = standard`
+  - `scaling_policy = standard` or `robust`
   - `preprocess_order = extra_only`
   - `preprocess_fit_scope = train_only`
 

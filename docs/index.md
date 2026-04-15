@@ -24,7 +24,8 @@ Current operational subset
 - operational feature builders: `autoreg_lagged_target`, `raw_feature_panel`
 - operational preprocessing paths:
   - explicit `raw_only`
-  - first train-only raw-panel path with `x_missing_policy=em_impute` and `scaling_policy=standard`
+  - train-only raw-panel path with `x_missing_policy=em_impute` and `scaling_policy=standard`
+  - train-only raw-panel path with `x_missing_policy=em_impute` and `scaling_policy=robust`
 - operational statistical tests:
   - `dm`
   - `cw`
@@ -32,4 +33,4 @@ Current operational subset
   - `minimal_importance`
 
 Current roadmap focus
-- next major widening target is broader comparison artifacts on top of the current benchmark/evaluation layer, before any SHAP or broader importance expansion.
+- next major widening target is broader importance coverage on top of the current preprocessing/comparison/stat-test/benchmark layer, before any SHAP work.

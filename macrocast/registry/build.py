@@ -194,7 +194,7 @@ _AXIS_REGISTRY: dict[str, AxisRegistryEntry] = {
         current_status={
             "none": "operational",
             "standard": "operational",
-            "robust": "registry_only",
+            "robust": "operational",
             "minmax": "registry_only",
             "custom": "external_plugin",
         },

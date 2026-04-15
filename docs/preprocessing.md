@@ -59,14 +59,22 @@ This is the minimum needed to keep model effects separate from preprocessing eff
 
 ## Current executable subset
 
-The current runtime is intentionally honest and narrow.
-Only the explicit raw-only contract is operational today:
-- raw target representation
-- raw x representation
-- no t-code transform
-- no extra preprocessing
-- no inverse transform
-- raw-level evaluation scale
+The current runtime is intentionally honest and still narrow.
+Operational contracts are:
+- explicit raw-only contract:
+  - raw target representation
+  - raw x representation
+  - no t-code transform
+  - no extra preprocessing
+  - no inverse transform
+  - raw-level evaluation scale
+- train-only raw-panel extra-preprocess path:
+  - `tcode_policy = extra_preprocess_without_tcode`
+  - `x_missing_policy = em_impute`
+  - `scaling_policy = standard` or `robust`
+  - `preprocess_order = extra_only`
+  - `preprocess_fit_scope = train_only`
+  - `evaluation_scale = raw_level`
 
 Other preprocessing choices are already representable in package grammar, but not yet executable.
 That distinction is explicit through registry/compiler status rather than hidden behavior.

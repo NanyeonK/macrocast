@@ -181,7 +181,23 @@ def is_operational_preprocess_contract(contract: PreprocessContract) -> bool:
         inverse_transform_policy="none",
         evaluation_scale="raw_level",
     )
-    return contract in {raw_only, train_only_raw_panel}
+    train_only_raw_panel_robust = build_preprocess_contract(
+        target_transform_policy="raw_level",
+        x_transform_policy="raw_level",
+        tcode_policy="extra_preprocess_without_tcode",
+        target_missing_policy="none",
+        x_missing_policy="em_impute",
+        target_outlier_policy="none",
+        x_outlier_policy="none",
+        scaling_policy="robust",
+        dimensionality_reduction_policy="none",
+        feature_selection_policy="none",
+        preprocess_order="extra_only",
+        preprocess_fit_scope="train_only",
+        inverse_transform_policy="none",
+        evaluation_scale="raw_level",
+    )
+    return contract in {raw_only, train_only_raw_panel, train_only_raw_panel_robust}
 
 
 def check_preprocess_governance(

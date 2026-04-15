@@ -40,7 +40,7 @@ The current compiler-to-runtime path supports:
 - benchmarks: `historical_mean`, `zero_change`, `ar_bic`, `custom_benchmark`
 - model families: `ar`, `ridge`, `lasso`, `elasticnet`, `randomforest`
 - feature builders: `autoreg_lagged_target`, `raw_feature_panel`
-- preprocessing: `raw_only` plus the first train-only impute+standardize raw-panel path
+- preprocessing: `raw_only` plus train-only impute+standardize and train-only impute+robust-scale raw-panel paths
 - always-written comparison artifact: `comparison_summary.json`
 - statistical tests: `dm`, `cw`
 - importance: `minimal_importance`

@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import ElasticNet, Lasso, Ridge
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from statsmodels.tsa.ar_model import AutoReg
 
 from .errors import ExecutionError
@@ -244,6 +244,10 @@ def _apply_raw_panel_preprocessing(
         X_pred = imputer.transform(X_pred)
     if contract.scaling_policy == "standard":
         scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_pred = scaler.transform(X_pred)
+    if contract.scaling_policy == "robust":
+        scaler = RobustScaler()
         X_train = scaler.fit_transform(X_train)
         X_pred = scaler.transform(X_pred)
     return X_train, X_pred
