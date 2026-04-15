@@ -78,6 +78,7 @@ from .registry import (
     get_axis_registry_entry,
     get_canonical_layer_order,
 )
+from .start import macrocast_single_run
 from .stage0 import (
     ComparisonContract,
     FixedDesign,
@@ -93,6 +94,7 @@ from .stage0 import (
 )
 
 __all__ = [
+    "macrocast_single_run",
     "build_stage0_frame",
     "check_stage0_completeness",
     "resolve_route_owner",

@@ -12,7 +12,7 @@ Current structure
 - `archive/` — preserved pre-reboot implementation snapshots
 
 Current priority
-- lock Stage 0 grammar and raw-data contracts before rebuilding registries, execution logic, and public docs
+- keep the rebuilt compiler/runtime surface explicit while extending public route-inspection UX through `macrocast_single_run(yaml_path=...)` before any larger wizard restoration
 
 Development rule
 - every code surface that is added to the package must be documented in `docs/` with detailed public-facing explanation once that code becomes part of the rebuilt package surface

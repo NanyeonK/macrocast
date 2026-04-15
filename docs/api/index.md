@@ -2,7 +2,7 @@
 
 ## Available package surfaces
 
-The rebuilt macrocast package currently exposes seven documented code surfaces:
+The rebuilt macrocast package currently exposes eight documented code surfaces:
 
 - [`macrocast.stage0`](stage0.md)
 - [`macrocast.raw`](raw.md)
@@ -11,6 +11,7 @@ The rebuilt macrocast package currently exposes seven documented code surfaces:
 - [`macrocast.registry`](registry.md)
 - [`macrocast.compiler`](compiler.md)
 - [`macrocast.execution`](execution.md)
+- [`macrocast.start`](start.md)
 
 ## Current operational subset summary
 
@@ -41,3 +42,7 @@ Execution architecture
 - separate model executor and benchmark executor contracts
 - fixed single feature-builder runs operational
 - internal feature-builder sweeps not yet operational
+
+
+Single-run route inspection
+- `macrocast_single_run(yaml_path=...)` now exposes route preview, compile preview, tree-context preview, and honest blocking of run/manifest previews for non-executable or wrapper-owned routes.

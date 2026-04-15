@@ -35,4 +35,5 @@ Current operational subset
 
 Current roadmap focus
 - post-wrapper provenance slice now records deterministic `tree_context` payloads in compile/run artifacts so fixed-vs-sweep semantics remain explicit.
-- next major widening target after that is wizard/runtime UX around tree-path selection rather than another hidden execution fallback.
+- route-inspection preview slice now exists through `macrocast_single_run(yaml_path=...)`, exposing route owner, compile status, and tree-context preview without hidden execution.
+- next major widening target after that is step-by-step YAML-building wizard UX on top of this honest inspection surface.
