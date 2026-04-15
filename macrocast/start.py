@@ -20,6 +20,15 @@ _WIZARD_KEYS = (
     "task",
     "target",
     "targets",
+    "framework",
+    "benchmark_family",
+    "benchmark_plugin_path",
+    "benchmark_callable_name",
+    "tcode_policy",
+    "x_missing_policy",
+    "scaling_policy",
+    "preprocess_order",
+    "preprocess_fit_scope",
     "model_family",
     "feature_builder",
 )
@@ -59,6 +68,10 @@ def _recipe_fixed(recipe: dict[str, Any], layer: str) -> dict[str, Any]:
     return recipe.setdefault("path", {}).setdefault(layer, {}).setdefault("fixed_axes", {})
 
 
+def _benchmark_config(recipe: dict[str, Any]) -> dict[str, Any]:
+    return _recipe_leaf(recipe, "5_output_provenance").setdefault("benchmark_config", {})
+
+
 def _read_wizard_value(recipe: dict[str, Any], key: str) -> Any:
     if key == "study_mode":
         return _recipe_fixed(recipe, "0_meta").get("study_mode")
@@ -66,8 +79,14 @@ def _read_wizard_value(recipe: dict[str, Any], key: str) -> Any:
         return _recipe_fixed(recipe, "1_data_task").get("task")
     if key in {"target", "targets"}:
         return _recipe_leaf(recipe, "1_data_task").get(key)
-    if key in {"model_family", "feature_builder"}:
+    if key in {"framework", "benchmark_family", "model_family", "feature_builder"}:
         return _recipe_fixed(recipe, "3_training").get(key)
+    if key in {"tcode_policy", "x_missing_policy", "scaling_policy", "preprocess_order", "preprocess_fit_scope"}:
+        return _recipe_fixed(recipe, "2_preprocessing").get(key)
+    if key == "benchmark_plugin_path":
+        return _benchmark_config(recipe).get("plugin_path")
+    if key == "benchmark_callable_name":
+        return _benchmark_config(recipe).get("callable_name")
     raise KeyError(key)
 
 
@@ -76,11 +95,12 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
         _recipe_fixed(recipe, "0_meta")["study_mode"] = value
         return
     leaf = _recipe_leaf(recipe, "1_data_task")
+    preprocess = _recipe_fixed(recipe, "2_preprocessing")
+    training = _recipe_fixed(recipe, "3_training")
     if key == "task":
         _recipe_fixed(recipe, "1_data_task")["task"] = value
         if value == "multi_target_point_forecast":
-            if "target" in leaf:
-                leaf.pop("target", None)
+            leaf.pop("target", None)
             leaf.setdefault("targets", [])
         else:
             if "targets" in leaf:
@@ -99,8 +119,32 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
         leaf["targets"] = targets
         leaf.pop("target", None)
         return
-    if key in {"model_family", "feature_builder"}:
-        _recipe_fixed(recipe, "3_training")[key] = value
+    if key in {"framework", "benchmark_family", "model_family", "feature_builder"}:
+        training[key] = value
+        if key == "benchmark_family" and value != "custom_benchmark":
+            cfg = _benchmark_config(recipe)
+            cfg.pop("plugin_path", None)
+            cfg.pop("callable_name", None)
+        return
+    if key in {"tcode_policy", "x_missing_policy", "scaling_policy", "preprocess_order", "preprocess_fit_scope"}:
+        preprocess[key] = value
+        if key == "tcode_policy":
+            if value == "raw_only":
+                preprocess["x_missing_policy"] = "none"
+                preprocess["scaling_policy"] = "none"
+                preprocess["preprocess_order"] = "none"
+                preprocess["preprocess_fit_scope"] = "not_applicable"
+            elif value == "extra_preprocess_without_tcode":
+                preprocess.setdefault("x_missing_policy", "em_impute")
+                preprocess.setdefault("scaling_policy", "standard")
+                preprocess["preprocess_order"] = "extra_only"
+                preprocess["preprocess_fit_scope"] = "train_only"
+        return
+    if key == "benchmark_plugin_path":
+        _benchmark_config(recipe)["plugin_path"] = str(value)
+        return
+    if key == "benchmark_callable_name":
+        _benchmark_config(recipe)["callable_name"] = str(value)
         return
     raise KeyError(key)
 
@@ -108,7 +152,8 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
 def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
     task = _recipe_fixed(recipe, "1_data_task").get("task", "single_target_point_forecast")
     target_key = "targets" if task == "multi_target_point_forecast" else "target"
-    return [
+    benchmark_family = _recipe_fixed(recipe, "3_training").get("benchmark_family", "zero_change")
+    stack = [
         {
             "key": "study_mode",
             "prompt": "Study mode",
@@ -132,6 +177,48 @@ def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
             "options": [] if target_key == "targets" else ["INDPRO", "RPI", "UNRATE"],
         },
         {
+            "key": "framework",
+            "prompt": "Framework",
+            "options": ["expanding", "rolling"],
+        },
+        {
+            "key": "benchmark_family",
+            "prompt": "Benchmark family",
+            "options": ["zero_change", "ar_bic", "historical_mean", "custom_benchmark"],
+        },
+    ]
+    if benchmark_family == "custom_benchmark":
+        stack.extend([
+            {"key": "benchmark_plugin_path", "prompt": "Benchmark plugin path", "options": []},
+            {"key": "benchmark_callable_name", "prompt": "Benchmark callable name", "options": []},
+        ])
+    stack.extend([
+        {
+            "key": "tcode_policy",
+            "prompt": "T-code policy",
+            "options": ["raw_only", "extra_preprocess_without_tcode"],
+        },
+        {
+            "key": "x_missing_policy",
+            "prompt": "X missing policy",
+            "options": ["none", "em_impute"],
+        },
+        {
+            "key": "scaling_policy",
+            "prompt": "Scaling policy",
+            "options": ["none", "standard", "robust"],
+        },
+        {
+            "key": "preprocess_order",
+            "prompt": "Preprocess order",
+            "options": ["none", "extra_only"],
+        },
+        {
+            "key": "preprocess_fit_scope",
+            "prompt": "Preprocess fit scope",
+            "options": ["not_applicable", "train_only"],
+        },
+        {
             "key": "model_family",
             "prompt": "Model family",
             "options": ["ar", "ridge", "lasso", "randomforest"],
@@ -141,7 +228,8 @@ def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
             "prompt": "Feature builder",
             "options": ["autoreg_lagged_target", "raw_feature_panel"],
         },
-    ]
+    ])
+    return stack
 
 
 def _route_preview(compile_manifest: dict[str, Any]) -> dict[str, Any]:

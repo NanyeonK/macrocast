@@ -92,10 +92,18 @@ The live repo no longer contains the archived pre-reboot wizard support stack, s
 
 When `yaml_path` is omitted, `macrocast_single_run()` now starts a minimal step-by-step selector on top of the live example recipe.
 
-Current staged choices are intentionally small:
+Current staged choices now cover the first executable single-run block:
 - `study_mode`
 - `task`
 - `target` or `targets`
+- `framework`
+- `benchmark_family`
+- custom-benchmark plugin fields when needed
+- `tcode_policy`
+- `x_missing_policy`
+- `scaling_policy`
+- `preprocess_order`
+- `preprocess_fit_scope`
 - `model_family`
 - `feature_builder`
 
@@ -105,4 +113,4 @@ Behavior:
 - stops early when the route becomes wrapper-owned
 - uses `max_steps` for partial test slices
 
-This is still not the old full archived wizard restore. It is only the first live-compatible staged selector.
+This is still not the old full archived wizard restore. It is only a live-compatible staged selector for the current supported single-run subset, with compile/tree preview refreshed after every completed step.
