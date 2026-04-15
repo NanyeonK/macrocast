@@ -7,7 +7,7 @@ from macrocast.registry.types import AxisRegistryEntry
 
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 25
+    assert len(registry) == 26
     assert {"study_mode", "dataset", "info_set", "task", "model_family", "importance_method"}.issubset(registry)
 
 

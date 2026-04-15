@@ -52,3 +52,5 @@ def validate_stage0_frame(stage0: Stage0Frame) -> None:
     validate_varying_design(stage0.varying_design)
     validate_comparison_contract(stage0.comparison_contract)
     validate_replication_input(stage0.replication_input)
+    if stage0.experiment_unit is not None:
+        _ensure_nonempty(stage0.experiment_unit, "experiment_unit")

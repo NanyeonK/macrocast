@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from ..registry.stage0.experiment_unit import get_experiment_unit_entry
 from .derive import derive_design_shape, derive_execution_posture, derive_experiment_unit
-from .errors import Stage0CompletenessError, Stage0RoutingError
+from .errors import Stage0CompletenessError, Stage0RoutingError, Stage0ValidationError
 from .normalize import (
     normalize_comparison_contract,
     normalize_fixed_design,
@@ -20,6 +21,7 @@ def build_stage0_frame(
     comparison_contract: ComparisonContract | dict,
     varying_design: VaryingDesign | dict | None = None,
     replication_input: ReplicationInput | dict | None = None,
+    experiment_unit: str | None = None,
 ) -> Stage0Frame:
     normalized_study_mode = normalize_study_mode(study_mode)
     normalized_fixed_design = normalize_fixed_design(fixed_design)
@@ -27,16 +29,47 @@ def build_stage0_frame(
     normalized_varying_design = normalize_varying_design(varying_design)
     normalized_replication_input = normalize_replication_input(replication_input)
 
+    resolved_experiment_unit = experiment_unit
+    if resolved_experiment_unit is None:
+        provisional_design_shape = derive_design_shape(
+            normalized_study_mode,
+            normalized_varying_design,
+        )
+        provisional_execution_posture = derive_execution_posture(
+            normalized_study_mode,
+            provisional_design_shape,
+            normalized_replication_input,
+        )
+        resolved_experiment_unit = derive_experiment_unit(
+            normalized_study_mode,
+            provisional_execution_posture,
+            normalized_fixed_design.forecast_task,
+        )
+    else:
+        get_experiment_unit_entry(resolved_experiment_unit)
+
+    if resolved_experiment_unit is None:
+        raise Stage0ValidationError("experiment_unit could not be derived")
+
+    unit_entry = get_experiment_unit_entry(resolved_experiment_unit)
+    if unit_entry.requires_multi_target and normalized_fixed_design.forecast_task != "multi_target_point_forecast":
+        raise Stage0ValidationError(
+            f"experiment_unit={resolved_experiment_unit!r} requires forecast_task='multi_target_point_forecast'"
+        )
+    if not unit_entry.requires_multi_target and normalized_fixed_design.forecast_task == "multi_target_point_forecast" and resolved_experiment_unit not in {"single_target_model_grid", "single_target_single_model", "single_target_full_sweep", "replication_recipe"}:
+        pass
+
     design_shape = derive_design_shape(
         normalized_study_mode,
         normalized_varying_design,
+        resolved_experiment_unit,
     )
     execution_posture = derive_execution_posture(
         normalized_study_mode,
         design_shape,
         normalized_replication_input,
+        resolved_experiment_unit,
     )
-    experiment_unit = derive_experiment_unit(normalized_study_mode, execution_posture)
 
     stage0 = Stage0Frame(
         study_mode=normalized_study_mode,
@@ -46,13 +79,15 @@ def build_stage0_frame(
         execution_posture=execution_posture,
         design_shape=design_shape,
         replication_input=normalized_replication_input,
-        experiment_unit=experiment_unit,
+        experiment_unit=resolved_experiment_unit,
     )
     validate_stage0_frame(stage0)
     return stage0
 
 
 def resolve_route_owner(stage0: Stage0Frame) -> str:
+    if stage0.experiment_unit is not None:
+        return get_experiment_unit_entry(stage0.experiment_unit).route_owner
     if stage0.execution_posture == "wrapper_bundle_plan":
         return "wrapper"
     if stage0.execution_posture == "replication_locked_plan":
@@ -75,6 +110,7 @@ def stage0_summary(stage0: Stage0Frame) -> str:
     horizons = ", ".join(stage0.varying_design.horizons) or "none"
     return (
         f"study_mode={stage0.study_mode}; "
+        f"experiment_unit={stage0.experiment_unit}; "
         f"dataset={stage0.fixed_design.dataset_adapter}; "
         f"route={resolve_route_owner(stage0)}; "
         f"execution_posture={stage0.execution_posture}; "

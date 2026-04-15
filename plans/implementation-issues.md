@@ -162,7 +162,7 @@ Move every axis currently in the monolithic dict into its own file under the cor
 > Current: 1 axis (study_mode), 4 values, 1 operational.
 > Target: 6 axes, 45 values, ~15 operational.
 
-## Issue 1-1: Register experiment_unit axis [BLOCKED on 0-4]
+## Issue 1-1: Register experiment_unit axis [DONE]
 pri:critical | size:M | deps: 0-4
 
 ### What
@@ -202,11 +202,11 @@ class ExperimentUnitEntry(EnumRegistryEntry):
 - `macrocast/start.py` — wizard keys must include experiment_unit
 
 ### Acceptance criteria
-- [ ] Axis registered with all 12 values
-- [ ] Compiler reads and validates experiment_unit from recipe YAML
-- [ ] Route ownership derivable from experiment_unit
-- [ ] Stage 0 frame includes experiment_unit
-- [ ] Existing tests pass + new test for experiment_unit validation
+- [x] Axis registered with all 12 values
+- [x] Compiler reads and validates experiment_unit from recipe YAML
+- [x] Route ownership derivable from experiment_unit
+- [x] Stage 0 frame includes experiment_unit
+- [x] Existing tests pass + new test for experiment_unit validation
 
 ---
 

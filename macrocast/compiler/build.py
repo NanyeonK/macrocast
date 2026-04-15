@@ -16,6 +16,7 @@ from ..preprocessing import (
 )
 from ..recipes import build_recipe_spec, build_run_spec
 from ..registry import AxisSelection, get_axis_registry, get_canonical_layer_order
+from ..registry.stage0.experiment_unit import derive_experiment_unit_default, get_experiment_unit_entry
 from ..stage0 import build_stage0_frame, resolve_route_owner, stage0_to_dict
 
 _ALLOWED_SELECTION_MODES = ("fixed_axes", "sweep_axes", "conditional_axes", "leaf_config")
@@ -234,7 +235,9 @@ def _build_stage0_and_recipe(
     horizons = tuple(leaf_config["horizons"])
     data_vintage = leaf_config.get("data_vintage")
     model_axis = selection_map["model_family"]
-    feature_builders = selection_map["feature_builder"].selected_values
+    feature_axis = selection_map["feature_builder"]
+    feature_builders = feature_axis.selected_values
+    wrapper_family = leaf_config.get("wrapper_family")
 
     if info_set == "real_time" and not data_vintage:
         raise CompileValidationError("info_set='real_time' requires leaf_config.data_vintage")
@@ -244,6 +247,30 @@ def _build_stage0_and_recipe(
     else:
         if not target:
             raise CompileValidationError("single-target recipes require leaf_config.target")
+
+    derived_experiment_unit = derive_experiment_unit_default(
+        study_mode=study_mode,
+        task=task,
+        model_axis_mode=model_axis.selection_mode,
+        feature_axis_mode=feature_axis.selection_mode,
+        wrapper_family=wrapper_family,
+    )
+    experiment_unit_explicit = "experiment_unit" in selection_map
+    experiment_unit = _selection_value(selection_map, "experiment_unit", default=derived_experiment_unit)
+    if experiment_unit_explicit:
+        unit_entry = get_experiment_unit_entry(experiment_unit)
+        if experiment_unit != derived_experiment_unit:
+            raise CompileValidationError(
+                f"experiment_unit={experiment_unit!r} conflicts with current recipe shape; implied unit is {derived_experiment_unit!r}"
+            )
+        if unit_entry.requires_multi_target and task != "multi_target_point_forecast":
+            raise CompileValidationError(
+                f"experiment_unit={experiment_unit!r} requires task='multi_target_point_forecast'"
+            )
+        if not unit_entry.requires_multi_target and task == "multi_target_point_forecast":
+            raise CompileValidationError(
+                f"experiment_unit={experiment_unit!r} is incompatible with task='multi_target_point_forecast'"
+            )
 
     sample_split = {
         "expanding": "expanding_window_oos",
@@ -256,6 +283,7 @@ def _build_stage0_and_recipe(
 
     stage0 = build_stage0_frame(
         study_mode=study_mode,
+        experiment_unit=experiment_unit if experiment_unit_explicit else None,
         fixed_design={
             "dataset_adapter": dataset,
             "information_set": info_set_token,
@@ -335,13 +363,31 @@ def _execution_status(
     return "representable_but_not_executable", tuple(warnings), ()
 
 
-def _build_wrapper_handoff(stage0, recipe_spec: RecipeSpec, run_spec: RunSpec, leaf_config: dict[str, Any]) -> dict[str, Any]:
+def _build_wrapper_handoff(
+    stage0,
+    recipe_spec: RecipeSpec,
+    run_spec: RunSpec,
+    leaf_config: dict[str, Any],
+    *,
+    experiment_unit_explicit: bool,
+) -> dict[str, Any]:
     if run_spec.route_owner != "wrapper":
         return {}
     wrapper_family = leaf_config.get("wrapper_family")
     bundle_label = leaf_config.get("bundle_label")
-    if wrapper_family not in {"multi_target_separate_runs", "benchmark_suite", "ablation_study"}:
-        raise CompileValidationError("wrapper_bundle_plan requires leaf_config.wrapper_family in {'multi_target_separate_runs', 'benchmark_suite', 'ablation_study'}")
+    if experiment_unit_explicit:
+        wrapper_family = wrapper_family or stage0.experiment_unit
+        bundle_label = bundle_label or f"{recipe_spec.recipe_id}-{wrapper_family}"
+    if wrapper_family not in {
+        "single_target_full_sweep",
+        "multi_target_separate_runs",
+        "multi_target_shared_design",
+        "benchmark_suite",
+        "ablation_study",
+    }:
+        raise CompileValidationError(
+            "wrapper_bundle_plan requires a wrapper family in {'single_target_full_sweep', 'multi_target_separate_runs', 'multi_target_shared_design', 'benchmark_suite', 'ablation_study'}"
+        )
     if not isinstance(bundle_label, str) or not bundle_label.strip():
         raise CompileValidationError("wrapper_bundle_plan requires non-empty leaf_config.bundle_label")
     return {
@@ -370,6 +416,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     if "horizons" not in leaf_config:
         raise CompileValidationError("recipe leaf_config missing 'horizons'")
     task_value = _selection_value(selection_map, "task")
+    experiment_unit_explicit = "experiment_unit" in selection_map
     if task_value == "multi_target_point_forecast":
         if "targets" not in leaf_config:
             raise CompileValidationError("recipe leaf_config missing 'targets'")
@@ -381,7 +428,13 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)
     execution_status, warnings, blocked = _execution_status(selections, preprocess_contract)
     tree_context = _build_tree_context(stage0, run_spec, selections, leaf_config)
-    wrapper_handoff = _build_wrapper_handoff(stage0, recipe_spec, run_spec, leaf_config)
+    wrapper_handoff = _build_wrapper_handoff(
+        stage0,
+        recipe_spec,
+        run_spec,
+        leaf_config,
+        experiment_unit_explicit=experiment_unit_explicit,
+    )
 
     compiled = CompiledRecipeSpec(
         recipe_id=recipe_dict["recipe_id"],
