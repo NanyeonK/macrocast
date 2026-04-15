@@ -42,6 +42,7 @@ The current compiler-to-runtime path supports:
 - model families: `ar`, `ridge`, `lasso`, `elasticnet`, `randomforest`
 - feature builders: `autoreg_lagged_target`, `raw_feature_panel`
 - info sets: `revised` and the first `real_time` explicit-vintage slice
+- tasks: `single_target_point_forecast` plus the first narrow `multi_target_point_forecast` slice
 - preprocessing: `raw_only` plus train-only impute+standardize and train-only impute+robust-scale raw-panel paths
 - always-written comparison artifact: `comparison_summary.json`
 - statistical tests: `dm`, `cw`
@@ -49,6 +50,7 @@ The current compiler-to-runtime path supports:
 
 Important caveat
 - fixed single feature-builder runs are executable
+- the current multi-target slice requires explicit `leaf_config.targets` and keeps one shared model/benchmark/preprocess environment across all targets
 - internal multi-value feature-builder sweeps are still representable but not executable in one compiled run
 - incompatible requests such as `model_family='ar'` with `feature_builder='raw_feature_panel'` are explicitly blocked
 - `custom_benchmark` is executable only through the first plugin-ready bridge and currently requires `benchmark_config.plugin_path` plus `benchmark_config.callable_name`

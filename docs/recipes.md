@@ -7,7 +7,7 @@ The recipe/execution layer is the first package layer above Stage 0 and raw data
 Its job is to turn:
 - one Stage 0 study grammar frame
 - one raw dataset identity
-- one target definition
+- one target definition or one explicit target set
 - one horizon set
 
 into a minimal, explicit execution contract.
@@ -33,13 +33,15 @@ It stores:
 - `recipe_id`
 - `stage0`
 - `target`
+- optional `targets`
 - `horizons`
 - `raw_dataset`
 
 Interpretation:
 - `stage0` fixes the study language
 - `raw_dataset` identifies the raw adapter family used by the study
-- `target` identifies the forecast target
+- `target` identifies the forecast target for single-target runs
+- `targets` identify the explicit target set for the first multi-target slice
 - `horizons` identify the forecast horizon set
 
 ## `RunSpec`
@@ -77,7 +79,7 @@ This function fails closed if the recipe is missing the minimum execution contra
 
 The current v1 checks require:
 - non-empty `recipe_id`
-- non-empty `target`
+- either non-empty `target` or an explicit multi-target `targets` tuple
 - non-empty `raw_dataset`
 - at least one forecast horizon
 
@@ -92,7 +94,7 @@ run = build_run_spec(recipe)
 The current v1 implementation uses:
 - Stage 0 route owner
 - recipe id
-- target
+- target or explicit target set
 - horizon set
 
 to construct a deterministic run identifier.

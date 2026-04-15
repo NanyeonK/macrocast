@@ -68,7 +68,7 @@ _AXIS_REGISTRY: dict[str, AxisRegistryEntry] = {
         allowed_values=("single_target_point_forecast", "multi_target_point_forecast"),
         current_status={
             "single_target_point_forecast": "operational",
-            "multi_target_point_forecast": "planned",
+            "multi_target_point_forecast": "operational",
         },
         default_policy="fixed",
         compatible_with={},

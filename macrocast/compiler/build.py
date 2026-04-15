@@ -163,7 +163,8 @@ def _build_stage0_and_recipe(
     task = _selection_value(selection_map, "task")
     benchmark = _selection_value(selection_map, "benchmark_family")
     framework = _selection_value(selection_map, "framework")
-    target = leaf_config["target"]
+    target = leaf_config.get("target", "")
+    targets = tuple(leaf_config.get("targets", ()))
     horizons = tuple(leaf_config["horizons"])
     data_vintage = leaf_config.get("data_vintage")
     model_axis = selection_map["model_family"]
@@ -171,6 +172,12 @@ def _build_stage0_and_recipe(
 
     if info_set == "real_time" and not data_vintage:
         raise CompileValidationError("info_set='real_time' requires leaf_config.data_vintage")
+    if task == "multi_target_point_forecast":
+        if len(targets) < 2:
+            raise CompileValidationError("task='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
+    else:
+        if not target:
+            raise CompileValidationError("single-target recipes require leaf_config.target")
 
     sample_split = {
         "expanding": "expanding_window_oos",
@@ -217,6 +224,7 @@ def _build_stage0_and_recipe(
         raw_dataset=dataset,
         benchmark_config=benchmark_spec,
         data_vintage=data_vintage,
+        targets=targets,
     )
     run_spec = build_run_spec(recipe_spec)
     return stage0, recipe_spec, run_spec
@@ -271,9 +279,15 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     if missing_axes:
         raise CompileValidationError(f"recipe missing required axes: {missing_axes}")
     leaf_config = _leaf_config(recipe_dict)
-    for key in ("target", "horizons"):
-        if key not in leaf_config:
-            raise CompileValidationError(f"recipe leaf_config missing {key!r}")
+    if "horizons" not in leaf_config:
+        raise CompileValidationError("recipe leaf_config missing 'horizons'")
+    task_value = _selection_value(selection_map, "task")
+    if task_value == "multi_target_point_forecast":
+        if "targets" not in leaf_config:
+            raise CompileValidationError("recipe leaf_config missing 'targets'")
+    else:
+        if "target" not in leaf_config:
+            raise CompileValidationError("recipe leaf_config missing 'target'")
 
     preprocess_contract = _build_preprocess_contract(selection_map)
     stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)

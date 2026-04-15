@@ -22,7 +22,9 @@ Training
 
 Data / task
 - info sets: `revised`, `real_time` (current real-time slice requires explicit `data_vintage`)
-- task currently operational: `single_target_point_forecast`
+- tasks currently operational:
+  - `single_target_point_forecast`
+  - first narrow `multi_target_point_forecast` slice with explicit `targets`
 
 Preprocessing
 - explicit `raw_only`

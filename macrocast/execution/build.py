@@ -4,6 +4,7 @@ import importlib.util
 import json
 import math
 import warnings
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -88,6 +89,14 @@ def _feature_builder(recipe: RecipeSpec) -> str:
     if recipe.stage0.varying_design.feature_recipes:
         return recipe.stage0.varying_design.feature_recipes[0]
     return "autoreg_lagged_target"
+
+
+def _recipe_targets(recipe: RecipeSpec) -> tuple[str, ...]:
+    return recipe.targets if recipe.targets else (recipe.target,)
+
+
+def _recipe_for_target(recipe: RecipeSpec, target: str) -> RecipeSpec:
+    return replace(recipe, target=target, targets=())
 
 
 def _model_executor_name(model_family: str, feature_builder: str) -> str:
@@ -657,6 +666,30 @@ def _build_comparison_summary(predictions: pd.DataFrame, recipe: RecipeSpec) -> 
     }
 
 
+def _compute_multi_target_metrics(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str, object]:
+    metrics_by_target = {}
+    for target, group in predictions.groupby("target", sort=True):
+        metrics_by_target[str(target)] = _compute_metrics(group.reset_index(drop=True), _recipe_for_target(recipe, str(target)))
+    return {
+        "model_name": _model_spec(recipe)["executor_name"],
+        "benchmark_name": _benchmark_family(recipe),
+        "targets": list(_recipe_targets(recipe)),
+        "metrics_by_target": metrics_by_target,
+    }
+
+
+def _build_multi_target_comparison_summary(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str, object]:
+    comparison_by_target = {}
+    for target, group in predictions.groupby("target", sort=True):
+        comparison_by_target[str(target)] = _build_comparison_summary(group.reset_index(drop=True), _recipe_for_target(recipe, str(target)))
+    return {
+        "model_name": _model_spec(recipe)["executor_name"],
+        "benchmark_name": _benchmark_family(recipe),
+        "targets": list(_recipe_targets(recipe)),
+        "comparison_by_target": comparison_by_target,
+    }
+
+
 def execute_recipe(
     *,
     recipe: RecipeSpec,
@@ -684,17 +717,31 @@ def execute_recipe(
     run_dir.mkdir(parents=True, exist_ok=True)
 
     raw_result = _load_raw_for_recipe(recipe, local_raw_source, output_root / ".raw_cache")
-    target_series = _get_target_series(raw_result.data, recipe.target, _minimum_train_size(recipe))
-    predictions = _build_predictions(raw_result.data, target_series, recipe, preprocess)
-    metrics = _compute_metrics(predictions, recipe)
-    comparison_summary = _build_comparison_summary(predictions, recipe)
+    targets = _recipe_targets(recipe)
+    prediction_frames = []
+    for target in targets:
+        target_recipe = _recipe_for_target(recipe, target)
+        target_series = _get_target_series(raw_result.data, target, _minimum_train_size(target_recipe))
+        prediction_frames.append(_build_predictions(raw_result.data, target_series, target_recipe, preprocess))
+    predictions = pd.concat(prediction_frames, ignore_index=True)
+    if recipe.targets:
+        metrics = _compute_multi_target_metrics(predictions, recipe)
+        comparison_summary = _build_multi_target_comparison_summary(predictions, recipe)
+    else:
+        metrics = _compute_metrics(predictions, recipe)
+        comparison_summary = _build_comparison_summary(predictions, recipe)
     stat_test_spec = _stat_test_spec(provenance_payload)
     importance_spec = _importance_spec(provenance_payload)
+    if recipe.targets and stat_test_spec.get("stat_test") != "none":
+        raise ExecutionError("multi-target point-forecast slice does not yet support statistical-test artifacts")
+    if recipe.targets and importance_spec.get("importance_method") != "none":
+        raise ExecutionError("multi-target point-forecast slice does not yet support importance artifacts")
 
     manifest = {
         "recipe_id": recipe.recipe_id,
         "run_id": run.run_id,
         "target": recipe.target,
+        "targets": list(recipe.targets),
         "horizons": list(recipe.horizons),
         "raw_dataset": recipe.raw_dataset,
         "route_owner": run.route_owner,
