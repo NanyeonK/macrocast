@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from ..stage0 import Stage0Frame
 
@@ -12,6 +13,7 @@ class RecipeSpec:
     target: str
     horizons: tuple[int, ...]
     raw_dataset: str
+    benchmark_config: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

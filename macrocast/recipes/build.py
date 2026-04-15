@@ -19,7 +19,8 @@ def build_run_spec(recipe: RecipeSpec) -> RunSpec:
 def recipe_summary(recipe: RecipeSpec) -> str:
     route_owner = resolve_route_owner(recipe.stage0)
     horizons = ", ".join(str(h) for h in recipe.horizons)
+    benchmark = recipe.stage0.fixed_design.benchmark
     return (
         f"recipe_id={recipe.recipe_id}; target={recipe.target}; raw_dataset={recipe.raw_dataset}; "
-        f"route={route_owner}; horizons=[{horizons}]"
+        f"benchmark={benchmark}; route={route_owner}; horizons=[{horizons}]"
     )
