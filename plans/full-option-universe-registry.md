@@ -1526,9 +1526,9 @@ Registry file: `macrocast/registry/evaluation/point_metrics.py`
 |----|--------|----------|
 | `MSE` | operational | A |
 | `MSFE` | operational | A |
-| `RMSE` | planned | A |
-| `MAE` | planned | A |
-| `MAPE` | planned | A |
+| `RMSE` | operational | A |
+| `MAE` | operational | A |
+| `MAPE` | operational | A |
 | `sMAPE` | registry_only | B |
 | `MASE` | registry_only | B |
 | `RMSSE` | registry_only | B |
@@ -1695,7 +1695,7 @@ Registry file: `macrocast/registry/evaluation/regime_definition.py`
 | `volatility_regime` | registry_only | B |
 | `Markov_switching_regime` | future | B |
 | `clustering_regime` | future | B |
-| `user_defined_regime` | planned | A |
+| `user_defined_regime` | operational | A |
 
 ### 4.4.2 regime_use
 

@@ -980,6 +980,7 @@ MAPE                     planned → operational
 ### Implementation
 - Simple metric functions
 - Integrate into execution metric computation loop
+- Promote `primary_metric` executable values `rmse`, `mae`, and `mape` so Stage 4 metric selection is honest at compiler/runtime level
 
 ---
 
@@ -1039,6 +1040,7 @@ pri:medium | size:M | deps: 0-4
 - NBER recession dates lookup table
 - Metric computation conditional on regime indicator
 - Current operational slice: `regime_definition='NBER_recession'`, `regime_use='eval_only'`, regime summary artifact with state-dependent OOS R² and crisis-period gain by horizon
+- Follow-up operational slice: `regime_definition='user_defined_regime'` with explicit `evaluation_spec.regime_start` and `evaluation_spec.regime_end`
 
 ---
 

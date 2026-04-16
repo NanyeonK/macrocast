@@ -15,7 +15,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(id='volatility_regime', description='volatility regime', status='registry_only', priority='B'),
         EnumRegistryEntry(id='Markov_switching_regime', description='markov switching regime', status='future', priority='B'),
         EnumRegistryEntry(id='clustering_regime', description='clustering regime', status='future', priority='B'),
-        EnumRegistryEntry(id='user_defined_regime', description='user defined regime', status='planned', priority='A'),
+        EnumRegistryEntry(id='user_defined_regime', description='user defined regime', status='operational', priority='A'),
     ),
     compatible_with={},
     incompatible_with={},

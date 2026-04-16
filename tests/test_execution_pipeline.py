@@ -346,6 +346,35 @@ def test_execute_recipe_writes_regime_summary_for_nber_slice(tmp_path: Path) -> 
     assert "h1" in regime["by_horizon"]
 
 
+def test_execute_recipe_writes_regime_summary_for_user_defined_slice(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(framework="expanding", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+        provenance_payload={
+            "compiler": {
+                "evaluation_spec": {
+                    "primary_metric": "msfe",
+                    "point_metrics": "MSFE",
+                    "relative_metrics": "relative_MSFE",
+                    "direction_metrics": "directional_accuracy",
+                    "regime_definition": "user_defined_regime",
+                    "regime_use": "eval_only",
+                    "regime_metrics": "all_main_metrics_by_regime",
+                    "regime_start": "1900-01-01",
+                    "regime_end": "2100-12-31",
+                }
+            }
+        },
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    regime = json.loads((run_dir / "regime_summary.json").read_text())
+    assert regime["regime_definition"] == "user_defined_regime"
+    assert regime["by_horizon"]["h1"]["n_regime"] >= 1
+
+
 def test_execute_recipe_runs_robust_scaling_preprocess_path(tmp_path: Path) -> None:
     fixture = Path("tests/fixtures/fred_md_raw_panel_missing.csv")
     result = execute_recipe(

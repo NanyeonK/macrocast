@@ -1173,9 +1173,13 @@ def test_compile_quantile_linear_point_median_recipe_is_executable(tmp_path: Pat
 def test_axis_governance_table_marks_stage4_eval_axes_operational() -> None:
     table = axis_governance_table()
     by_name = {row["axis_name"]: row for row in table}
+    assert by_name["primary_metric"]["current_status"]["rmse"] == "operational"
+    assert by_name["primary_metric"]["current_status"]["mae"] == "operational"
+    assert by_name["primary_metric"]["current_status"]["mape"] == "operational"
     assert by_name["relative_metrics"]["current_status"]["relative_RMSE"] == "operational"
     assert by_name["direction_metrics"]["current_status"]["directional_accuracy"] == "operational"
     assert by_name["regime_definition"]["current_status"]["NBER_recession"] == "operational"
+    assert by_name["regime_definition"]["current_status"]["user_defined_regime"] == "operational"
 
 
 def test_compiled_manifest_records_stage4_evaluation_defaults() -> None:
@@ -1185,3 +1189,30 @@ def test_compiled_manifest_records_stage4_evaluation_defaults() -> None:
     assert spec["relative_metrics"] == "relative_MSFE"
     assert spec["direction_metrics"] == "directional_accuracy"
     assert spec["regime_definition"] == "none"
+
+
+def test_compile_primary_metric_rmse_recipe_is_executable() -> None:
+    recipe = {
+        "recipe_id": "stage4-primary-metric-rmse",
+        "path": {
+            "0_meta": {"fixed_axes": {"study_mode": "single_path_benchmark_study"}},
+            "1_data_task": {
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level", "tcode_policy": "raw_only",
+                "target_missing_policy": "none", "x_missing_policy": "none", "target_outlier_policy": "none", "x_outlier_policy": "none",
+                "scaling_policy": "none", "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable", "inverse_transform_policy": "none", "evaluation_scale": "raw_level"
+            }},
+            "3_training": {"fixed_axes": {"framework": "rolling", "benchmark_family": "zero_change", "feature_builder": "raw_feature_panel", "model_family": "ridge"}},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "rmse"}},
+            "5_output_provenance": {"leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 5, "rolling_window_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    compile_result = compile_recipe_dict(recipe)
+    assert compile_result.compiled.execution_status == "executable"
+    assert compile_result.manifest["evaluation_spec"]["primary_metric"] == "rmse"
