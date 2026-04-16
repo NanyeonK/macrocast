@@ -2,57 +2,52 @@
 
 > Given a standardized macro dataset adapter and a fixed forecasting recipe, compare forecasting tools under identical information set, sample split, benchmark, and evaluation protocol.
 
+## Why macrocast?
+
+Macroeconomic forecasting studies often suffer from a common problem: models are compared under conditions that are not fully aligned. Differences in sample periods, information sets, preprocessing rules, or benchmark definitions make it difficult to determine whether one method truly outperforms another.
+
+macrocast addresses this by enforcing a **recipe-based experimental grammar** where every design choice is explicit. One YAML recipe defines one complete forecasting study. Comparisons are fair because the comparison environment is held fixed while only the forecasting tool varies.
+
+**Core design principles:**
+
+1. **One recipe = one fully specified study.** No hidden defaults, no implicit preprocessing.
+2. **Grammar first, content later.** The study language is fixed before registry inventories are filled.
+3. **Represent before execute.** The registry can express more choices than the runtime currently supports.
+4. **Fair comparison by construction.** Preprocessing, splits, benchmarks, and metrics are governed explicitly.
+
+## Documentation
+
+| Section | Description |
+|---------|-------------|
+| [Installation](install.md) | Install macrocast and optional dependencies |
+| [Getting Started](getting_started/index.md) | Your first forecasting study in 5 minutes |
+| [User Guide](user_guide/index.md) | In-depth guide to every package layer |
+| [Examples](examples/index.md) | End-to-end runnable example gallery |
+| [API Reference](api/index.md) | Function signatures and class documentation |
+| [Mathematical Background](math/index.md) | Formal definitions for statistical tests, metrics, and importance methods |
+| [Developer Guide](dev/index.md) | Architecture, contributing, extending the package |
+
 ## Package surfaces
 
-The package has eight documented layers:
+macrocast has eight layers, executed in canonical order:
 
-- [`macrocast.stage0`](stage0.md) — study grammar and comparison contract
-- [`macrocast.raw`](raw.md) — raw dataset loading and provenance
-- [`macrocast.recipes`](recipes.md) — recipe and run specification
-- [`macrocast.preprocessing`](preprocessing.md) — preprocessing contract and governance
-- [`macrocast.registry`](registry.md) — per-axis choice-space registry
-- [`macrocast.compiler`](compiler.md) — recipe compilation and execution eligibility
-- [`macrocast.execution`](execution.md) — runtime execution pipeline
-- [`macrocast.tuning`](tuning.md) — hyperparameter tuning engine
+| Layer | Module | Purpose |
+|-------|--------|---------|
+| Stage 0 | [`macrocast.stage0`](user_guide/stage0.md) | Study grammar: fixed/varying design, comparison contract |
+| Stage 1 | [`macrocast.raw`](user_guide/raw.md) | FRED-MD/QD/SD raw data loading and provenance |
+| Stage 2 | [`macrocast.recipes`](user_guide/recipes.md) | Declarative recipe and run specification |
+| Stage 3 | [`macrocast.preprocessing`](user_guide/preprocessing.md) | Preprocessing contract and governance |
+| Stage 4 | [`macrocast.registry`](user_guide/registry.md) | Per-axis choice-space registry |
+| Stage 5 | [`macrocast.compiler`](user_guide/compiler.md) | Recipe compilation and execution eligibility |
+| Stage 6 | [`macrocast.execution`](user_guide/execution.md) | Runtime: models, benchmarks, metrics, artifacts |
+| Stage 7 | [`macrocast.tuning`](user_guide/tuning.md) | Hyperparameter tuning engine |
 
-## Current operational subset
+## Current operational scale
 
-### Models (24)
-`ar`, `ols`, `ridge`, `lasso`, `elasticnet`, `bayesianridge`, `huber`, `adaptivelasso`, `svr_linear`, `svr_rbf`, `componentwise_boosting`, `boosting_ridge`, `boosting_lasso`, `pcr`, `pls`, `factor_augmented_linear`, `quantile_linear`, `randomforest`, `extratrees`, `gbm`, `xgboost`, `lightgbm`, `catboost`, `mlp`
+- **24 model families** from AR to MLP, including linear boosting, factor models, SVR, tree ensembles
+- **20 statistical tests** covering equal/conditional predictive ability, nested models, multiple comparison, diagnostics
+- **12 importance methods** including SHAP, permutation, LIME, PDP/ICE/ALE, grouped, stability
+- **4 tuning algorithms**: grid search, random search, Bayesian optimization, genetic algorithm
+- **125 registry axes**, 717 values, 310 operational (43%)
 
-### Feature builders (5)
-`autoreg_lagged_target`, `raw_feature_panel`, `raw_X_only`, `factors_plus_AR`, `factor_pca`
-
-### Benchmarks (4)
-`historical_mean`, `zero_change`, `ar_bic`, `custom_benchmark`
-
-### Frameworks
-`expanding`, `rolling`, `anchored_rolling`
-
-### Preprocessing
-- Governance fields: `representation_policy`, `tcode_application_scope`, `preprocessing_axis_role`
-- Operational paths: `raw_only`, train-only EM impute + standard/robust/minmax scaling, PCA dimensionality reduction
-
-### Evaluation metrics
-`msfe`, `rmse`, `mae`, `mape`, `relative_msfe`, `relative_rmse`, `relative_mae`, `oos_r2`, `csfe`, `benchmark_win_rate`, `directional_accuracy`, `sign_accuracy`
-
-### Statistical tests (20)
-`dm`, `dm_hln`, `dm_modified`, `cw`, `mcs`, `enc_new`, `mse_f`, `mse_t`, `cpa`, `rossi`, `rolling_dm`, `reality_check`, `spa`, `mincer_zarnowitz`, `ljung_box`, `arch_lm`, `bias_test`, `pesaran_timmermann`, `binomial_hit`, `diagnostics_full`
-
-### Dependence corrections (4)
-`none`, `nw_hac`, `nw_hac_auto`, `block_bootstrap`
-
-### Importance methods (12)
-`minimal_importance`, `tree_shap`, `kernel_shap`, `linear_shap`, `permutation_importance`, `lime`, `feature_ablation`, `pdp`, `ice`, `ale`, `grouped_permutation`, `importance_stability`
-
-### Tuning (4 search algorithms)
-`grid_search`, `random_search`, `bayesian_optimization`, `genetic_algorithm`
-
-### Output
-- Export formats: `json`, `csv`, `parquet`, `json+csv`, `all`
-- Provenance: `none`, `minimal`, `standard`, `full`
-- Artifacts: predictions, metrics, comparison_summary, stat_test, importance, tuning_result, manifest
-
-## Registry
-
-125 axes, 717 values, 310 operational across 8 layers.
+**See also:** [Getting Started: Quickstart](getting_started/quickstart.md) | [API Reference](api/index.md)
