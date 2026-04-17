@@ -151,6 +151,32 @@ macrocast supports 24 model families organized by category. This guide helps you
 - Key HP: `hidden_layer_sizes`, `alpha` (L2 penalty), `learning_rate_init`
 - Note: convergence warnings are common with small datasets. Not a problem for prediction quality.
 
+## Deep (requires `[deep]` extra)
+
+The three families below require `pip install macrocast[deep]` (adds torch). Without the extra, referencing them raises `ExecutionError` with an install hint at sweep time.
+
+Fixed-config Phase-5 defaults (no HP tuning axis — tuning lands in v1.1):
+
+- lookback = 12
+- hidden_size = 64, n_layers = 2, dropout = 0.1
+- Adam optimizer, learning_rate = 1e-3
+- max_epochs = 50, batch_size = 32, early_stopping_patience = 10
+- validation split = last 20% chronological
+
+### `lstm` — Long Short-Term Memory
+
+- `torch.nn.LSTM` stacked `n_layers`, dropout between layers.
+- Univariate autoreg over the target series; recursive multi-step for `horizon > 1`.
+
+### `gru` — Gated Recurrent Unit
+
+- `torch.nn.GRU`, same shape as LSTM minus the cell state. Cheaper, often comparable.
+
+### `tcn` — Temporal Convolutional Network
+
+- Dilated causal 1-D conv stack (in-tree implementation — no external pytorch-tcn dep). Dilation grows as `2**i` across layers.
+- Often competitive with RNNs on stationary signals and strictly causal.
+
 ## Feature builder compatibility
 
 | Feature builder | Compatible models |

@@ -1,6 +1,6 @@
 name: ci-deep
 
-# Deep learning test matrix — requires [deep] extra. Activated from Phase 5a onward.
+# Deep learning test matrix — requires [deep] extra. Activated from Phase 5 onward.
 # Runs on nightly schedule + PRs labeled 'needs-deep-test'.
 
 on:

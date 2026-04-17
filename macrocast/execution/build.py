@@ -329,6 +329,9 @@ def _get_model_executor(recipe: RecipeSpec):
             "lightgbm": _run_lightgbm_autoreg_executor,
             "catboost": _run_catboost_autoreg_executor,
             "mlp": _run_mlp_autoreg_executor,
+            "lstm": _run_lstm_autoreg_executor,
+            "gru": _run_gru_autoreg_executor,
+            "tcn": _run_tcn_autoreg_executor,
             "componentwise_boosting": _run_componentwise_boosting_autoreg_executor,
             "boosting_ridge": _run_boosting_ridge_autoreg_executor,
             "boosting_lasso": _run_boosting_lasso_autoreg_executor,
@@ -744,6 +747,56 @@ def _run_catboost_autoreg_executor(train: pd.Series, horizon: int, recipe: Recip
 def _run_mlp_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
+
+
+def _run_deep_autoreg_executor(model_family: str, train: pd.Series, horizon: int) -> dict[str, float | int]:
+    from .models.deep._import_guard import require_torch
+    require_torch(model_family)
+    from .models.deep._base import DeepModelConfig
+    from .adapters.sequence import reshape_for_sequence
+
+    cfg = DeepModelConfig(seed=current_seed(model_family=model_family))
+    series = train.to_numpy(dtype=float)
+    if len(series) < cfg.lookback + 1:
+        raise ExecutionError(
+            f"model_family {model_family!r} requires at least lookback+1={cfg.lookback + 1} "
+            f"training observations, got {len(series)}"
+        )
+    X_seq, y_seq = reshape_for_sequence(series=series, lookback=cfg.lookback, horizon=1)
+
+    if model_family == "lstm":
+        from .models.deep.lstm import LSTMModel as ModelCls
+    elif model_family == "gru":
+        from .models.deep.gru import GRUModel as ModelCls
+    elif model_family == "tcn":
+        from .models.deep.tcn import TCNModel as ModelCls
+    else:  # pragma: no cover — dispatch prevents this
+        raise ExecutionError(f"unsupported deep model_family {model_family!r}")
+
+    model = ModelCls(config=cfg).fit(X_seq, y_seq)
+    history = series[-cfg.lookback:].astype(float).copy()
+    y_pred = model.predict_next(history)
+    for _ in range(int(horizon) - 1):
+        history = np.concatenate([history[1:], [y_pred]])
+        y_pred = model.predict_next(history)
+    return {
+        "y_pred": float(y_pred),
+        "selected_lag": cfg.lookback,
+        "selected_bic": math.nan,
+        "tuning_payload": {},
+    }
+
+
+def _run_lstm_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    return _run_deep_autoreg_executor("lstm", train, horizon)
+
+
+def _run_gru_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    return _run_deep_autoreg_executor("gru", train, horizon)
+
+
+def _run_tcn_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
+    return _run_deep_autoreg_executor("tcn", train, horizon)
 
 
 def _fit_raw_panel_model(raw_frame: pd.DataFrame, recipe: RecipeSpec, horizon: int, start_idx: int, origin_idx: int, contract: PreprocessContract, model_family: str, model) -> tuple[np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
