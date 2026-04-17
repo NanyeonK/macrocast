@@ -35,4 +35,7 @@ jobs:
 
       - name: Check seed hardcoding absent (Phase 0)
         run: |
-          ! grep -rE 'random_state=42|random_seed=42' macrocast/execution/ || (echo "Found hardcoded seed — use resolve_seed()" && exit 1)
+          # seed_policy.py documents the anti-pattern in its docstring and
+          # __pycache__ contains compiled bytecode copies of that docstring;
+          # exclude both from the grep.
+          ! grep -rE 'random_state=42|random_seed=42' macrocast/execution/ --include='*.py' --exclude='seed_policy.py' || (echo "Found hardcoded seed — use resolve_seed()" && exit 1)
