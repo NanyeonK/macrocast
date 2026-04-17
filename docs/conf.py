@@ -97,6 +97,8 @@ autodoc_mock_imports = [
     "lime",
     "optuna",
     "openpyxl",
+    "torch",
+    "pytorch_lightning",
 ]
 
 napoleon_google_docstring = True
