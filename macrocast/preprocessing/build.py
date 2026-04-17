@@ -276,9 +276,18 @@ def _has_extra_preprocessing(contract: PreprocessContract) -> bool:
 
 
 def _supported_train_only_extra(contract: PreprocessContract) -> bool:
-    allowed_x_missing = {"none", "em_impute", "mean_impute", "median_impute", "ffill", "interpolate_linear"}
-    allowed_x_outlier = {"none", "winsorize", "iqr_clip", "zscore_clip"}
-    allowed_scaling = {"none", "standard", "robust", "minmax"}
+    allowed_x_missing = {
+        "none", "em_impute", "mean_impute", "median_impute", "ffill", "interpolate_linear",
+        "drop", "drop_rows", "drop_columns", "drop_if_above_threshold", "missing_indicator",
+    }
+    allowed_x_outlier = {
+        "none", "winsorize", "iqr_clip", "zscore_clip",
+        "trim", "mad_clip", "outlier_to_missing",
+    }
+    allowed_scaling = {
+        "none", "standard", "robust", "minmax",
+        "demean_only", "unit_variance_only",
+    }
     allowed_dimred = {"none", "pca", "static_factor"}
     allowed_feature_selection = {"none", "correlation_filter", "lasso_select"}
     if contract.target_missing_policy != "none":
