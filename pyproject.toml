@@ -27,10 +27,7 @@ lightgbm = ["lightgbm>=4.0"]
 catboost = ["catboost>=1.2"]
 excel = ["openpyxl>=3.1"]
 parquet = ["pyarrow>=14.0"]
-deep = [
-    "torch>=2.0",
-    "pytorch-lightning>=2.0",
-]
+deep = ["torch>=2.0"]
 docs = [
     "sphinx>=7.0",
     "sphinx-rtd-theme>=2.0",
@@ -45,3 +42,6 @@ include = ["macrocast*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "deep: tests that require torch (skipped unless [deep] extra is installed)",
+]

@@ -42,14 +42,33 @@ macrocast has several optional dependencies for specific features. Install only 
 | `lightgbm` | LightGBM model family | `pip install lightgbm` |
 | `catboost` | CatBoost model family | `pip install catboost` |
 | `openpyxl` | FRED-SD Excel workbook loading | `pip install openpyxl` |
+| `deep` extra (`torch`) | LSTM / GRU / TCN model families | `pip install macrocast[deep]` |
 
 Install all optional dependencies at once:
 
 ```bash
-pip install optuna shap lime xgboost lightgbm catboost openpyxl
+pip install "macrocast[all]"
 ```
 
 All optional dependencies are import-guarded. The package works without them, but the corresponding features will raise `ImportError` with a clear message when invoked.
+
+### The `[deep]` extra
+
+The `lstm`, `gru`, and `tcn` model families ship behind an opt-in `[deep]` extra so core installs stay free of a torch dependency:
+
+```bash
+pip install macrocast[deep]
+```
+
+Without the extra, referencing `model_family` in {lstm, gru, tcn} at sweep time raises a clear `ExecutionError` with the install hint.
+
+CPU-only torch is sufficient for Phase 5 — GPU / multi-node workflows are a Phase 11 deliverable. For strict reproducibility install the CPU wheel explicitly:
+
+```bash
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+pip install macrocast[deep]
+```
+
 
 ## Core dependencies (automatically installed)
 

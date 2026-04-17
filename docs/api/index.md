@@ -19,7 +19,7 @@ corresponding user-guide chapter for conceptual background.
 
 ## Current operational subset summary
 
-- **Models (24)**: ar, ols, ridge, lasso, elasticnet, bayesianridge, huber, adaptivelasso, svr_linear, svr_rbf, componentwise_boosting, boosting_ridge, boosting_lasso, pcr, pls, factor_augmented_linear, quantile_linear, randomforest, extratrees, gbm, xgboost, lightgbm, catboost, mlp
+- **Models (27)**: ar, ols, ridge, lasso, elasticnet, bayesianridge, huber, adaptivelasso, svr_linear, svr_rbf, componentwise_boosting, boosting_ridge, boosting_lasso, pcr, pls, factor_augmented_linear, quantile_linear, randomforest, extratrees, gbm, xgboost, lightgbm, catboost, mlp, lstm, gru, tcn
 - **Feature builders (5)**: autoreg_lagged_target, raw_feature_panel, raw_X_only, factors_plus_AR, factor_pca
 - **Benchmarks (4)**: historical_mean, zero_change, ar_bic, custom_benchmark
 - **Statistical tests (20)**: dm, dm_hln, dm_modified, cw, mcs, enc_new, mse_f, mse_t, cpa, rossi, rolling_dm, reality_check, spa, mincer_zarnowitz, ljung_box, arch_lm, bias_test, pesaran_timmermann, binomial_hit, diagnostics_full
@@ -40,4 +40,5 @@ compiler
 execution
 start
 sweep_runner
+models/deep
 ```
