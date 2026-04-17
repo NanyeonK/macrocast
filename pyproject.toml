@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "macrocast"
@@ -26,6 +26,12 @@ xgboost = ["xgboost>=2.0"]
 lightgbm = ["lightgbm>=4.0"]
 catboost = ["catboost>=1.2"]
 excel = ["openpyxl>=3.1"]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+    "myst-parser>=2.0",
+    "sphinx-copybutton>=0.5",
+]
 all = ["macrocast[tuning,shap,lime,xgboost,lightgbm,catboost,excel]"]
 dev = ["pytest>=8.0", "macrocast[all]"]
 

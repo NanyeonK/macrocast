@@ -73,4 +73,4 @@ Every execution produces:
 
 ## Provenance
 
-The manifest preserves: preprocessing_contract, tree_context (fixed/sweep/conditional axes), model_spec, benchmark_spec, stat_test_spec, importance_spec, reproducibility_spec, failure_policy_spec, compute_mode_spec, tuning_result.
+The manifest preserves: preprocessing_contract, tree_context (fixed/sweep/conditional axes), model_spec, benchmark_spec, stat_test_spec, importance_spec, reproducibility_spec, failure_policy_spec, compute_mode_spec, tuning_result, git_commit, package_version, and a deterministic config_hash computed from the full recipe configuration.

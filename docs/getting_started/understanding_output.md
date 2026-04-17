@@ -96,7 +96,7 @@ Interpretation: The confidence set contains models that are not significantly wo
 
 Feature importance results. Structure depends on the method:
 
-```json
+```text
 {
   "method": "permutation_importance",
   "model_family": "ridge",

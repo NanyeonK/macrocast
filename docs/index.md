@@ -51,3 +51,16 @@ macrocast has eight layers, executed in canonical order:
 - **125 registry axes**, 717 values, 310 operational (43%)
 
 **See also:** [Getting Started: Quickstart](getting_started/quickstart.md) | [API Reference](api/index.md)
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+
+install
+getting_started/index
+user_guide/index
+examples/index
+api/index
+math/index
+dev/index
+```

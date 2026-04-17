@@ -173,5 +173,5 @@ macrocast supports 24 model families organized by category. This guide helps you
 **See also:**
 - [Mathematical Background: Evaluation Metrics](../math/evaluation_metrics.md) — metric formulas
 - [User Guide: Tuning](tuning.md) — HP optimization for each model
-- [Example: Basic Benchmark](../examples/basic_benchmark.md) — model comparison in action
+- [Example gallery](../examples/index.md) — runnable examples (planned)
 - [API Reference: Execution](../api/execution.md) — executor function signatures

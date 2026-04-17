@@ -60,3 +60,7 @@ REBOOT_IDEA_AND_PLAN_*.md
 catboost_info/
 *.parquet
 runs/
+
+# Sphinx build output
+docs/_build/
+.venv-docs/

@@ -24,3 +24,12 @@ Welcome to macrocast. This guide will take you from zero to running your first f
 - **Execution**: Runs the forecast, writes predictions, metrics, and provenance artifacts
 
 **See also:** [User Guide](../user_guide/index.md) for in-depth documentation of every layer
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+quickstart
+first_study
+understanding_output
+```

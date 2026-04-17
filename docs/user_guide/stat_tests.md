@@ -146,5 +146,5 @@ Forecast errors at horizons h > 1 are serially correlated. Choose an appropriate
 
 **See also:**
 - [Mathematical Background: Statistical Tests](../math/stat_tests.md) — formal definitions and formulas
-- [Example: Statistical Test Gallery](../examples/stat_test_gallery.md) — runnable code
+- [Example gallery](../examples/index.md) — runnable examples (planned)
 - [User Guide: Models](models.md) — model families to compare

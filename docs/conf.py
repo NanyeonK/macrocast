@@ -1,0 +1,120 @@
+"""Sphinx configuration for macrocast documentation."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_repo_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_repo_root))
+
+project = "macrocast"
+author = "NanyeonK"
+copyright = "2026, NanyeonK"
+
+try:
+    from macrocast import __version__ as _pkg_version  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover
+    _pkg_version = "0.1.0"
+
+version = _pkg_version
+release = _pkg_version
+
+extensions = [
+    "myst_parser",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+]
+
+source_suffix = {
+    ".md": "markdown",
+    ".rst": "restructuredtext",
+}
+
+master_doc = "index"
+language = "en"
+
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+]
+
+# -- MyST ---------------------------------------------------------------------
+
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist",
+    "tasklist",
+    "attrs_inline",
+    "substitution",
+    "smartquotes",
+]
+
+myst_heading_anchors = 3
+
+# -- HTML output --------------------------------------------------------------
+
+html_theme = "sphinx_rtd_theme"
+html_title = "macrocast"
+html_static_path: list[str] = []
+
+html_theme_options = {
+    "navigation_depth": 3,
+    "collapse_navigation": False,
+    "sticky_navigation": True,
+    "titles_only": False,
+    "prev_next_buttons_location": "bottom",
+}
+
+html_context = {
+    "display_github": True,
+    "github_user": "NanyeonK",
+    "github_repo": "macrocast",
+    "github_version": "main",
+    "conf_py_path": "/docs/",
+}
+
+# -- Autodoc ------------------------------------------------------------------
+
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": False,
+    "show-inheritance": True,
+    "member-order": "bysource",
+}
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+
+autodoc_mock_imports = [
+    "xgboost",
+    "lightgbm",
+    "catboost",
+    "shap",
+    "lime",
+    "optuna",
+    "openpyxl",
+]
+
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = False
+
+# -- Intersphinx --------------------------------------------------------------
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "statsmodels": ("https://www.statsmodels.org/stable/", None),
+}
+
+# -- Warnings -----------------------------------------------------------------
+
+nitpicky = False
+suppress_warnings = ["myst.xref_missing"]

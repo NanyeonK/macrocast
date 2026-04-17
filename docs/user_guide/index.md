@@ -19,3 +19,20 @@ In-depth documentation for every macrocast layer. Read in order for the full pic
 | 11 | [Importance](importance.md) | 12 feature importance methods — when to use each |
 
 **See also:** [Getting Started](../getting_started/index.md) | [Examples](../examples/index.md) | [API Reference](../api/index.md)
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+stage0
+raw
+recipes
+preprocessing
+models
+registry
+compiler
+execution
+tuning
+stat_tests
+importance
+```

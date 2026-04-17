@@ -8,3 +8,13 @@ Formal definitions for researchers who need to cite or verify macrocast computat
 | [Statistical Tests](stat_tests.md) | DM, Clark-West, MCS, diagnostics — test statistics and distributions |
 | [Importance Methods](importance_methods.md) | SHAP, permutation, PDP/ICE/ALE — algorithms and definitions |
 | [Tuning Algorithms](tuning_algorithms.md) | TPE, genetic algorithm, temporal CV — algorithm descriptions |
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+evaluation_metrics
+stat_tests
+importance_methods
+tuning_algorithms
+```

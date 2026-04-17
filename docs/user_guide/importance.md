@@ -110,5 +110,5 @@ macrocast supports 12 importance methods. This guide helps you choose the right 
 
 **See also:**
 - [Mathematical Background: Importance Methods](../math/importance_methods.md) — formal definitions
-- [Example: Importance Gallery](../examples/importance_gallery.md) — runnable code
+- [Example gallery](../examples/index.md) — runnable examples (planned)
 - [User Guide: Models](models.md) — model compatibility details
