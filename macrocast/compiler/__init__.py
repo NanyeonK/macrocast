@@ -6,6 +6,7 @@ from .build import (
     run_compiled_recipe,
 )
 from .errors import CompileError, CompileValidationError
+from .sweep_plan import SweepPlan, SweepPlanError, SweepVariant, compile_sweep_plan
 from .types import CompileResult, CompiledRecipeSpec
 
 __all__ = [
@@ -18,4 +19,8 @@ __all__ = [
     "CompileValidationError",
     "CompiledRecipeSpec",
     "CompileResult",
+    "SweepPlan",
+    "SweepVariant",
+    "SweepPlanError",
+    "compile_sweep_plan",
 ]

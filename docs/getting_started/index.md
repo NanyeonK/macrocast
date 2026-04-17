@@ -29,6 +29,7 @@ Welcome to macrocast. This guide will take you from zero to running your first f
 :hidden:
 :maxdepth: 1
 
+horse_race_quickstart
 quickstart
 first_study
 understanding_output

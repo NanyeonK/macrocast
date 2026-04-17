@@ -14,11 +14,30 @@ from .compiler import (
     CompiledRecipeSpec,
     compile_recipe_dict,
     compile_recipe_yaml,
+    SweepPlan,
+    SweepPlanError,
+    SweepVariant,
+    compile_sweep_plan,
     compiled_spec_to_dict,
     load_recipe_yaml,
     run_compiled_recipe,
 )
-from .execution import ExecutionError, ExecutionResult, ExecutionSpec, build_execution_spec, execute_recipe
+from .execution import (
+    ExecutionError,
+    ExecutionResult,
+    ExecutionSpec,
+    SweepResult,
+    VariantResult,
+    build_execution_spec,
+    execute_recipe,
+    execute_sweep,
+)
+from .studies import (
+    STUDY_MANIFEST_SCHEMA_VERSION,
+    VariantManifestEntry,
+    build_study_manifest,
+    validate_study_manifest,
+)
 from .preprocessing import (
     DimensionalityReductionPolicy,
     EvaluationScale,
@@ -175,4 +194,15 @@ __all__ = [
     "CompileValidationError",
     "CompiledRecipeSpec",
     "CompileResult",
+    "SweepPlan",
+    "SweepVariant",
+    "SweepPlanError",
+    "SweepResult",
+    "VariantResult",
+    "VariantManifestEntry",
+    "compile_sweep_plan",
+    "execute_sweep",
+    "build_study_manifest",
+    "validate_study_manifest",
+    "STUDY_MANIFEST_SCHEMA_VERSION",
 ]

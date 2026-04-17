@@ -18,7 +18,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='controlled_variation_study',
             description='controlled variation study',
-            status='registry_only',
+            status='operational',
             priority="A",
         ),
         EnumRegistryEntry(

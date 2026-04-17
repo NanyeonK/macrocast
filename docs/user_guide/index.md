@@ -27,6 +27,8 @@ In-depth documentation for every macrocast layer. Read in order for the full pic
 stage0
 raw
 recipes
+sweep_recipes
+controlled_variation_study
 preprocessing
 models
 registry
