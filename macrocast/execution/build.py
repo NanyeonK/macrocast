@@ -1590,6 +1590,81 @@ def _compute_arch_lm_test(predictions: pd.DataFrame, max_lag: int = 5) -> dict[s
     return {"stat_test": "arch_lm", "n": n, "regression_lags": T, "lm_statistic": lm_stat, "p_value": p_value, "significant_5pct": bool(p_value < 0.05)}
 
 
+def _compute_paired_t_on_loss_diff(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 2:
+        raise ExecutionError("paired_t_on_loss_diff requires at least 2 forecast errors")
+    mean = float(loss_diff.mean())
+    variance = float(np.var(loss_diff, ddof=1))
+    if variance <= 0:
+        raise ExecutionError("paired_t_on_loss_diff variance must be positive")
+    t_stat = float(mean / math.sqrt(variance / n))
+    p_value = float(_normal_two_sided_pvalue(t_stat))
+    return {
+        "stat_test": "paired_t_on_loss_diff",
+        "n": n,
+        "mean_loss_diff": mean,
+        "variance": variance,
+        "t_statistic": t_stat,
+        "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_wilcoxon_signed_rank(predictions: pd.DataFrame) -> dict[str, object]:
+    from scipy.stats import wilcoxon
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 2:
+        raise ExecutionError("wilcoxon_signed_rank requires at least 2 forecast errors")
+    if float(np.std(loss_diff)) == 0.0:
+        raise ExecutionError("wilcoxon_signed_rank requires non-zero loss differences")
+    res = wilcoxon(loss_diff, zero_method="wilcox", alternative="two-sided")
+    return {
+        "stat_test": "wilcoxon_signed_rank",
+        "n": n,
+        "mean_loss_diff": float(loss_diff.mean()),
+        "statistic": float(res.statistic),
+        "p_value": float(res.pvalue),
+        "significant_5pct": bool(res.pvalue < 0.05),
+    }
+
+
+def _compute_autocorrelation_of_errors(predictions: pd.DataFrame, max_lag: int = 10) -> dict[str, object]:
+    from scipy.stats import chi2
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    errors = rows["y_true"].to_numpy(dtype=float) - rows["y_pred"].to_numpy(dtype=float)
+    n = int(len(errors))
+    if n < 3:
+        raise ExecutionError("autocorrelation_of_errors requires at least 3 errors")
+    centered = errors - errors.mean()
+    denom = float(np.dot(centered, centered))
+    if denom <= 0:
+        raise ExecutionError("autocorrelation_of_errors requires non-zero error variance")
+    effective_lag = min(int(max_lag), n - 1)
+    q_stat = 0.0
+    rhos: list[float] = []
+    for h in range(1, effective_lag + 1):
+        cov_h = float(np.dot(centered[h:], centered[:-h]))
+        rho_h = cov_h / denom
+        rhos.append(rho_h)
+        q_stat += (rho_h * rho_h) / max(n - h, 1)
+    q_stat *= n * (n + 2)
+    p_value = float(1.0 - chi2.cdf(q_stat, df=effective_lag))
+    return {
+        "stat_test": "autocorrelation_of_errors",
+        "n": n,
+        "max_lag": int(effective_lag),
+        "rho": rhos,
+        "q_statistic": float(q_stat),
+        "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
 def _compute_bias_test(predictions: pd.DataFrame) -> dict[str, object]:
     rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
     errors = rows["y_true"].to_numpy(dtype=float) - rows["y_pred"].to_numpy(dtype=float)
