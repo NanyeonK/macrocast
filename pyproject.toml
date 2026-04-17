@@ -22,7 +22,7 @@ dependencies = [
 tuning = ["optuna>=3.0"]
 shap = ["shap>=0.47"]
 lime = ["lime>=0.2"]
-xgboost = ["xgboost>=3.0,<3.2"]
+xgboost = ["xgboost>=3.0,<3.1"]
 lightgbm = ["lightgbm>=4.0"]
 catboost = ["catboost>=1.2"]
 excel = ["openpyxl>=3.1"]
