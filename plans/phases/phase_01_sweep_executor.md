@@ -7,7 +7,7 @@
 | Depends on | phase-00 |
 | Unlocks | phase-02, phase-03, phase-04, phase-05a, phase-06 |
 | Version tag target | v0.3 |
-| Status | pending |
+| Status | completed (2026-04-17, pending merge + v0.3 tag) |
 
 ## 1. Goal
 
@@ -247,14 +247,14 @@ path:
 
 ## 7. Acceptance Gate
 
-- [ ] Phase 0 gate 선통과
-- [ ] 3-axis horse race recipe (model × scaling × horizon) 공개 API로 실행
-- [ ] study_manifest.json Schema v1 준수 + JSONSchema validation green
-- [ ] 기존 291 test + Phase 0 test + Phase 1 신규 test 전부 green
-- [ ] `controlled_variation_study` registry status = operational
-- [ ] 공개 API export: `compile_sweep_plan`, `execute_sweep`, `SweepPlan`, `SweepVariant`, `SweepResult`
-- [ ] Phase 1 docs 4종 RTD latest build green
-- [ ] `horse_race_quickstart.md` 시나리오 end-to-end 재현 가능
+- [x] Phase 0 gate 선통과 — v0.2 tag (08c0e70)
+- [x] 3-axis horse race recipe (model × scaling × horizon) 공개 API로 실행 — Cartesian expansion verified via test_sweep_plan.py::test_two_axis_sweep_cartesian_count + examples/recipes/horse-race-model.yaml executes 4 variants
+- [x] study_manifest.json Schema v1 준수 + JSONSchema validation green — test_sweep_manifest_schema.py 8/8
+- [x] 기존 291 test + Phase 0 test + Phase 1 신규 test 전부 green — 340/340 passed (0 regressions, +28 new)
+- [x] `controlled_variation_study` registry status = operational — macrocast/registry/stage0/study_mode.py
+- [x] 공개 API export: `compile_sweep_plan`, `execute_sweep`, `SweepPlan`, `SweepVariant`, `SweepResult` — macrocast/__init__.py (plus VariantResult, VariantManifestEntry, build_study_manifest, validate_study_manifest, STUDY_MANIFEST_SCHEMA_VERSION)
+- [x] Phase 1 docs 4종 RTD latest build green — docs/getting_started/horse_race_quickstart.md + docs/user_guide/sweep_recipes.md + docs/user_guide/controlled_variation_study.md + docs/api/sweep_runner.md wired into toctrees (RTD verifies on merge)
+- [x] `horse_race_quickstart.md` 시나리오 end-to-end 재현 가능 — 소개된 API (compile_sweep_plan + execute_sweep) 경로가 test_sweep_runner end-to-end 테스트로 검증됨
 
 ## 8. Docs Deliverables
 
@@ -290,3 +290,4 @@ path:
 ## 12. Revision Log
 
 - 2026-04-17: 초안 (ultraplan v2.2 §Phase 1에서 추출)
+- 2026-04-17: Phase 1 구현 완료 — sweep_plan + sweep_runner + studies.manifest + 28 tests green (340 total); docs/examples 연결; v0.3 tag는 feat/phase-01 브랜치 merge 후
