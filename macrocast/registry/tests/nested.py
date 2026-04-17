@@ -14,7 +14,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(id="enc_new", description="ENC-NEW forecast-encompassing test", status="operational", priority="A"),
         EnumRegistryEntry(id="mse_f",   description="MSE-F nested-model comparison statistic", status="operational", priority="A"),
         EnumRegistryEntry(id="mse_t",   description="MSE-t nested-model comparison statistic", status="operational", priority="A"),
-        EnumRegistryEntry(id="forecast_encompassing_nested", description="Forecast encompassing regression for nested models", status="planned", priority="B"),
+        EnumRegistryEntry(id="forecast_encompassing_nested", description="Forecast encompassing regression for nested models", status="operational", priority="B"),
     ),
     compatible_with={},
     incompatible_with={},

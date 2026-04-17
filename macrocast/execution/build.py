@@ -1715,6 +1715,93 @@ def _compute_autocorrelation_of_errors(predictions: pd.DataFrame, max_lag: int =
     }
 
 
+def _compute_mcnemar_direction(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    yhat = rows["y_pred"].astype(float).to_numpy()
+    yben = rows["benchmark_pred"].astype(float).to_numpy()
+    if len(y) < 3:
+        raise ExecutionError("mcnemar requires at least 3 observations")
+    actual_up = np.sign(np.diff(y)) > 0
+    model_up = np.sign(yhat[1:] - y[:-1]) > 0
+    bench_up = np.sign(yben[1:] - y[:-1]) > 0
+    hit_model = (actual_up == model_up).astype(int)
+    hit_bench = (actual_up == bench_up).astype(int)
+    b = int(((hit_model == 1) & (hit_bench == 0)).sum())
+    c = int(((hit_model == 0) & (hit_bench == 1)).sum())
+    n_off = b + c
+    if n_off == 0:
+        statistic = 0.0
+        p_value = 1.0
+    else:
+        statistic = float((abs(b - c) - 1) ** 2 / n_off) if n_off > 0 else 0.0
+        from scipy.stats import chi2
+        p_value = float(1.0 - chi2.cdf(statistic, df=1))
+    return {
+        "stat_test": "mcnemar",
+        "n": int(len(actual_up)),
+        "model_hit_rate": float(hit_model.mean()),
+        "benchmark_hit_rate": float(hit_bench.mean()),
+        "disagreements_model_better": b,
+        "disagreements_benchmark_better": c,
+        "statistic": statistic,
+        "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_forecast_encompassing_nested(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    f1 = rows["y_pred"].astype(float).to_numpy()
+    f2 = rows["benchmark_pred"].astype(float).to_numpy()
+    n = int(len(y))
+    if n < 3:
+        raise ExecutionError("forecast_encompassing_nested requires at least 3 observations")
+    resid = y - f1
+    delta = f2 - f1
+    denom = float(np.dot(delta - delta.mean(), delta - delta.mean()))
+    if denom <= 0:
+        raise ExecutionError("forecast_encompassing_nested has zero-variance delta")
+    beta = float(np.dot(delta - delta.mean(), resid - resid.mean()) / denom)
+    alpha = float(resid.mean() - beta * delta.mean())
+    yhat = alpha + beta * delta
+    residuals = resid - yhat
+    sigma2 = float(np.dot(residuals, residuals) / max(n - 2, 1))
+    se_beta = float(math.sqrt(sigma2 / denom)) if sigma2 > 0 else float("nan")
+    t_stat = float(beta / se_beta) if se_beta and not math.isnan(se_beta) and se_beta > 0 else float("nan")
+    p_value = float(_normal_two_sided_pvalue(t_stat)) if not math.isnan(t_stat) else float("nan")
+    return {
+        "stat_test": "forecast_encompassing_nested",
+        "n": n,
+        "beta": beta,
+        "se_beta": se_beta,
+        "t_statistic": t_stat,
+        "p_value": p_value,
+        "encompassed_5pct": bool(not math.isnan(p_value) and p_value > 0.05),
+    }
+
+
+def _compute_serial_dependence_loss_diff(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 3:
+        raise ExecutionError("serial_dependence_loss_diff requires at least 3 observations")
+    diffs = np.diff(loss_diff)
+    num = float(np.dot(diffs, diffs))
+    den = float(np.dot(loss_diff - loss_diff.mean(), loss_diff - loss_diff.mean()))
+    dw = float(num / den) if den > 0 else float("nan")
+    lag1 = float(1.0 - dw / 2.0) if not math.isnan(dw) else float("nan")
+    return {
+        "stat_test": "serial_dependence_loss_diff",
+        "n": n,
+        "durbin_watson": dw,
+        "lag1_autocorr_estimate": lag1,
+        "flag_serial_dependence": bool(not math.isnan(dw) and (dw < 1.5 or dw > 2.5)),
+    }
+
+
 def _compute_bias_test(predictions: pd.DataFrame) -> dict[str, object]:
     rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
     errors = rows["y_true"].to_numpy(dtype=float) - rows["y_pred"].to_numpy(dtype=float)

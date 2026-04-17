@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='last_available',
             description='last available',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -42,13 +42,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='month_to_quarter_average',
             description='month to quarter average',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='month_to_quarter_last',
             description='month to quarter last',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
