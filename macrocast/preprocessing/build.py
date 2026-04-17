@@ -312,9 +312,9 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
         return False
     if contract.scaling_scope not in {"columnwise", "global_train_only"}:
         return False
-    if contract.additional_preprocessing != "none":
+    if contract.additional_preprocessing not in {"none", "hp_filter"}:
         return False
-    if contract.x_lag_creation != "no_x_lags":
+    if contract.x_lag_creation not in {"no_x_lags", "fixed_x_lags"}:
         return False
     if contract.feature_grouping != "none":
         return False
@@ -452,10 +452,10 @@ def check_preprocess_governance(
         raise PreprocessValidationError("do not co-sweep model and preprocessing in ordinary baseline comparison")
     if contract.scaling_scope in {"datewise_cross_sectional", "groupwise", "categorywise"}:
         raise PreprocessValidationError("current runtime slice does not support non-train global scaling scopes")
-    if contract.additional_preprocessing != "none":
-        raise PreprocessValidationError("current runtime slice does not support additional_preprocessing")
-    if contract.x_lag_creation != "no_x_lags":
-        raise PreprocessValidationError("current runtime slice does not support x_lag_creation beyond no_x_lags")
+    if contract.additional_preprocessing not in {"none", "hp_filter"}:
+        raise PreprocessValidationError("current runtime slice does not support additional_preprocessing beyond none / hp_filter")
+    if contract.x_lag_creation not in {"no_x_lags", "fixed_x_lags"}:
+        raise PreprocessValidationError("current runtime slice does not support x_lag_creation beyond no_x_lags / fixed_x_lags")
     if contract.feature_grouping != "none":
         raise PreprocessValidationError("current runtime slice does not support feature_grouping beyond none")
     if contract.recipe_mode != "fixed_recipe" and not preprocessing_sweep:

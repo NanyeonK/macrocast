@@ -561,6 +561,54 @@ def _apply_outlier_policy(
     raise ExecutionError(f"x_outlier_policy {policy!r} is not executable in current runtime slice")
 
 
+def _apply_additional_preprocessing(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    contract: PreprocessContract,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    policy = contract.additional_preprocessing
+    if policy == "none":
+        return X_train, X_pred
+    if policy == "hp_filter":
+        from statsmodels.tsa.filters.hp_filter import hpfilter
+        def _cycle(col: pd.Series) -> pd.Series:
+            if col.count() < 5:
+                return col
+            try:
+                cycle, _ = hpfilter(col.astype(float).dropna(), lamb=1600)
+                return col.where(col.isna(), cycle.reindex(col.index, method="nearest"))
+            except Exception:
+                return col
+        Xt = X_train.apply(_cycle)
+        Xp = X_pred.apply(_cycle)
+        return Xt, Xp
+    raise ExecutionError(f"additional_preprocessing {policy!r} is not executable in current runtime slice")
+
+
+def _apply_x_lag_creation(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    contract: PreprocessContract,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    policy = contract.x_lag_creation
+    if policy == "no_x_lags":
+        return X_train, X_pred
+    if policy == "fixed_x_lags":
+        lag_orders = (1,)
+        lag_cols_train = []
+        lag_cols_pred = []
+        for col in X_train.columns:
+            for k in lag_orders:
+                lt = X_train[col].shift(k).rename(f"{col}__lag{k}")
+                lp = X_pred[col].shift(k).rename(f"{col}__lag{k}")
+                lag_cols_train.append(lt)
+                lag_cols_pred.append(lp)
+        Xt = pd.concat([X_train] + lag_cols_train, axis=1).fillna(0.0)
+        Xp = pd.concat([X_pred] + lag_cols_pred, axis=1).fillna(0.0)
+        return Xt, Xp
+    raise ExecutionError(f"x_lag_creation {policy!r} is not executable in current runtime slice")
+
+
 def _apply_scaling_policy(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
@@ -646,8 +694,10 @@ def _apply_raw_panel_preprocessing(
         raise ExecutionError("current runtime slice does not support combining dimensionality reduction with feature selection")
     X_train, X_pred = _apply_missing_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_outlier_policy(X_train, X_pred, contract)
+    X_train, X_pred = _apply_additional_preprocessing(X_train, X_pred, contract)
     X_train, X_pred = _apply_scaling_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_feature_selection(X_train, y_train, X_pred, contract)
+    X_train, X_pred = _apply_x_lag_creation(X_train, X_pred, contract)
     return _apply_dimensionality_reduction(X_train, X_pred, contract)
 
 
