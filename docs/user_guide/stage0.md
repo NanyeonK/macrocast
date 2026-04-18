@@ -183,6 +183,109 @@ In the current v1 skeleton, it rejects single-run execution if no model family h
 
 These helpers support recipe serialization and config I/O.
 
+## Value catalogs for Stage 0 axes
+
+Stage 0 pins seven enum catalogs whose values recur in every recipe. The dataclasses on this page accept only the `operational` values from these catalogs — `registry_only` and `future` values pass registry validation but are not wired to runtime behaviour in v1.
+
+### `study_mode`
+
+The top-level research identity of the study. `study_mode` selects which execution route the compiler produces.
+
+| Value | Status | When to use |
+|---|---|---|
+| `single_path_benchmark_study` | operational | Default. One recipe produces one evaluation path — the core macrocast horse-race against a baseline. Executes via `execute_recipe()`. |
+| `controlled_variation_study` | operational | One or more axes are explicitly swept; the rest stays identical. Executes via `execute_sweep()`. |
+| `orchestrated_bundle_study` | operational (wrapper-route) | Multiple recipes bundled by an external orchestrator. Compiler emits a `wrapper_handoff` payload instead of a directly executable plan. |
+| `replication_override_study` | operational (wrapper-route) | Replication of a prior recipe with locked overrides. Same wrapper-handoff semantics; runs via `execute_replication()`. |
+
+The two wrapper-route modes compile to `representable_but_not_executable` for a direct `execute_recipe()` call. They are consumed through the sweep runner, `execute_replication()`, or Phase 8's `PaperReadyBundle`.
+
+### `experiment_unit`
+
+The per-recipe execution shape. Complements `study_mode` by stating how many targets and models the recipe is about.
+
+| Value | Status | When to use |
+|---|---|---|
+| `single_target_single_model` | operational | Default. One target, one model — the smallest executable unit. |
+| `single_target_model_grid` | operational | One target, multiple candidate models compared via the model-family axis. |
+| `single_target_full_sweep` | operational (wrapper-route) | One target, full Cartesian sweep across user-chosen axes. Wrapper-managed. |
+| `multi_target_shared_design` | operational (wrapper-route) | Multiple targets share the identical design; wrapper fan-out executes them. |
+| `replication_recipe` | operational | Replication unit paired with `replication_override_study`. |
+| `benchmark_suite` | operational (wrapper-route) | Collection of benchmarks evaluated against the user's proposed method. Wrapper-managed. |
+| `ablation_study` | operational | Ablation unit paired with `controlled_variation_study`; runs via `execute_ablation()`. |
+| `multi_target_separate_runs` | registry_only (v1.1) | Multi-target as independent runs; wrapper implementation pending. |
+| `multi_output_joint_model` | registry_only (v1.1) | Joint multi-output model; requires joint predictor adapters. |
+| `hierarchical_forecasting_run` | future (v2) | Hierarchical forecasting reconciliation. |
+| `panel_forecasting_run` | future (v2) | Panel-data forecasting. |
+| `state_space_run` | future (v2) | Single-run state-space forecasting. |
+
+### `failure_policy`
+
+Sweep-cell failure semantics.
+
+| Value | Status | Behaviour |
+|---|---|---|
+| `fail_fast` | operational | Abort entire sweep on first failed cell. |
+| `hard_error` | operational | Equivalent strict fail-fast with explicit `HardError`. |
+| `skip_failed_cell` | operational | Skip the failed cell, continue remaining cells, emit warning log. |
+| `skip_failed_model` | operational | Skip the failed model inside a model-family variant. |
+| `save_partial_results` | operational | Persist partial state of the failed cell before skipping. |
+| `retry_then_skip` | registry_only (v1.1) | Not wired in v1 runtime. |
+| `fallback_to_default_hp` | registry_only (v1.1) | HP fallback not wired. |
+| `warn_only` | registry_only (v1.1) | Warn-only path not wired. |
+
+### `reproducibility_mode`
+
+Deterministic replay contract. See `docs/dev/reproducibility_policy.md` and `macrocast.execution.seed_policy`.
+
+| Value | Status | Contract |
+|---|---|---|
+| `strict_reproducible` | operational | Byte-identical reruns required; pins seeds, cache keys, library versions. |
+| `seeded_reproducible` | operational | Default. Seeds fixed; small numerical drift across library versions accepted. |
+| `best_effort` | operational | No seed pinning; suited to ad-hoc exploration. |
+| `exploratory` | registry_only (v1.1) | Exploratory path without reproducibility guarantee; not wired. |
+
+### `compute_mode`
+
+Parallelism unit.
+
+| Value | Status | Semantics |
+|---|---|---|
+| `serial` | operational | Single-threaded. Default. |
+| `parallel_by_model` | operational | Parallel across model-family variants. |
+| `parallel_by_horizon` | operational | Parallel across forecast horizons. |
+| `parallel_by_oos_date` | registry_only (v1.1) | Not wired. |
+| `parallel_by_trial` | registry_only (v1.1) | Not wired; awaits integration with `execution_backend.joblib`. |
+| `distributed_cluster` | registry_only (v1.1) | Distributed execution not wired. |
+
+### `axis_type`
+
+How an axis participates in the study expansion.
+
+| Value | Status | Role |
+|---|---|---|
+| `fixed` | operational | Held constant across the study. |
+| `sweep` | operational | Expanded into multiple variants. |
+| `nested_sweep` | operational | Participates in nested-sweep plans. |
+| `conditional` | operational | Activated conditionally on other axes. |
+| `derived` | operational | Computed from other recipe state. |
+| `eval_only` | registry_only (v1.1) | Affects evaluation/reporting only; not yet routed. |
+| `report_only` | registry_only (v1.1) | Reporting side; not yet routed. |
+
+### `registry_type`
+
+Catalog kind for a given axis.
+
+| Value | Status | Kind |
+|---|---|---|
+| `enum_registry` | operational | Finite enumerated catalog — most axes. |
+| `numeric_registry` | operational | Numeric range/grid. |
+| `callable_registry` | operational | Callable-signature validated catalog. |
+| `custom_plugin` | operational | Plugin-backed catalog. |
+| `user_defined_yaml` | registry_only (v1.1) | User-supplied YAML schema adapter; not yet wired. |
+
+Most users set only `study_mode`, `experiment_unit`, and optionally `compute_mode` / `failure_policy` / `reproducibility_mode` in their recipe. `axis_type` and `registry_type` are consumed by the registry infrastructure and rarely set by users directly.
+
 ## Derived semantics
 
 Two important fields are derived rather than hand-authored in ordinary use.
