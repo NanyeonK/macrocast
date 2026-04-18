@@ -15,7 +15,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(id="rolling_dm", description="Rolling-window Diebold-Mariano summary", status="operational", priority="A"),
         EnumRegistryEntry(id="fluctuation_test",   description="Giacomini-Rossi fluctuation test", status="planned", priority="B"),
         EnumRegistryEntry(id="chow_break_forecast", description="Chow-style structural break test on forecast errors", status="planned", priority="B"),
-        EnumRegistryEntry(id="cusum_on_loss",       description="CUSUM-of-loss-differential stability test", status="planned", priority="B"),
+        EnumRegistryEntry(id="cusum_on_loss",       description="CUSUM-of-loss-differential stability test", status="operational", priority="B"),
     ),
     compatible_with={},
     incompatible_with={},

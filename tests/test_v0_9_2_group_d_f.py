@@ -102,8 +102,56 @@ def test_serial_dependence_loss_diff_returns_expected_keys():
         assert k in r
 
 
+def test_stepwise_mcs_returns_expected_keys():
+    out = dispatch_stat_tests(
+        predictions=_preds(), stat_test_spec={"multiple_model": "stepwise_mcs"},
+        dependence_correction="none",
+    )
+    r = out["multiple_model"]
+    # Falls back to plain mcs when only single model vs benchmark
+    assert r["stat_test"] in {"stepwise_mcs", "mcs"}
+    assert "n" in r
+
+
+def test_bootstrap_best_model_returns_expected_keys():
+    out = dispatch_stat_tests(
+        predictions=_preds(), stat_test_spec={"multiple_model": "bootstrap_best_model"},
+        dependence_correction="none",
+    )
+    r = out["multiple_model"]
+    assert r["stat_test"] == "bootstrap_best_model"
+    assert 0.0 <= r["freq_model_beats_benchmark"] <= 1.0
+    assert r["n_bootstrap"] > 0
+
+
+def test_roc_comparison_returns_expected_keys():
+    out = dispatch_stat_tests(
+        predictions=_preds(), stat_test_spec={"direction": "roc_comparison"},
+        dependence_correction="none",
+    )
+    r = out["direction"]
+    assert r["stat_test"] == "roc_comparison"
+    for k in ("n", "auc_model", "auc_benchmark", "auc_delta"):
+        assert k in r
+
+
+def test_cusum_on_loss_returns_expected_keys():
+    out = dispatch_stat_tests(
+        predictions=_preds(), stat_test_spec={"cpa_instability": "cusum_on_loss"},
+        dependence_correction="none",
+    )
+    r = out["cpa_instability"]
+    assert r["stat_test"] == "cusum_on_loss"
+    for k in ("n", "max_abs_normalized_cusum", "critical_5pct", "flag_instability"):
+        assert k in r
+
+
 def test_new_stat_tests_registry_operational():
     defs = _discover_axis_definitions()
     assert next(e.status for e in defs["direction"].entries if e.id == "mcnemar") == "operational"
     assert next(e.status for e in defs["nested"].entries if e.id == "forecast_encompassing_nested") == "operational"
     assert next(e.status for e in defs["residual_diagnostics"].entries if e.id == "serial_dependence_loss_diff") == "operational"
+    assert next(e.status for e in defs["multiple_model"].entries if e.id == "stepwise_mcs") == "operational"
+    assert next(e.status for e in defs["multiple_model"].entries if e.id == "bootstrap_best_model") == "operational"
+    assert next(e.status for e in defs["direction"].entries if e.id == "roc_comparison") == "operational"
+    assert next(e.status for e in defs["cpa_instability"].entries if e.id == "cusum_on_loss") == "operational"

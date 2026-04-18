@@ -1640,6 +1640,132 @@ def _compute_arch_lm_test(predictions: pd.DataFrame, max_lag: int = 5) -> dict[s
     return {"stat_test": "arch_lm", "n": n, "regression_lags": T, "lm_statistic": lm_stat, "p_value": p_value, "significant_5pct": bool(p_value < 0.05)}
 
 
+def _compute_stepwise_mcs(predictions: pd.DataFrame, alpha: float = 0.10) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    if "model_name" not in rows.columns:
+        # Fall back to single-model compare vs benchmark when no panel of models
+        return _compute_mcs_test(predictions, block_bootstrap=False, alpha=alpha)
+    pivot = rows.pivot_table(index=["target_date"], columns="model_name", values="squared_error", aggfunc="mean").dropna()
+    if pivot.shape[1] < 2:
+        raise ExecutionError("stepwise_mcs requires at least 2 models")
+    survivors = list(pivot.columns)
+    eliminated: list[str] = []
+    while len(survivors) > 1:
+        sub = pivot[survivors]
+        mean_loss = sub.mean()
+        worst = mean_loss.idxmax()
+        other_mean = sub.drop(columns=[worst]).mean(axis=1)
+        diff = sub[worst].to_numpy() - other_mean.to_numpy()
+        n = len(diff)
+        var = float(np.var(diff, ddof=1))
+        if var <= 0 or n < 2:
+            break
+        stat = float(diff.mean() / math.sqrt(var / n))
+        p_value = float(_normal_two_sided_pvalue(stat))
+        if p_value < alpha:
+            eliminated.append(worst)
+            survivors.remove(worst)
+        else:
+            break
+    return {
+        "stat_test": "stepwise_mcs",
+        "alpha": alpha,
+        "n_obs": int(pivot.shape[0]),
+        "initial_models": int(pivot.shape[1]),
+        "surviving_models": survivors,
+        "eliminated_models": eliminated,
+    }
+
+
+def _compute_bootstrap_best_model(predictions: pd.DataFrame, n_bootstrap: int = 500, seed: int = 0) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    if "model_name" not in rows.columns:
+        # Compare model vs benchmark via bootstrap of loss_diff sign
+        loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+        n = int(len(loss_diff))
+        if n < 3:
+            raise ExecutionError("bootstrap_best_model requires at least 3 obs")
+        rng = np.random.default_rng(seed)
+        wins = 0
+        for _ in range(n_bootstrap):
+            sample = rng.choice(loss_diff, size=n, replace=True)
+            if sample.mean() > 0:
+                wins += 1
+        freq_model_best = wins / n_bootstrap
+        return {
+            "stat_test": "bootstrap_best_model",
+            "n_bootstrap": int(n_bootstrap),
+            "freq_model_beats_benchmark": float(freq_model_best),
+            "model_declared_best": bool(freq_model_best >= 0.5),
+        }
+    pivot = rows.pivot_table(index=["target_date"], columns="model_name", values="squared_error", aggfunc="mean").dropna()
+    arr = pivot.to_numpy()
+    n, m = arr.shape
+    rng = np.random.default_rng(seed)
+    win_counts = np.zeros(m, dtype=int)
+    for _ in range(n_bootstrap):
+        idx = rng.integers(0, n, size=n)
+        mean_loss = arr[idx].mean(axis=0)
+        win_counts[int(np.argmin(mean_loss))] += 1
+    freqs = (win_counts / n_bootstrap).tolist()
+    best_idx = int(np.argmax(win_counts))
+    return {
+        "stat_test": "bootstrap_best_model",
+        "n_bootstrap": int(n_bootstrap),
+        "models": list(pivot.columns),
+        "freq_best": freqs,
+        "declared_best": str(pivot.columns[best_idx]),
+    }
+
+
+def _compute_roc_comparison(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    yhat = rows["y_pred"].astype(float).to_numpy()
+    yben = rows["benchmark_pred"].astype(float).to_numpy()
+    if len(y) < 3:
+        raise ExecutionError("roc_comparison requires at least 3 observations")
+    actual_up = (np.diff(y) > 0).astype(int)
+    model_score = yhat[1:] - y[:-1]
+    bench_score = yben[1:] - y[:-1]
+    try:
+        from sklearn.metrics import roc_auc_score
+        auc_model = float(roc_auc_score(actual_up, model_score)) if actual_up.std() > 0 else float("nan")
+        auc_bench = float(roc_auc_score(actual_up, bench_score)) if actual_up.std() > 0 else float("nan")
+    except Exception:
+        auc_model = auc_bench = float("nan")
+    return {
+        "stat_test": "roc_comparison",
+        "n": int(len(actual_up)),
+        "auc_model": auc_model,
+        "auc_benchmark": auc_bench,
+        "auc_delta": float(auc_model - auc_bench) if not (math.isnan(auc_model) or math.isnan(auc_bench)) else float("nan"),
+    }
+
+
+def _compute_cusum_on_loss(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 3:
+        raise ExecutionError("cusum_on_loss requires at least 3 observations")
+    centered = loss_diff - loss_diff.mean()
+    cusum = np.cumsum(centered)
+    sigma = float(np.std(loss_diff, ddof=1))
+    if sigma <= 0:
+        raise ExecutionError("cusum_on_loss requires non-zero loss-diff variance")
+    normalized = cusum / (sigma * math.sqrt(n))
+    max_abs = float(np.max(np.abs(normalized)))
+    # 5% two-sided critical value for Brownian bridge supremum ≈ 1.358
+    return {
+        "stat_test": "cusum_on_loss",
+        "n": n,
+        "max_abs_normalized_cusum": max_abs,
+        "critical_5pct": 1.358,
+        "flag_instability": bool(max_abs > 1.358),
+    }
+
+
 def _compute_paired_t_on_loss_diff(predictions: pd.DataFrame) -> dict[str, object]:
     rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
     loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)

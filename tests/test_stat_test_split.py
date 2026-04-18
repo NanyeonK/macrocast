@@ -20,10 +20,10 @@ NEW_AXES = (
 OPERATIONAL_VALUES = {
     "equal_predictive": {"none", "dm", "dm_hln", "dm_modified", "paired_t_on_loss_diff", "wilcoxon_signed_rank"},
     "nested": {"none", "cw", "enc_new", "mse_f", "mse_t", "forecast_encompassing_nested"},
-    "cpa_instability": {"none", "cpa", "rossi", "rolling_dm"},
-    "multiple_model": {"none", "reality_check", "spa", "mcs"},
+    "cpa_instability": {"none", "cpa", "rossi", "rolling_dm", "cusum_on_loss"},
+    "multiple_model": {"none", "reality_check", "spa", "mcs", "stepwise_mcs", "bootstrap_best_model"},
     "density_interval": {"none"},
-    "direction": {"none", "pesaran_timmermann", "binomial_hit", "mcnemar"},
+    "direction": {"none", "pesaran_timmermann", "binomial_hit", "mcnemar", "roc_comparison"},
     "residual_diagnostics": {
         "none", "mincer_zarnowitz", "ljung_box", "arch_lm", "bias_test", "diagnostics_full",
         "autocorrelation_of_errors", "serial_dependence_loss_diff",
@@ -34,8 +34,8 @@ OPERATIONAL_VALUES = {
 PLANNED_PRESENT = {
     "equal_predictive": set(),
     "nested": set(),
-    "cpa_instability": {"fluctuation_test", "chow_break_forecast", "cusum_on_loss"},
-    "multiple_model": {"stepwise_mcs", "bootstrap_best_model"},
+    "cpa_instability": {"fluctuation_test", "chow_break_forecast"},
+    "multiple_model": set(),
     "density_interval": {
         "PIT_uniformity",
         "berkowitz",
@@ -45,7 +45,7 @@ PLANNED_PRESENT = {
         "christoffersen_conditional",
         "interval_coverage",
     },
-    "direction": {"roc_comparison"},
+    "direction": set(),
     "residual_diagnostics": set(),
     "test_scope": set(),
 }
