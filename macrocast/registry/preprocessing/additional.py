@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='hp_filter',
             description='hp filter',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

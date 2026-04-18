@@ -18,7 +18,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='factor_plus_lags',
             description='factor plus lags',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='selected_sparse_X',
             description='selected sparse X',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fixed_start',
             description='fixed start',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='post_warmup_start',
             description='post warmup start',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

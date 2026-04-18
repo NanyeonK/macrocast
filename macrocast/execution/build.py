@@ -386,6 +386,54 @@ def _get_benchmark_executor(recipe: RecipeSpec):
     raise ExecutionError(f"benchmark_family {benchmark_family!r} is representable but not executable in current runtime slice")
 
 
+def _apply_target_transform_and_normalization(series: pd.Series, contract: PreprocessContract | None) -> pd.Series:
+    """Forward-only y-side transform + normalization.
+
+    Applied immediately after _get_target_series returns. Metrics are computed
+    on the transformed scale — inverse-transform back to raw units is a v1.0+
+    deliverable (tracked in plans/v0_9_2_planned_completion_plan.md). Users who
+    need raw-scale metrics should stay on target_transform=level +
+    target_normalization=none.
+    """
+    if contract is None:
+        return series
+    s = series.astype(float).copy()
+
+    transform = getattr(contract, "target_transform", "level")
+    if transform == "difference":
+        s = s.diff().dropna()
+    elif transform == "log":
+        if (s <= 0).any():
+            raise ExecutionError("target_transform=log requires strictly positive target series")
+        s = np.log(s)
+    elif transform == "log_difference":
+        if (s <= 0).any():
+            raise ExecutionError("target_transform=log_difference requires strictly positive target series")
+        s = np.log(s).diff().dropna()
+    elif transform == "growth_rate":
+        s = (s / s.shift(1) - 1.0).dropna()
+    elif transform not in ("level", None):
+        raise ExecutionError(f"target_transform {transform!r} not executable in current runtime slice")
+
+    normalization = getattr(contract, "target_normalization", "none")
+    if normalization == "zscore_train_only":
+        mu = float(s.mean())
+        sigma = float(s.std(ddof=0))
+        if sigma <= 0:
+            return s - mu
+        s = (s - mu) / sigma
+    elif normalization == "robust_zscore":
+        med = float(s.median())
+        mad = float((s - med).abs().median())
+        if mad <= 0:
+            return s - med
+        s = (s - med) / (1.4826 * mad)
+    elif normalization not in ("none", None):
+        raise ExecutionError(f"target_normalization {normalization!r} not executable in current runtime slice")
+
+    return s
+
+
 def _get_target_series(frame: pd.DataFrame, target: str, minimum_train_size: int) -> pd.Series:
     if target not in frame.columns:
         raise ExecutionError(f"target {target!r} not found in raw dataset columns")
@@ -561,6 +609,54 @@ def _apply_outlier_policy(
     raise ExecutionError(f"x_outlier_policy {policy!r} is not executable in current runtime slice")
 
 
+def _apply_additional_preprocessing(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    contract: PreprocessContract,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    policy = contract.additional_preprocessing
+    if policy == "none":
+        return X_train, X_pred
+    if policy == "hp_filter":
+        from statsmodels.tsa.filters.hp_filter import hpfilter
+        def _cycle(col: pd.Series) -> pd.Series:
+            if col.count() < 5:
+                return col
+            try:
+                cycle, _ = hpfilter(col.astype(float).dropna(), lamb=1600)
+                return col.where(col.isna(), cycle.reindex(col.index, method="nearest"))
+            except Exception:
+                return col
+        Xt = X_train.apply(_cycle)
+        Xp = X_pred.apply(_cycle)
+        return Xt, Xp
+    raise ExecutionError(f"additional_preprocessing {policy!r} is not executable in current runtime slice")
+
+
+def _apply_x_lag_creation(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    contract: PreprocessContract,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    policy = contract.x_lag_creation
+    if policy == "no_x_lags":
+        return X_train, X_pred
+    if policy == "fixed_x_lags":
+        lag_orders = (1,)
+        lag_cols_train = []
+        lag_cols_pred = []
+        for col in X_train.columns:
+            for k in lag_orders:
+                lt = X_train[col].shift(k).rename(f"{col}__lag{k}")
+                lp = X_pred[col].shift(k).rename(f"{col}__lag{k}")
+                lag_cols_train.append(lt)
+                lag_cols_pred.append(lp)
+        Xt = pd.concat([X_train] + lag_cols_train, axis=1).fillna(0.0)
+        Xp = pd.concat([X_pred] + lag_cols_pred, axis=1).fillna(0.0)
+        return Xt, Xp
+    raise ExecutionError(f"x_lag_creation {policy!r} is not executable in current runtime slice")
+
+
 def _apply_scaling_policy(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
@@ -646,8 +742,10 @@ def _apply_raw_panel_preprocessing(
         raise ExecutionError("current runtime slice does not support combining dimensionality reduction with feature selection")
     X_train, X_pred = _apply_missing_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_outlier_policy(X_train, X_pred, contract)
+    X_train, X_pred = _apply_additional_preprocessing(X_train, X_pred, contract)
     X_train, X_pred = _apply_scaling_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_feature_selection(X_train, y_train, X_pred, contract)
+    X_train, X_pred = _apply_x_lag_creation(X_train, X_pred, contract)
     return _apply_dimensionality_reduction(X_train, X_pred, contract)
 
 
@@ -1590,6 +1688,380 @@ def _compute_arch_lm_test(predictions: pd.DataFrame, max_lag: int = 5) -> dict[s
     return {"stat_test": "arch_lm", "n": n, "regression_lags": T, "lm_statistic": lm_stat, "p_value": p_value, "significant_5pct": bool(p_value < 0.05)}
 
 
+def _compute_density_interval_helpers(predictions: pd.DataFrame, alpha: float = 0.10):
+    """Shared helper for density_interval tests.
+
+    Builds a simple Gaussian predictive-density assumption from point forecasts
+    + training-window residual variance. Returns the PIT series, the hit
+    series (|y_true - y_pred| <= z_{1-alpha/2} * sigma), and the estimated
+    sigma. Without a full conformal / quantile-forecast pipeline (v1.0+
+    deliverable), this is the v0.9.2 baseline.
+    """
+    from scipy.stats import norm
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    yhat = rows["y_pred"].astype(float).to_numpy()
+    n = int(len(y))
+    if n < 5:
+        raise ExecutionError("density_interval tests require at least 5 observations")
+    resid = y - yhat
+    sigma = float(np.std(resid, ddof=1)) if n > 1 else 0.0
+    if sigma <= 0:
+        sigma = 1e-8
+    pit = norm.cdf((y - yhat) / sigma)
+    z = float(norm.ppf(1 - alpha / 2))
+    hits = (np.abs(y - yhat) <= z * sigma).astype(int)
+    return pit, hits, sigma, alpha
+
+
+def _compute_pit_uniformity(predictions: pd.DataFrame) -> dict[str, object]:
+    from scipy.stats import kstest
+    pit, _hits, sigma, _alpha = _compute_density_interval_helpers(predictions)
+    res = kstest(pit, "uniform")
+    return {
+        "stat_test": "PIT_uniformity",
+        "n": int(len(pit)),
+        "ks_statistic": float(res.statistic),
+        "p_value": float(res.pvalue),
+        "significant_5pct": bool(res.pvalue < 0.05),
+        "sigma_estimate": sigma,
+    }
+
+
+def _compute_berkowitz(predictions: pd.DataFrame) -> dict[str, object]:
+    from scipy.stats import norm, chi2
+    pit, _hits, sigma, _alpha = _compute_density_interval_helpers(predictions)
+    # Clip PIT to avoid infinities
+    pit_clipped = np.clip(pit, 1e-6, 1 - 1e-6)
+    z = norm.ppf(pit_clipped)
+    n = int(len(z))
+    mu = float(z.mean())
+    var = float(np.var(z, ddof=1))
+    # Likelihood ratio for N(0,1)
+    ll_unrestricted = -0.5 * n * (math.log(2 * math.pi * var) + 1.0)
+    centered = z - mu
+    ll_n01 = -0.5 * n * math.log(2 * math.pi) - 0.5 * float(np.dot(z, z))
+    lr_stat = float(-2.0 * (ll_n01 - ll_unrestricted))
+    p_value = float(1.0 - chi2.cdf(lr_stat, df=2))
+    return {
+        "stat_test": "berkowitz",
+        "n": n,
+        "z_mean": mu,
+        "z_variance": var,
+        "lr_statistic": lr_stat,
+        "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_kupiec(predictions: pd.DataFrame, alpha: float = 0.10) -> dict[str, object]:
+    from scipy.stats import chi2
+    _pit, hits, _sigma, _alpha = _compute_density_interval_helpers(predictions, alpha=alpha)
+    n = int(len(hits))
+    n_hit = int(hits.sum())
+    nominal = 1.0 - alpha
+    empirical = n_hit / n if n > 0 else 0.0
+    if n_hit in (0, n):
+        lr_stat = float("nan"); p_value = float("nan")
+    else:
+        ll_h0 = n_hit * math.log(nominal) + (n - n_hit) * math.log(1.0 - nominal)
+        ll_h1 = n_hit * math.log(empirical) + (n - n_hit) * math.log(1.0 - empirical)
+        lr_stat = float(-2.0 * (ll_h0 - ll_h1))
+        p_value = float(1.0 - chi2.cdf(lr_stat, df=1))
+    return {
+        "stat_test": "kupiec",
+        "n": n, "n_hits": n_hit,
+        "nominal_coverage": nominal, "empirical_coverage": float(empirical),
+        "lr_statistic": lr_stat, "p_value": p_value,
+        "significant_5pct": bool(not math.isnan(p_value) and p_value < 0.05),
+    }
+
+
+def _compute_christoffersen_unconditional(predictions: pd.DataFrame) -> dict[str, object]:
+    out = _compute_kupiec(predictions)
+    out["stat_test"] = "christoffersen_unconditional"
+    return out
+
+
+def _compute_christoffersen_independence(predictions: pd.DataFrame, alpha: float = 0.10) -> dict[str, object]:
+    from scipy.stats import chi2
+    _pit, hits, _sigma, _alpha = _compute_density_interval_helpers(predictions, alpha=alpha)
+    n = int(len(hits))
+    # Transition counts
+    n00 = n01 = n10 = n11 = 0
+    for i in range(1, n):
+        prev, curr = int(hits[i - 1]), int(hits[i])
+        if prev == 0 and curr == 0: n00 += 1
+        elif prev == 0 and curr == 1: n01 += 1
+        elif prev == 1 and curr == 0: n10 += 1
+        else: n11 += 1
+    if (n00 + n01) == 0 or (n10 + n11) == 0 or (n01 + n11) == 0:
+        return {
+            "stat_test": "christoffersen_independence",
+            "n": n, "transitions": [n00, n01, n10, n11],
+            "lr_statistic": float("nan"), "p_value": float("nan"),
+            "significant_5pct": False,
+        }
+    p01 = n01 / (n00 + n01)
+    p11 = n11 / (n10 + n11)
+    p = (n01 + n11) / (n00 + n01 + n10 + n11)
+    if p <= 0 or p >= 1 or p01 in (0, 1) or p11 in (0, 1):
+        return {
+            "stat_test": "christoffersen_independence",
+            "n": n, "transitions": [n00, n01, n10, n11],
+            "lr_statistic": float("nan"), "p_value": float("nan"),
+            "significant_5pct": False,
+        }
+    ll_ind = (n00 + n10) * math.log(1 - p) + (n01 + n11) * math.log(p)
+    ll_full = (n00 * math.log(1 - p01) + n01 * math.log(p01) + n10 * math.log(1 - p11) + n11 * math.log(p11))
+    lr_stat = float(-2.0 * (ll_ind - ll_full))
+    p_value = float(1.0 - chi2.cdf(lr_stat, df=1))
+    return {
+        "stat_test": "christoffersen_independence",
+        "n": n, "transitions": [n00, n01, n10, n11],
+        "lr_statistic": lr_stat, "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_christoffersen_conditional(predictions: pd.DataFrame) -> dict[str, object]:
+    uc = _compute_kupiec(predictions)
+    ind = _compute_christoffersen_independence(predictions)
+    lr_uc = uc.get("lr_statistic")
+    lr_ind = ind.get("lr_statistic")
+    if isinstance(lr_uc, float) and isinstance(lr_ind, float) and not (math.isnan(lr_uc) or math.isnan(lr_ind)):
+        from scipy.stats import chi2
+        lr_cc = lr_uc + lr_ind
+        p_value = float(1.0 - chi2.cdf(lr_cc, df=2))
+    else:
+        lr_cc = float("nan"); p_value = float("nan")
+    return {
+        "stat_test": "christoffersen_conditional",
+        "lr_statistic": lr_cc, "p_value": p_value,
+        "unconditional_lr": uc.get("lr_statistic"),
+        "independence_lr": ind.get("lr_statistic"),
+        "significant_5pct": bool(not math.isnan(p_value) and p_value < 0.05),
+    }
+
+
+def _compute_interval_coverage(predictions: pd.DataFrame, alpha: float = 0.10) -> dict[str, object]:
+    _pit, hits, _sigma, _alpha = _compute_density_interval_helpers(predictions, alpha=alpha)
+    n = int(len(hits))
+    n_hit = int(hits.sum())
+    empirical = n_hit / n if n > 0 else 0.0
+    return {
+        "stat_test": "interval_coverage",
+        "n": n, "n_hits": n_hit,
+        "nominal_coverage": 1.0 - alpha,
+        "empirical_coverage": float(empirical),
+        "coverage_gap": float(empirical - (1.0 - alpha)),
+    }
+
+
+def _compute_fluctuation_test(predictions: pd.DataFrame, window_fraction: float = 0.30) -> dict[str, object]:
+    """Giacomini-Rossi (2009) fluctuation test.
+
+    Rolling DM statistic over a centred window; the test statistic is the max
+    of |DM_rolling(t)| across the sample. Rejection = at least one window
+    shows statistically significant predictive-accuracy differential.
+    Approximate 5%% critical value from GR Table I at m=0.30 is ~3.012.
+    """
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 10:
+        raise ExecutionError("fluctuation_test requires at least 10 observations")
+    m = max(5, int(window_fraction * n))
+    if m * 2 > n:
+        m = max(5, n // 3)
+    dm_series = []
+    for i in range(m, n - m + 1):
+        window = loss_diff[i - m : i + m]
+        mean = float(window.mean())
+        var = float(np.var(window, ddof=1))
+        if var <= 0:
+            dm_series.append(0.0)
+            continue
+        dm_series.append(float(mean / math.sqrt(var / len(window))))
+    if not dm_series:
+        raise ExecutionError("fluctuation_test produced no rolling windows")
+    dm_array = np.asarray(dm_series)
+    max_abs = float(np.max(np.abs(dm_array)))
+    critical_5pct = 3.012
+    return {
+        "stat_test": "fluctuation_test",
+        "n": n,
+        "window_size": int(m),
+        "n_rolling_windows": int(len(dm_series)),
+        "max_abs_dm": max_abs,
+        "critical_5pct": critical_5pct,
+        "significant_5pct": bool(max_abs > critical_5pct),
+    }
+
+
+def _compute_chow_break_forecast(predictions: pd.DataFrame) -> dict[str, object]:
+    """Chow breakpoint test on forecast-loss-differential.
+
+    Splits the sample at the midpoint (structural break candidate), tests
+    whether loss_diff's mean differs across the two halves via Welch's t-test.
+    """
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 6:
+        raise ExecutionError("chow_break_forecast requires at least 6 observations")
+    mid = n // 2
+    part1 = loss_diff[:mid]
+    part2 = loss_diff[mid:]
+    m1, m2 = float(part1.mean()), float(part2.mean())
+    v1 = float(np.var(part1, ddof=1)) if len(part1) > 1 else 0.0
+    v2 = float(np.var(part2, ddof=1)) if len(part2) > 1 else 0.0
+    denom = math.sqrt(v1 / max(len(part1), 1) + v2 / max(len(part2), 1))
+    if denom <= 0:
+        return {
+            "stat_test": "chow_break_forecast",
+            "n": n, "break_index": int(mid),
+            "mean_part1": m1, "mean_part2": m2,
+            "t_statistic": 0.0, "p_value": 1.0,
+            "significant_5pct": False,
+        }
+    t_stat = float((m1 - m2) / denom)
+    p_value = float(_normal_two_sided_pvalue(t_stat))
+    return {
+        "stat_test": "chow_break_forecast",
+        "n": n, "break_index": int(mid),
+        "mean_part1": m1, "mean_part2": m2,
+        "t_statistic": t_stat, "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_stepwise_mcs(predictions: pd.DataFrame, alpha: float = 0.10) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    if "model_name" not in rows.columns:
+        # Fall back to single-model compare vs benchmark when no panel of models
+        return _compute_mcs_test(predictions, block_bootstrap=False, alpha=alpha)
+    pivot = rows.pivot_table(index=["target_date"], columns="model_name", values="squared_error", aggfunc="mean").dropna()
+    if pivot.shape[1] < 2:
+        raise ExecutionError("stepwise_mcs requires at least 2 models")
+    survivors = list(pivot.columns)
+    eliminated: list[str] = []
+    while len(survivors) > 1:
+        sub = pivot[survivors]
+        mean_loss = sub.mean()
+        worst = mean_loss.idxmax()
+        other_mean = sub.drop(columns=[worst]).mean(axis=1)
+        diff = sub[worst].to_numpy() - other_mean.to_numpy()
+        n = len(diff)
+        var = float(np.var(diff, ddof=1))
+        if var <= 0 or n < 2:
+            break
+        stat = float(diff.mean() / math.sqrt(var / n))
+        p_value = float(_normal_two_sided_pvalue(stat))
+        if p_value < alpha:
+            eliminated.append(worst)
+            survivors.remove(worst)
+        else:
+            break
+    return {
+        "stat_test": "stepwise_mcs",
+        "alpha": alpha,
+        "n_obs": int(pivot.shape[0]),
+        "initial_models": int(pivot.shape[1]),
+        "surviving_models": survivors,
+        "eliminated_models": eliminated,
+    }
+
+
+def _compute_bootstrap_best_model(predictions: pd.DataFrame, n_bootstrap: int = 500, seed: int = 0) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    if "model_name" not in rows.columns:
+        # Compare model vs benchmark via bootstrap of loss_diff sign
+        loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+        n = int(len(loss_diff))
+        if n < 3:
+            raise ExecutionError("bootstrap_best_model requires at least 3 obs")
+        rng = np.random.default_rng(seed)
+        wins = 0
+        for _ in range(n_bootstrap):
+            sample = rng.choice(loss_diff, size=n, replace=True)
+            if sample.mean() > 0:
+                wins += 1
+        freq_model_best = wins / n_bootstrap
+        return {
+            "stat_test": "bootstrap_best_model",
+            "n_bootstrap": int(n_bootstrap),
+            "freq_model_beats_benchmark": float(freq_model_best),
+            "model_declared_best": bool(freq_model_best >= 0.5),
+        }
+    pivot = rows.pivot_table(index=["target_date"], columns="model_name", values="squared_error", aggfunc="mean").dropna()
+    arr = pivot.to_numpy()
+    n, m = arr.shape
+    rng = np.random.default_rng(seed)
+    win_counts = np.zeros(m, dtype=int)
+    for _ in range(n_bootstrap):
+        idx = rng.integers(0, n, size=n)
+        mean_loss = arr[idx].mean(axis=0)
+        win_counts[int(np.argmin(mean_loss))] += 1
+    freqs = (win_counts / n_bootstrap).tolist()
+    best_idx = int(np.argmax(win_counts))
+    return {
+        "stat_test": "bootstrap_best_model",
+        "n_bootstrap": int(n_bootstrap),
+        "models": list(pivot.columns),
+        "freq_best": freqs,
+        "declared_best": str(pivot.columns[best_idx]),
+    }
+
+
+def _compute_roc_comparison(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    yhat = rows["y_pred"].astype(float).to_numpy()
+    yben = rows["benchmark_pred"].astype(float).to_numpy()
+    if len(y) < 3:
+        raise ExecutionError("roc_comparison requires at least 3 observations")
+    actual_up = (np.diff(y) > 0).astype(int)
+    model_score = yhat[1:] - y[:-1]
+    bench_score = yben[1:] - y[:-1]
+    try:
+        from sklearn.metrics import roc_auc_score
+        auc_model = float(roc_auc_score(actual_up, model_score)) if actual_up.std() > 0 else float("nan")
+        auc_bench = float(roc_auc_score(actual_up, bench_score)) if actual_up.std() > 0 else float("nan")
+    except Exception:
+        auc_model = auc_bench = float("nan")
+    return {
+        "stat_test": "roc_comparison",
+        "n": int(len(actual_up)),
+        "auc_model": auc_model,
+        "auc_benchmark": auc_bench,
+        "auc_delta": float(auc_model - auc_bench) if not (math.isnan(auc_model) or math.isnan(auc_bench)) else float("nan"),
+    }
+
+
+def _compute_cusum_on_loss(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 3:
+        raise ExecutionError("cusum_on_loss requires at least 3 observations")
+    centered = loss_diff - loss_diff.mean()
+    cusum = np.cumsum(centered)
+    sigma = float(np.std(loss_diff, ddof=1))
+    if sigma <= 0:
+        raise ExecutionError("cusum_on_loss requires non-zero loss-diff variance")
+    normalized = cusum / (sigma * math.sqrt(n))
+    max_abs = float(np.max(np.abs(normalized)))
+    # 5% two-sided critical value for Brownian bridge supremum ≈ 1.358
+    return {
+        "stat_test": "cusum_on_loss",
+        "n": n,
+        "max_abs_normalized_cusum": max_abs,
+        "critical_5pct": 1.358,
+        "flag_instability": bool(max_abs > 1.358),
+    }
+
+
 def _compute_paired_t_on_loss_diff(predictions: pd.DataFrame) -> dict[str, object]:
     rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
     loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
@@ -1662,6 +2134,93 @@ def _compute_autocorrelation_of_errors(predictions: pd.DataFrame, max_lag: int =
         "q_statistic": float(q_stat),
         "p_value": p_value,
         "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_mcnemar_direction(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    yhat = rows["y_pred"].astype(float).to_numpy()
+    yben = rows["benchmark_pred"].astype(float).to_numpy()
+    if len(y) < 3:
+        raise ExecutionError("mcnemar requires at least 3 observations")
+    actual_up = np.sign(np.diff(y)) > 0
+    model_up = np.sign(yhat[1:] - y[:-1]) > 0
+    bench_up = np.sign(yben[1:] - y[:-1]) > 0
+    hit_model = (actual_up == model_up).astype(int)
+    hit_bench = (actual_up == bench_up).astype(int)
+    b = int(((hit_model == 1) & (hit_bench == 0)).sum())
+    c = int(((hit_model == 0) & (hit_bench == 1)).sum())
+    n_off = b + c
+    if n_off == 0:
+        statistic = 0.0
+        p_value = 1.0
+    else:
+        statistic = float((abs(b - c) - 1) ** 2 / n_off) if n_off > 0 else 0.0
+        from scipy.stats import chi2
+        p_value = float(1.0 - chi2.cdf(statistic, df=1))
+    return {
+        "stat_test": "mcnemar",
+        "n": int(len(actual_up)),
+        "model_hit_rate": float(hit_model.mean()),
+        "benchmark_hit_rate": float(hit_bench.mean()),
+        "disagreements_model_better": b,
+        "disagreements_benchmark_better": c,
+        "statistic": statistic,
+        "p_value": p_value,
+        "significant_5pct": bool(p_value < 0.05),
+    }
+
+
+def _compute_forecast_encompassing_nested(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    y = rows["y_true"].astype(float).to_numpy()
+    f1 = rows["y_pred"].astype(float).to_numpy()
+    f2 = rows["benchmark_pred"].astype(float).to_numpy()
+    n = int(len(y))
+    if n < 3:
+        raise ExecutionError("forecast_encompassing_nested requires at least 3 observations")
+    resid = y - f1
+    delta = f2 - f1
+    denom = float(np.dot(delta - delta.mean(), delta - delta.mean()))
+    if denom <= 0:
+        raise ExecutionError("forecast_encompassing_nested has zero-variance delta")
+    beta = float(np.dot(delta - delta.mean(), resid - resid.mean()) / denom)
+    alpha = float(resid.mean() - beta * delta.mean())
+    yhat = alpha + beta * delta
+    residuals = resid - yhat
+    sigma2 = float(np.dot(residuals, residuals) / max(n - 2, 1))
+    se_beta = float(math.sqrt(sigma2 / denom)) if sigma2 > 0 else float("nan")
+    t_stat = float(beta / se_beta) if se_beta and not math.isnan(se_beta) and se_beta > 0 else float("nan")
+    p_value = float(_normal_two_sided_pvalue(t_stat)) if not math.isnan(t_stat) else float("nan")
+    return {
+        "stat_test": "forecast_encompassing_nested",
+        "n": n,
+        "beta": beta,
+        "se_beta": se_beta,
+        "t_statistic": t_stat,
+        "p_value": p_value,
+        "encompassed_5pct": bool(not math.isnan(p_value) and p_value > 0.05),
+    }
+
+
+def _compute_serial_dependence_loss_diff(predictions: pd.DataFrame) -> dict[str, object]:
+    rows = predictions.sort_values(["horizon", "target_date", "origin_date"]).reset_index(drop=True)
+    loss_diff = rows["benchmark_squared_error"].to_numpy(dtype=float) - rows["squared_error"].to_numpy(dtype=float)
+    n = int(len(loss_diff))
+    if n < 3:
+        raise ExecutionError("serial_dependence_loss_diff requires at least 3 observations")
+    diffs = np.diff(loss_diff)
+    num = float(np.dot(diffs, diffs))
+    den = float(np.dot(loss_diff - loss_diff.mean(), loss_diff - loss_diff.mean()))
+    dw = float(num / den) if den > 0 else float("nan")
+    lag1 = float(1.0 - dw / 2.0) if not math.isnan(dw) else float("nan")
+    return {
+        "stat_test": "serial_dependence_loss_diff",
+        "n": n,
+        "durbin_watson": dw,
+        "lag1_autocorr_estimate": lag1,
+        "flag_serial_dependence": bool(not math.isnan(dw) and (dw < 1.5 or dw > 2.5)),
     }
 
 
@@ -2472,6 +3031,7 @@ def execute_recipe(
     def _target_job(target: str):
         target_recipe = _recipe_for_target(recipe, target)
         target_series_local = _get_target_series(raw_result.data, target, _minimum_train_size(target_recipe))
+        target_series_local = _apply_target_transform_and_normalization(target_series_local, preprocess)
         frame, tp = _build_predictions(raw_result.data, target_series_local, target_recipe, preprocess, compute_mode=compute_mode)
         return target, target_series_local, frame, tp
 

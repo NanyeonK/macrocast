@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fixed_x_lags',
             description='fixed x lags',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='cv_selected_x_lags',
             description='cv selected x lags',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

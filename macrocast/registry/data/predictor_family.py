@@ -24,19 +24,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='all_except_target',
             description='all except target',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='category_based',
             description='category based',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='factor_only',
             description='factor only',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

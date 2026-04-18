@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fixed_gap',
             description='fixed gap',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='horizon_gap',
             description='horizon gap',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

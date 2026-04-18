@@ -19,35 +19,27 @@ NEW_AXES = (
 
 OPERATIONAL_VALUES = {
     "equal_predictive": {"none", "dm", "dm_hln", "dm_modified", "paired_t_on_loss_diff", "wilcoxon_signed_rank"},
-    "nested": {"none", "cw", "enc_new", "mse_f", "mse_t"},
-    "cpa_instability": {"none", "cpa", "rossi", "rolling_dm"},
-    "multiple_model": {"none", "reality_check", "spa", "mcs"},
-    "density_interval": {"none"},
-    "direction": {"none", "pesaran_timmermann", "binomial_hit"},
+    "nested": {"none", "cw", "enc_new", "mse_f", "mse_t", "forecast_encompassing_nested"},
+    "cpa_instability": {"none", "cpa", "rossi", "rolling_dm", "cusum_on_loss", "fluctuation_test", "chow_break_forecast"},
+    "multiple_model": {"none", "reality_check", "spa", "mcs", "stepwise_mcs", "bootstrap_best_model"},
+    "density_interval": {"none", "PIT_uniformity", "berkowitz", "kupiec", "christoffersen_unconditional", "christoffersen_independence", "christoffersen_conditional", "interval_coverage"},
+    "direction": {"none", "pesaran_timmermann", "binomial_hit", "mcnemar", "roc_comparison"},
     "residual_diagnostics": {
         "none", "mincer_zarnowitz", "ljung_box", "arch_lm", "bias_test", "diagnostics_full",
-        "autocorrelation_of_errors",
+        "autocorrelation_of_errors", "serial_dependence_loss_diff",
     },
-    "test_scope": {"per_target", "per_horizon", "per_model_pair"},
+    "test_scope": {"per_target", "per_horizon", "per_model_pair", "full_grid_pairwise", "benchmark_vs_all", "regime_specific_tests", "subsample_tests"},
 }
 
 PLANNED_PRESENT = {
     "equal_predictive": set(),
-    "nested": {"forecast_encompassing_nested"},
-    "cpa_instability": {"fluctuation_test", "chow_break_forecast", "cusum_on_loss"},
-    "multiple_model": {"stepwise_mcs", "bootstrap_best_model"},
-    "density_interval": {
-        "PIT_uniformity",
-        "berkowitz",
-        "kupiec",
-        "christoffersen_unconditional",
-        "christoffersen_independence",
-        "christoffersen_conditional",
-        "interval_coverage",
-    },
-    "direction": {"mcnemar", "roc_comparison"},
-    "residual_diagnostics": {"serial_dependence_loss_diff"},
-    "test_scope": {"full_grid_pairwise", "benchmark_vs_all", "regime_specific_tests", "subsample_tests"},
+    "nested": set(),
+    "cpa_instability": set(),
+    "multiple_model": set(),
+    "density_interval": set(),
+    "direction": set(),
+    "residual_diagnostics": set(),
+    "test_scope": set(),
 }
 
 

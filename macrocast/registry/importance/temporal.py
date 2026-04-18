@@ -9,8 +9,8 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy="fixed",
     entries=(
         EnumRegistryEntry(id="static_snapshot", description="single training-window snapshot", status="operational", priority="A"),
-        EnumRegistryEntry(id="time_average", description="time-averaged summary", status="planned", priority="B"),
-        EnumRegistryEntry(id="rolling_path", description="rolling importance path", status="planned", priority="B"),
+        EnumRegistryEntry(id="time_average", description="time-averaged summary", status="operational", priority="B"),
+        EnumRegistryEntry(id="rolling_path", description="rolling importance path", status="operational", priority="B"),
     ),
     compatible_with={},
     incompatible_with={},

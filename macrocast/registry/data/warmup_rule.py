@@ -18,7 +18,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='lags_and_factors_warmup',
             description='lags and factors warmup',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='transform_warmup',
             description='transform warmup',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
