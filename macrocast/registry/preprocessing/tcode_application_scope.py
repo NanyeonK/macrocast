@@ -12,19 +12,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='apply_tcode_to_target',
             description='t-code on target only',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='apply_tcode_to_X',
             description='t-code on predictors only',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='apply_tcode_to_both',
             description='t-code on target and X',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

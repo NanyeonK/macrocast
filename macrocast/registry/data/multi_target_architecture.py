@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='separate_univariate_runs',
             description='separate univariate runs',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='same_design_different_targets',
             description='same design different targets',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

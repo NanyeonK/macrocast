@@ -18,19 +18,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='future_diff',
             description='future diff',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='future_logdiff',
             description='future logdiff',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='cumulative_growth_to_h',
             description='cumulative growth to h',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -42,7 +42,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='annualized_growth_to_h',
             description='annualized growth to h',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

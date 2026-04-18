@@ -30,13 +30,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='recession_only_oos',
             description='recession only oos',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='expansion_only_oos',
             description='expansion only oos',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

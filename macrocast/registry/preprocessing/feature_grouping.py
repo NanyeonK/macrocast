@@ -18,7 +18,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fred_category_group',
             description='fred category group',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='lag_group',
             description='lag group',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

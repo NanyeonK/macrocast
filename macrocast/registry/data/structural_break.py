@@ -18,19 +18,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='pre_post_crisis',
             description='pre post crisis',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='pre_post_covid',
             description='pre post covid',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
             id='user_break_dates',
             description='user break dates',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(

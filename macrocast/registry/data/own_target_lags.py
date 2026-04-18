@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='cv_select_lags',
             description='cv select lags',
-            status='planned',
+            status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
