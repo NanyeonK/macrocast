@@ -8,7 +8,7 @@ COMPUTE_MODE_ENTRIES: tuple[EnumRegistryEntry, ...] = (
     EnumRegistryEntry(id="parallel_by_model", description="Parallel across sweep variants when model_family is swept (variant-level threading, max 4 workers).", status="operational", priority="A"),
     EnumRegistryEntry(id="parallel_by_horizon", description="Parallel across horizons (threading, max 4 workers).", status="operational", priority="A"),
     EnumRegistryEntry(id="parallel_by_target", description="Parallel across targets in multi-target recipes (threading, max 4 workers).", status="operational", priority="A"),
-    EnumRegistryEntry(id="parallel_by_oos_date", description="Parallel execution across out-of-sample dates.", status="registry_only", priority="B"),
+    EnumRegistryEntry(id="parallel_by_oos_date", description="Parallel across OOS origins within a single horizon loop (threading, max 4 workers). Refit-policy state is computed serially in a pre-pass; only the model/benchmark fit is parallelised.", status="operational", priority="A"),
     EnumRegistryEntry(id="parallel_by_trial", description="Parallel execution across trials.", status="registry_only", priority="B"),
     EnumRegistryEntry(id="gpu_single", description="Single-GPU execution.", status="registry_only", priority="B"),
     EnumRegistryEntry(id="gpu_multi", description="Multi-GPU execution.", status="registry_only", priority="B"),

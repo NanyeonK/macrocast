@@ -82,7 +82,7 @@ An axis can appear in at most one section; putting the same axis in multiple sec
 | `parallel_by_model` | operational | sweep plan contains a `model_family` sweep axis AND `len(plan.variants) > 1` | Variant-level threading in `execute_sweep`: different model_family variants run concurrently. Silent no-op (serial fallback) if the trigger condition fails. |
 | `parallel_by_horizon` | operational | `len(recipe.horizons) > 1` | Horizon-level threading inside `execute_recipe`: each horizon computed in its own worker. Silent no-op for single-horizon recipes. |
 | `parallel_by_target` | operational | `len(recipe.targets) > 1` | Target-level threading inside `execute_recipe`: each target's slice computed concurrently. Silent no-op for single-target recipes. |
-| `parallel_by_oos_date` | registry_only (v1.1) | — | Compiler rejects as "representable but not executable". Needs phase-10 executor to chunk by OOS date. |
+| `parallel_by_oos_date` | operational | `len(origin_plan) > 1` within each horizon loop | Origin-level threading inside `_rows_for_horizon`: refit_policy state is computed serially in a pre-pass (ensures determinism with `fit_once_predict_many` / `refit_every_k_steps`), then model/benchmark fits run concurrently across OOS origins. Silent no-op for short OOS ranges. |
 | `parallel_by_trial` | registry_only (v1.1) | — | Compiler rejects. Awaits tuning backend integration (`execution_backend.joblib`). |
 | `distributed_cluster` | registry_only (v2) | — | Compiler rejects. Needs a distributed runtime (phase-11). |
 
@@ -98,6 +98,7 @@ The three operational parallel modes are mutually independent — they operate a
 - Execution build (`macrocast.execution.build`):
   - Horizon loop wraps its row-builder in `ThreadPoolExecutor` when `compute_mode == "parallel_by_horizon"` and `len(horizons) > 1`.
   - Target loop wraps its per-target job in `ThreadPoolExecutor` when `compute_mode == "parallel_by_target"` and `len(targets) > 1`.
+  - OOS origin loop (inside `_rows_for_horizon`) builds a deterministic plan, then dispatches the per-origin compute via `ThreadPoolExecutor` when `compute_mode == "parallel_by_oos_date"` and `len(origin_plan) > 1`.
 
 ### Recipe usage
 
@@ -134,6 +135,18 @@ path:
   1_data_task:
     leaf_config:
       horizons: [1, 3, 6, 12]
+```
+
+```yaml
+# OOS-origin-level parallelism — best with long OOS ranges and fast models.
+path:
+  0_meta:
+    fixed_axes:
+      compute_mode: parallel_by_oos_date
+  1_data_task:
+    leaf_config:
+      target: INDPRO
+      horizons: [1, 3]
 ```
 
 ---

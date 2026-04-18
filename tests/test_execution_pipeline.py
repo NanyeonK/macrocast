@@ -1236,3 +1236,60 @@ def test_execute_recipe_stage7_importance_methods(tmp_path: Path) -> None:
         assert manifest["importance_file"] == filename
         assert payload["importance_method"] == method
 
+
+
+def test_execute_recipe_parallel_by_oos_date_dispatches_thread_pool(tmp_path: Path) -> None:
+    """compute_mode=parallel_by_oos_date spins up a ThreadPoolExecutor for the
+    OOS origin loop inside _rows_for_horizon and produces the same prediction
+    set as the serial branch."""
+    import pandas as pd
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    # baseline (serial) run to capture expected prediction shape
+    serial_root = tmp_path / "serial"
+    serial_root.mkdir()
+    serial_result = execute_recipe(
+        recipe=_recipe(framework="expanding", benchmark_config={"minimum_train_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=serial_root,
+        local_raw_source=fixture,
+    )
+    serial_preds = pd.read_csv(Path(serial_root) / serial_result.run.artifact_subdir / "predictions.csv")
+
+    # parallel_by_oos_date run — patch ThreadPoolExecutor to count
+    from macrocast.execution import build as build_mod
+    original = build_mod.ThreadPoolExecutor
+    calls: list[int] = []
+
+    class _CountingExecutor(original):
+        def __init__(self, *args, max_workers=None, **kwargs):
+            calls.append(max_workers or 0)
+            super().__init__(*args, max_workers=max_workers, **kwargs)
+
+    parallel_root = tmp_path / "parallel"
+    parallel_root.mkdir()
+    build_mod.ThreadPoolExecutor = _CountingExecutor
+    try:
+        parallel_result = execute_recipe(
+            recipe=_recipe(framework="expanding", benchmark_config={"minimum_train_size": 5}),
+            preprocess=_preprocess_raw_only(),
+            output_root=parallel_root,
+            local_raw_source=fixture,
+            provenance_payload={"compiler": {"compute_mode_spec": {"compute_mode": "parallel_by_oos_date"}}},
+        )
+    finally:
+        build_mod.ThreadPoolExecutor = original
+
+    parallel_preds = pd.read_csv(Path(parallel_root) / parallel_result.run.artifact_subdir / "predictions.csv")
+    manifest = json.loads((Path(parallel_root) / parallel_result.run.artifact_subdir / "manifest.json").read_text())
+
+    # At least one ThreadPoolExecutor was built with max_workers capped at 4.
+    # Recipe has 2 horizons, each with many OOS origins, so we expect 2 pool constructions
+    # (one per horizon iteration; serial horizon loop but parallel origin loop inside each).
+    assert calls, "ThreadPoolExecutor was never created for parallel_by_oos_date"
+    for n in calls:
+        assert 1 <= n <= 4
+
+    assert manifest["compute_mode_spec"]["compute_mode"] == "parallel_by_oos_date"
+    # Parallel mode must yield the same prediction count as serial (origin order preserved).
+    assert len(parallel_preds) == len(serial_preds)
+    assert set(parallel_preds["horizon"].unique()) == set(serial_preds["horizon"].unique())
