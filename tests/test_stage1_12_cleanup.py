@@ -91,9 +91,6 @@ def test_dropped_value_is_rejected(axis: str, value: str) -> None:
 DEMOTED: tuple[tuple[str, str], ...] = (
     ("forecast_type", "iterated"),
     ("forecast_object", "quantile"),
-    ("horizon_target_construction", "future_diff"),
-    ("horizon_target_construction", "future_logdiff"),
-    ("horizon_target_construction", "cumulative_growth_to_h"),
 )
 
 

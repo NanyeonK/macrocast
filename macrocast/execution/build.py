@@ -33,6 +33,7 @@ from .seed_policy import (
     resolve_seed,
     set_context,
 )
+from .horizon_target import forward_scalar as _horizon_forward_scalar
 from .types import ExecutionResult, ExecutionSpec
 from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
 from ..preprocessing import (
@@ -2671,6 +2672,7 @@ def _build_predictions(
     refit_policy = str(recipe.training_spec.get("refit_policy", "refit_every_step"))
     anchored_max_window_size = int(recipe.training_spec.get("anchored_max_window_size", rolling_window_size))
     refit_k_steps = int(recipe.training_spec.get("refit_k_steps", 3))
+    _horizon_construction = str(recipe.data_task_spec.get("horizon_target_construction", "future_level_y_t_plus_h"))
 
     def _rows_for_horizon(horizon: int) -> list[dict[str, object]]:
         nonlocal last_tuning_payload
@@ -2711,6 +2713,16 @@ def _build_predictions(
             y_pred = float(model_output["y_pred"])
             benchmark_pred = float(benchmark_executor(train, horizon, recipe))
             y_true = float(target_series.iloc[origin_idx + horizon])
+            # Level-scale values are kept for provenance; metric-scale values
+            # honour horizon_target_construction (§1.2.4).
+            y_pred_level = y_pred
+            benchmark_pred_level = benchmark_pred
+            y_true_level = y_true
+            if _horizon_construction != "future_level_y_t_plus_h":
+                y_anchor = float(target_series.iloc[effective_origin_idx])
+                y_pred = _horizon_forward_scalar(y_pred_level, y_anchor, _horizon_construction)
+                benchmark_pred = _horizon_forward_scalar(benchmark_pred_level, y_anchor, _horizon_construction)
+                y_true = _horizon_forward_scalar(y_true_level, y_anchor, _horizon_construction)
             error = y_true - y_pred
             benchmark_error = y_true - benchmark_pred
             row = {
@@ -2735,6 +2747,10 @@ def _build_predictions(
                 "benchmark_error": benchmark_error,
                 "benchmark_abs_error": abs(benchmark_error),
                 "benchmark_squared_error": benchmark_error**2,
+                "horizon_target_construction": _horizon_construction,
+                "y_true_level": y_true_level,
+                "y_pred_level": y_pred_level,
+                "benchmark_pred_level": benchmark_pred_level,
             }
             return row, tuning_payload
 
