@@ -2662,7 +2662,9 @@ def _build_predictions(
 
     def _rows_for_horizon(horizon: int) -> list[dict[str, object]]:
         nonlocal last_tuning_payload
-        horizon_rows: list[dict[str, object]] = []
+        # Stage 1 — build the origin plan serially so refit_policy state
+        # (locked_start_idx / locked_origin_idx) is honoured deterministically.
+        origin_plan: list[tuple[int, int, int]] = []
         locked_start_idx = None
         locked_origin_idx = None
         for origin_idx in range(minimum_train_size - 1, len(target_series) - horizon):
@@ -2687,40 +2689,58 @@ def _build_predictions(
             else:
                 start_idx = base_start_idx
                 effective_origin_idx = origin_idx
+            origin_plan.append((origin_idx, start_idx, effective_origin_idx))
+
+        # Stage 2 — compute each origin's row. Thread-pool when requested.
+        def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None]:
             train = target_series.iloc[start_idx : effective_origin_idx + 1]
             model_output = model_executor(train, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx)
-            if model_output.get("tuning_payload"):
-                last_tuning_payload = model_output["tuning_payload"]
+            tuning_payload = model_output.get("tuning_payload") or None
             y_pred = float(model_output["y_pred"])
             benchmark_pred = float(benchmark_executor(train, horizon, recipe))
             y_true = float(target_series.iloc[origin_idx + horizon])
             error = y_true - y_pred
             benchmark_error = y_true - benchmark_pred
-            horizon_rows.append(
-                {
-                    "target": target_series.name,
-                    "model_name": model_spec["executor_name"],
-                    "benchmark_name": benchmark_family,
-                    "horizon": horizon,
-                    "origin_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
-                    "target_date": target_series.index[origin_idx + horizon].strftime("%Y-%m-%d"),
-                    "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
-                    "selected_lag": int(model_output["selected_lag"]),
-                    "selected_bic": float(model_output["selected_bic"]),
-                    "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),
-                    "train_end_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
-                    "training_window_size": int(len(train)),
-                    "y_true": y_true,
-                    "y_pred": y_pred,
-                    "benchmark_pred": benchmark_pred,
-                    "error": error,
-                    "abs_error": abs(error),
-                    "squared_error": error**2,
-                    "benchmark_error": benchmark_error,
-                    "benchmark_abs_error": abs(benchmark_error),
-                    "benchmark_squared_error": benchmark_error**2,
-                }
-            )
+            row = {
+                "target": target_series.name,
+                "model_name": model_spec["executor_name"],
+                "benchmark_name": benchmark_family,
+                "horizon": horizon,
+                "origin_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
+                "target_date": target_series.index[origin_idx + horizon].strftime("%Y-%m-%d"),
+                "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
+                "selected_lag": int(model_output["selected_lag"]),
+                "selected_bic": float(model_output["selected_bic"]),
+                "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),
+                "train_end_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
+                "training_window_size": int(len(train)),
+                "y_true": y_true,
+                "y_pred": y_pred,
+                "benchmark_pred": benchmark_pred,
+                "error": error,
+                "abs_error": abs(error),
+                "squared_error": error**2,
+                "benchmark_error": benchmark_error,
+                "benchmark_abs_error": abs(benchmark_error),
+                "benchmark_squared_error": benchmark_error**2,
+            }
+            return row, tuning_payload
+
+        horizon_rows: list[dict[str, object]] = []
+        if compute_mode == "parallel_by_oos_date" and len(origin_plan) > 1:
+            with ThreadPoolExecutor(max_workers=min(len(origin_plan), 4)) as ex:
+                futures = [ex.submit(_compute_origin, *item) for item in origin_plan]
+                for future in futures:
+                    row, tuning_payload = future.result()
+                    horizon_rows.append(row)
+                    if tuning_payload:
+                        last_tuning_payload = tuning_payload
+        else:
+            for item in origin_plan:
+                row, tuning_payload = _compute_origin(*item)
+                horizon_rows.append(row)
+                if tuning_payload:
+                    last_tuning_payload = tuning_payload
         return horizon_rows
 
     rows: list[dict[str, object]] = []
@@ -3035,7 +3055,7 @@ def execute_recipe(
         frame, tp = _build_predictions(raw_result.data, target_series_local, target_recipe, preprocess, compute_mode=compute_mode)
         return target, target_series_local, frame, tp
 
-    if compute_mode == "parallel_by_model" and len(targets) > 1:
+    if compute_mode == "parallel_by_target" and len(targets) > 1:
         with ThreadPoolExecutor(max_workers=min(len(targets), 4)) as ex:
             futures = [ex.submit(contextvars.copy_context().run, _target_job, target) for target in targets]
             for future in futures:
