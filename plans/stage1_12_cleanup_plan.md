@@ -159,3 +159,20 @@ These belong in the Phase 10 (v1.1) catalog section "Layer 1 deferred dispatch";
 - Actual v1.1 runtime for demoted values.
 - §1.3 / §1.4 / §1.5 per-axis walks (separate PRs).
 - Phase 8 paper_ready_bundle (independent critical path).
+
+---
+
+## 8. v1.0 implementation status (2026-04-20 follow-up)
+
+**3 horizon_target_construction values flipped operational** (separate commit on top of this plan):
+
+- future_diff, future_logdiff, cumulative_growth_to_h now all compile and execute end-to-end. v1.0 semantics is a **metric-scale transform** at _compute_origin — the executor emits a level-scale forecast, and the row builder forward-transforms y_true / y_pred / benchmark_pred using y_anchor before error / abs_error / squared_error are computed. Level-scale values preserved as y_{true,pred}_level / benchmark_pred_level columns.
+- New module macrocast/execution/horizon_target.py exports forward_scalar (wired) plus build_horizon_target / inverse_horizon_target (reserved for a future training-time wiring).
+- Tests: tests/test_horizon_target_construction.py (8 cases). Full suite 705 passed.
+
+**Remaining registry_only values (v1.1 roadmap):**
+
+- forecast_type=iterated
+- forecast_object=quantile
+
+Both require per-executor wiring (new direct path for iterated; quantile level spec + quantile_linear extension for quantile) and are deferred to a follow-up session per user scope (B).
