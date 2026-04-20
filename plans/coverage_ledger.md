@@ -335,12 +335,12 @@ above. Historical rows preserved for archaeology:
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | direct | operational | - | - | 이미 완료 |
-| iterated | planned | v1.1 | phase-10 | 다단 예측 합류 |
-| dirrec | registry_only | v1.1 | phase-10 | 다단 예측 합류 |
-| mimo | future | v2 | phase-11 | multi-output 결합 |
+| iterated | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — recursive 1-step wrapper is v1.1 commitment (§1.2 cleanup plan) |
+| dirrec | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche hybrid (Taieb-Bontempi 2011), no v1.x demand |
+| mimo | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 Transformer will re-enter as model capability, not a forecast_type |
 | multi_horizon_joint | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | recursive_state_space | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
-| seq2seq | future | v2 | phase-11 | NN 축 필요 |
+| seq2seq | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 Transformer will re-enter as model capability |
 
 ### 1.3.3 forecast_object
 
@@ -348,29 +348,29 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | point_mean | operational | - | - | 이미 완료 |
 | point_median | operational | - | - | 이미 완료 |
-| quantile | planned | v1.1 | phase-10 | quantile regression 합류 |
-| interval | registry_only | v1.1 | phase-10 | conformal/analytic interval |
-| density | registry_only | v1.1 | phase-10 | density forecast |
-| direction | planned | v1.0 | phase-04 | classification-ish 지원 |
-| turning_point | registry_only | v2 | phase-11 | 전문 분석 모듈 |
-| regime_probability | future | v2 | phase-11 | regime 모델 필요 |
-| event_probability | future | v2 | phase-11 | event study 필요 |
+| quantile | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — conformal/quantile-loss path (§1.2 cleanup plan) |
+| interval | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — subsumed by v1.1 conformal wrapper on point mean |
+| density | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 distributional work, will re-enter |
+| direction | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — sign is a metric view on point forecast, not an independent forecast object |
+| turning_point | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, reconstructible post-hoc |
+| regime_probability | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — bound to state_space (v2), will re-enter with that stack |
+| event_probability | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, no v1.1 commitment |
 
 ### 1.3.4 horizon_target_construction
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | future_level_y_t+h | operational | - | - | 이미 완료 |
-| future_diff | planned | v1.0 | phase-03 | 기본 차분 |
-| future_logdiff | planned | v1.0 | phase-03 | 기본 로그차분 |
-| cumulative_growth_to_h | planned | v1.0 | phase-03 | h-누적 성장 |
-| average_growth_1_to_h | registry_only | v1.0 | phase-03 | 평균 성장 |
-| annualized_growth_to_h | planned | v1.0 | phase-03 | 연율화 |
-| realized_future_average | registry_only | v1.1 | phase-10 | 실현 평균 |
-| future_sum | registry_only | v1.1 | phase-10 | 누적 합 |
+| future_diff | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — v1.1 target-transform inverse pipeline (§1.2 cleanup plan) |
+| future_logdiff | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — same pipeline as future_diff |
+| cumulative_growth_to_h | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — CLSS-style cumulative, same pipeline |
+| average_growth_1_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — scaled variant of cumulative, redundant |
+| annualized_growth_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — linear (×12/h) transform of cumulative_growth_to_h, belongs in metric-time reporting |
+| realized_future_average | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, no v1.1 demand |
+| future_sum | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche |
 | future_volatility | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | future_drawdown | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
-| future_indicator | registry_only | v1.0 | phase-04 | direction 과 정합 |
+| future_indicator | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — overlapped dropped forecast_object=direction / event_probability |
 
 ### 1.3.5 overlap_handling
 
@@ -384,16 +384,18 @@ above. Historical rows preserved for archaeology:
 
 ### 1.4.1 target_family
 
+> **AXIS DROPPED 2026-04-20 (PR #32)** — subsumed by task axis; the two operational values (single_macro_series / multiple_macro_series) just mirrored task (single_target / multi_target). Future panel/state/factor/latent/constructed/classification targets will re-enter as independent axes in v1.1+ when their runtime arrives.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| single_macro_series | operational | - | - | 이미 완료 |
-| multiple_macro_series | planned | v1.1 | phase-10 | multi-target 합류 |
-| panel_target | future | v2 | phase-11 | panel_forecasting_run 필요 |
-| state_target | registry_only | v2 | phase-11 | SS framework 필요 |
-| factor_target | future | v2 | phase-11 | factor 추출 결합 |
-| latent_target | future | v2 | phase-11 | SS framework가 Phase 11에 들어오면 동반 구현 |
-| constructed_target | registry_only | v1.1 | phase-10 | 합성 타겟 |
-| classification_target | registry_only | v1.0 | phase-04 | direction/event 와 정합 |
+| single_macro_series | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — task=single_target_point_forecast covers it |
+| multiple_macro_series | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — task=multi_target_point_forecast covers it |
+| panel_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter as own axis in v1.1 with panel loader |
+| state_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with SS framework in v2 |
+| factor_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with factor extraction in v2 |
+| latent_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with SS framework in v2 |
+| constructed_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter as own axis in v1.1 if needed |
+| classification_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with direction/event modules if needed |
 
 ### 1.4.2 predictor_family
 
@@ -470,25 +472,29 @@ above. Historical rows preserved for archaeology:
 
 ### 1.5.2 target_to_target_inclusion
 
+> **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** — operational set = 1 value (forbid_other_targets_as_X = current hardcoded behaviour), no dispatch anywhere. Single-operational axis is a non-axis. Future cross-target predictor policy will re-enter as a clean axis (e.g. cross_target_predictor_policy) in v1.1 if demand arises.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| allow_other_targets_as_X | registry_only | v1.1 | phase-10 | multi-target 합류 |
-| forbid_other_targets_as_X | planned | v1.1 | phase-10 | multi-target 합류 |
-| allow_selected_targets_as_X | registry_only | v1.1 | phase-10 | multi-target 합류 |
-| Granger_style_lagged_targets_only | absent | v1.1 | phase-10 | multi-target 합류 |
-| system_wide_joint_model | future | v2 | phase-11 | joint VAR 필요 |
+| allow_other_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| forbid_other_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** — was the hardcoded default |
+| allow_selected_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| Granger_style_lagged_targets_only | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| system_wide_joint_model | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
 
 ### 1.5.3 multi_target_architecture
 
+> **AXIS DROPPED 2026-04-20 (PR #32)** — duplicated experiment_unit (§0.3), which already owns the actual runner dispatch (multi_target_separate_runs / multi_target_shared_design) after PR #27. Future joint multivariate / multitask will re-enter as model_family values in v1.1+, not as a separate architecture axis.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| separate_univariate_runs | planned | v1.0 | phase-01 | 기본 sweep 형태 |
-| same_design_different_targets | planned | v1.1 | phase-10 | shared design |
-| joint_multivariate_model | future | v1.1 | phase-10 | phase 10 공식 대상 |
-| shared_encoder_multi_head | absent | v2 | phase-11 | NN 축 필요 |
-| hierarchical_bottom_up | absent | v2 | phase-11 | hierarchy 모듈 필요 |
-| hierarchical_top_down | absent | v2 | phase-11 | hierarchy 모듈 필요 |
-| reconciliation_after_forecast | absent | v2 | phase-11 | reconcile 모듈 필요 |
+| separate_univariate_runs | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — covered by  |
+| same_design_different_targets | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — covered by  |
+| joint_multivariate_model | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — will re-enter as model_family value in v1.1 |
+| shared_encoder_multi_head | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — will re-enter as deep model capability in v2 |
+| hierarchical_bottom_up | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
+| hierarchical_top_down | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
+| reconciliation_after_forecast | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
 
 ### 1.6.1 scale_at_evaluation
 
