@@ -335,7 +335,7 @@ above. Historical rows preserved for archaeology:
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | direct | operational | - | - | 이미 완료 |
-| iterated | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — recursive 1-step wrapper is v1.1 commitment (§1.2 cleanup plan) |
+| iterated | operational | - | - | **OPERATIONAL 2026-04-20** — autoreg_lagged_target path already iterated by construction; registry status now matches. Dynamic default: iterated for autoreg, direct for raw_panel. Cross combinations blocked by compiler. |
 | dirrec | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche hybrid (Taieb-Bontempi 2011), no v1.x demand |
 | mimo | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 Transformer will re-enter as model capability, not a forecast_type |
 | multi_horizon_joint | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
@@ -348,7 +348,7 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | point_mean | operational | - | - | 이미 완료 |
 | point_median | operational | - | - | 이미 완료 |
-| quantile | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — conformal/quantile-loss path (§1.2 cleanup plan) |
+| quantile | operational | - | - | **OPERATIONAL 2026-04-20** — quantile_linear compiler guard loosened to accept point_median OR quantile; quantile level via training_spec.hp.quantile (default 0.5). |
 | interval | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — subsumed by v1.1 conformal wrapper on point mean |
 | density | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 distributional work, will re-enter |
 | direction | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — sign is a metric view on point forecast, not an independent forecast object |

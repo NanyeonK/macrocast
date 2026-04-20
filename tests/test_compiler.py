@@ -1029,7 +1029,7 @@ def test_compiled_manifest_records_stage1_data_task_defaults() -> None:
     spec = compile_result.manifest["data_task_spec"]
     assert spec["dataset_source"] == "fred_md"
     assert spec["information_set_type"] == "revised"
-    assert spec["forecast_type"] == "direct"
+    assert spec["forecast_type"] == "iterated"  # dynamic default for autoreg_lagged_target
 
 
 
