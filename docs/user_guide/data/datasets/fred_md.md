@@ -79,4 +79,4 @@ The authoritative change log is maintained by the St. Louis Fed in the appendix 
 
 - [FRED-QD](fred_qd.md) — sister quarterly database.
 - [FRED-SD](fred_sd.md) — state-level real-time database.
-- [§1.1 source & frame](../source.md) — how `dataset`, `dataset_source`, `frequency`, `information_set_type` interact at recipe compile time.
+- [Source & Frame (1.1)](../source.md) — how `dataset`, `dataset_source`, `frequency`, `information_set_type` interact at recipe compile time.

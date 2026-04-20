@@ -6,7 +6,7 @@ Stage 1 holds **33 meta axes** under the `1_data_task` layer, organised into fiv
 
 | # | Group | Axes | Focus |
 |---|---|---:|---|
-| §1.1 | [Source & frame](source.md) | 5 | Which dataset, at what frequency, within what information-set regime |
+| §1.1 | [Source & Frame (1.1)](source.md) | 5 | Which dataset, at what frequency, within what information-set regime |
 | §1.2 | Task & target (coming) | 6 | What exactly is being forecast (target family, forecast object/type) |
 | §1.3 | Horizon & evaluation window (coming) | 7 | Horizons, OOS period shape, training-window rules |
 | §1.4 | Benchmark & predictor universe (coming) | 5 | Benchmark families, predictor family, variable universe |
@@ -29,11 +29,19 @@ Layer 1 covers 33 axes. After the v0.9.3 Tier 1-3 drop and the ongoing §1.1+ cl
 
 Each §1.x group document flags the honest status of every value it covers. Values labelled `operational` in v1.0 without real runtime effect are being progressively demoted as the per-group walk proceeds; treat the current `design.md` / `data/*.md` state as the source of truth rather than the raw registry dump.
 
+## Data source
 
-## Dataset details
-
-Each of the three built-in datasets (, , ) has its own documentation covering citation, download path, variable categories, transformation codes, and changes from the original working paper to the current vintage:
+Each of the three built-in datasets (FRED-MD, FRED-QD, FRED-SD) has its own documentation covering citation, download path, variable categories, transformation codes, and changes from the original working paper to the current vintage:
 
 - [FRED-MD](datasets/fred_md.md) — monthly U.S. macro panel (McCracken & Ng 2016).
 - [FRED-QD](datasets/fred_qd.md) — quarterly U.S. macro panel (McCracken & Ng 2020).
 - [FRED-SD](datasets/fred_sd.md) — state-level real-time panel, mixed-frequency (Bokun, Jackson, Kliesen, Owyang 2022).
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+datasets/fred_md
+datasets/fred_qd
+datasets/fred_sd
+```

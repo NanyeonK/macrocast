@@ -103,5 +103,5 @@ Compared with FRED-MD / FRED-QD the FRED-SD maintenance history is shorter (firs
 ## See also
 
 - [FRED-MD](fred_md.md), [FRED-QD](fred_qd.md) — sister databases.
-- [§1.1 source & frame](../source.md) — `dataset` / `information_set_type` / `frequency` axis interaction.
+- [Source & Frame (1.1)](../source.md) — `dataset` / `information_set_type` / `frequency` axis interaction.
 - [§1.3 horizon & evaluation window](../window.md) (coming) — how mixed-frequency panels interact with horizon / OOS structure.

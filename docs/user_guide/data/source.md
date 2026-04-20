@@ -1,4 +1,4 @@
-# §1.1 Source & frame
+# Source & Frame (1.1)
 
 Declares **where the data comes from and which information-set regime applies**. These five axes together answer: which dataset, at what frequency, over which real-time regime, under what domain label — before the task (§1.2) or the evaluation window (§1.3) is fixed.
 
@@ -208,7 +208,7 @@ path:
 
 ---
 
-## §1.1 takeaways
+## Source & Frame (1.1) takeaways
 
 - **`dataset`** and **`information_set_type`** are the two axes the user actually decides. Every operational value dispatches.
 - **`dataset_source`** now carries actual loader dispatch: FRED canonical (default) vs `custom_csv` vs `custom_parquet`. 14 reserved third-party adapter labels dropped.
