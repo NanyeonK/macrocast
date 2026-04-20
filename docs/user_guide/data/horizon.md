@@ -72,6 +72,12 @@ path:
 - Compiler-side validation in `macrocast.compiler.build`'s `_execution_status` emits the guard.
 - `macrocast.execution.build._build_predictions` resolves the date to an index floor via `target_series.index.searchsorted`, then applies it as a `max(base_start_idx, fixed_start_idx)` in `_rows_for_horizon`.
 
+### Dropped values
+
+- `rolling_train_start`: duplicated `framework=rolling` which already sets the rolling start via `rolling_window_size`.
+- `post_warmup_start`: depended on the now-dropped `warmup_rule` axis.
+- `post_break_start`: depended on `structural_break_segmentation` which is not v1.0-operational.
+
 ### Recipe usage
 
 ```yaml
@@ -107,6 +113,12 @@ path:
 - `macrocast.execution.nber.filter_origins_by_regime(origin_plan, index, regime)` — filters an `_rows_for_horizon` origin plan in place.
 - The filter is applied after `origin_plan` is finalised and before per-origin computation, so refit_policy state is unaffected.
 
+### Dropped values
+
+- `single_oos_block`, `rolling_origin`: duplicated `framework=expanding` / `framework=rolling` — those framework values already drive the base OOS block shape.
+- `multiple_oos_blocks`: multi-window OOS evaluation; niche, no v1.0/v1.1 demand.
+- `event_window_oos`: event-based OOS; niche, no v1.0/v1.1 demand.
+
 ### Recipe usage
 
 ```yaml
@@ -138,6 +150,12 @@ path:
 
 - Compiler-side guard in `macrocast.compiler.build._execution_status`.
 - Stat test HAC path already implemented in `macrocast.execution.build._compute_dm_hln_test` / `_compute_dm_modified_test` with `dependence_correction="nw_hac"`.
+
+### Dropped values
+
+- `evaluate_with_block_bootstrap`: block-bootstrap SEs; requires bootstrap infrastructure not in v1.0 scope.
+- `non_overlapping_subsample`: subsample every h-th row to avoid overlap; niche.
+- `horizon_specific_subsample`: per-horizon subsample variant; niche.
 
 ### Recipe usage
 
