@@ -28,3 +28,12 @@ Layer 1 covers 33 axes. After the v0.9.3 Tier 1-3 drop and the ongoing §1.1+ cl
 - **registry_only / future** — reserved for v1.1 / v2 adapters that require their own infrastructure phases.
 
 Each §1.x group document flags the honest status of every value it covers. Values labelled `operational` in v1.0 without real runtime effect are being progressively demoted as the per-group walk proceeds; treat the current `design.md` / `data/*.md` state as the source of truth rather than the raw registry dump.
+
+
+## Dataset details
+
+Each of the three built-in datasets (, , ) has its own documentation covering citation, download path, variable categories, transformation codes, and changes from the original working paper to the current vintage:
+
+- [FRED-MD](datasets/fred_md.md) — monthly U.S. macro panel (McCracken & Ng 2016).
+- [FRED-QD](datasets/fred_qd.md) — quarterly U.S. macro panel (McCracken & Ng 2020).
+- [FRED-SD](datasets/fred_sd.md) — state-level real-time panel, mixed-frequency (Bokun, Jackson, Kliesen, Owyang 2022).

@@ -20,11 +20,11 @@ Declares **where the data comes from and which information-set regime applies**.
 
 | Value | Status | Loader | Content |
 |---|---|---|---|
-| `fred_md` | operational | `macrocast.raw.load_fred_md` | FRED-MD monthly macro panel (McCracken & Ng) |
-| `fred_qd` | operational | `macrocast.raw.load_fred_qd` | FRED-QD quarterly macro panel |
-| `fred_sd` | operational | `macrocast.raw.load_fred_sd` | FRED-SD state-monthly panel |
+| `fred_md` | operational | `macrocast.raw.load_fred_md` | FRED-MD monthly macro panel (McCracken & Ng 2016) — see [fred_md.md](datasets/fred_md.md) |
+| `fred_qd` | operational | `macrocast.raw.load_fred_qd` | FRED-QD quarterly macro panel (McCracken & Ng 2020) — see [fred_qd.md](datasets/fred_qd.md) |
+| `fred_sd` | operational | `macrocast.raw.load_fred_sd` | FRED-SD state-level real-time panel (Bokun, Jackson, Kliesen, Owyang 2022) — see [fred_sd.md](datasets/fred_sd.md) |
 
-All three values are fully wired end-to-end: the registry entry is used by the compiler, the loader is chosen at run time via `_get_dataset_loader`, and the resulting panel flows into every downstream axis.
+Each dataset has its own dedicated documentation page covering citation, download path, variable groups, transformation codes, and changes from the original working paper to the current vintage. All three values are fully wired end-to-end: the registry entry is used by the compiler, the loader is chosen at run time via `_get_dataset_loader`, and the resulting panel flows into every downstream axis.
 
 ### Functions & features
 
