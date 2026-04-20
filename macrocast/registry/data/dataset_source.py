@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='fred_api_custom',
             description='fred api custom',
-            status="operational",
+            status="registry_only",
             priority='A',
         ),
         EnumRegistryEntry(
@@ -108,13 +108,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='custom_csv',
             description='custom csv',
-            status="operational",
+            status="registry_only",
             priority='A',
         ),
         EnumRegistryEntry(
             id='custom_parquet',
             description='custom parquet',
-            status="operational",
+            status="registry_only",
             priority='A',
         ),
         EnumRegistryEntry(

@@ -7,6 +7,8 @@ In-depth documentation for every macrocast layer. Each page is self-contained; f
 :caption: Stages
 
 design
+data/index
+data/source
 ```
 
 ```{toctree}
