@@ -86,4 +86,4 @@ Mirror of FRED-MD:
 
 - [FRED-MD](fred_md.md) — sister monthly database.
 - [FRED-SD](fred_sd.md) — state-level real-time database.
-- [§1.1 source & frame](../source.md) — dataset/frequency/information_set_type interactions.
+- [Source & Frame (1.1)](../source.md) — dataset/frequency/information_set_type interactions.
