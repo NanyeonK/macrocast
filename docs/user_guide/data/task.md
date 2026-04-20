@@ -73,6 +73,13 @@ Cross combinations are not runtime-wired in v1.0 and are rejected at compile tim
 - `forecast_type = iterated` + `feature_builder = raw_feature_panel` → `blocked_by_incompatibility` (would require exogenous X forecasting).
 - `forecast_type = direct` + `feature_builder = autoreg_lagged_target` → `blocked_by_incompatibility` (the autoreg path is iterated by construction; a true direct autoreg executor is deferred).
 
+### Functions & features
+
+- `macrocast.execution.build._recursive_predict_sklearn(model, train, horizon, lag_order)` — the iterated 1-step executor used by every autoreg_lagged_target model family.
+- `macrocast.execution.build._build_raw_panel_training_data(frame, target, horizon, start, origin, contract)` — builds the direct h-step target `y.iloc[start+horizon : origin+1]` used by the raw-panel executors.
+- Compiler-side wiring: `macrocast.compiler.build._data_task_spec` reads `feature_builder` and derives the default `forecast_type`; the compatibility guards live alongside the other §1.2 guards in the compile function's blocked-reasons block.
+- Manifest: `data_task_spec["forecast_type"]` records the value (default or explicit) used for the run.
+
 ### Dropped values
 
 `dirrec` (Taieb-Bontempi 2011 hybrid), `mimo`, `seq2seq` — niche / deep-only strategies that belong to model capabilities rather than to a general forecast_type. See coverage_ledger §1.3.2.
@@ -135,6 +142,12 @@ path:
 ```
 
 If `quantile` is set but no explicit `hp.quantile` is provided, the underlying `QuantileRegressor` falls back to the library default `τ = 0.5` — numerically the same forecast as `point_median`. Pick the level explicitly when you want a non-median quantile.
+
+### Functions & features
+
+- `macrocast.execution.deep_training._build_model("quantile_linear", hp)` wraps `sklearn.linear_model.QuantileRegressor(quantile=hp.get("quantile", 0.5), alpha=hp.get("alpha", 1.0), solver="highs")`. The `quantile` hyperparameter is the τ level applied at fit time.
+- Compiler guard lives in `macrocast.compiler.build`'s main compile function and enforces `model_family=quantile_linear ⇒ forecast_object ∈ {point_median, quantile}`.
+- Manifest: `data_task_spec["forecast_object"]` records the selected value; the τ level (if provided) is carried through `training_spec["hp"]["quantile"]`.
 
 ### Dropped values
 
