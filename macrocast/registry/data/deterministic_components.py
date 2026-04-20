@@ -18,20 +18,14 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='constant_only',
             description='constant only',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='linear_trend',
             description='linear trend',
-            status="operational",
+            status='registry_only',
             priority='A',
-        ),
-        EnumRegistryEntry(
-            id='trend_and_quadratic',
-            description='trend and quadratic',
-            status='future',
-            priority='B',
         ),
         EnumRegistryEntry(
             id='monthly_seasonal',

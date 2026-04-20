@@ -260,13 +260,13 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | all_variables | absent | v1.0 | phase-03 | 축 분해 대상 |
 | preselected_core | absent | v1.0 | phase-03 | 축 분해 대상 |
-| category_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
-| paper_replication_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
+| category_subset | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — user-provided subset via leaf_config pending impl PR |
+| paper_replication_subset | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — user-provided subset via leaf_config pending impl PR |
 | target_specific_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
 | expert_curated_subset | absent | v1.1 | phase-10 | 큐레이션 필요 |
 | stability_filtered_subset | absent | v1.1 | phase-10 | 안정성 필터 필요 |
 | correlation_screened_subset | absent | v1.0 | phase-03 | screen 재사용 |
-| feature_selection_dynamic_subset | absent | v1.1 | phase-10 | dynamic selection |
+| feature_selection_dynamic_subset | **dropped** | - | - | **DROPPED 2026-04-20 (§1.4 cleanup)** — CV-in-training feature selection loop needs tuning-engine extension — v1.1 scope |
 
 ### 1.2.2 training_start_rule
 
@@ -400,13 +400,13 @@ All 5 values dropped (arbitrary_grid, default_1_3_6_12, short_only_1_3, long_onl
 |-------|---------|:---:|:---:|-----------|
 | target_lags_only | operational | - | - | 이미 완료 |
 | all_macro_vars | operational | - | - | 이미 완료 |
-| all_except_target | planned | v1.0 | phase-03 | 기본 옵션 |
-| category_based | planned | v1.0 | phase-03 | 카테고리 subset |
+| all_except_target | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — column filter (exclude target) pending impl PR |
+| category_based | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — tcode/category mapping pending impl PR |
 | financial_only | absent | v1.1 | phase-10 | finance 축 합류 |
 | macro_plus_finance | absent | v1.1 | phase-10 | finance 축 합류 |
 | survey_plus_macro | absent | v1.1 | phase-10 | SPF 합류 |
 | text_plus_macro | absent | v2 | phase-11 | text 합류 |
-| factor_only | planned | v1.0 | phase-03 | factor 축 합류 |
+| factor_only | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — factor_pca feature_builder subset pending impl PR |
 | latent_state_plus_lags | absent | v2 | phase-11 | SS 필요 |
 | selected_sparse_set | absent | v1.0 | phase-03 | feature selection 결합 |
 | handpicked_set | registry_only | v1.0 | phase-03 | replication 지원 |
@@ -433,8 +433,8 @@ All 4 values dropped (include, exclude, cv_select_lags, target_specific_lag_coun
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | none | operational | - | - | 이미 완료 |
-| constant_only | operational | - | - | 이미 완료 |
-| linear_trend | planned | v1.0 | phase-03 | 기본 trend |
+| constant_only | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — explicit fit_intercept record pending impl PR |
+| linear_trend | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — t column addition pending impl PR |
 | seasonal_dummies | absent | v1.0 | phase-03 | 계절 더미 |
 | month_dummies | registry_only | v1.0 | phase-03 | monthly_seasonal 매핑 |
 | quarter_dummies | registry_only | v1.0 | phase-03 | quarterly_seasonal 매핑 |
@@ -508,7 +508,7 @@ All 4 values dropped (include, exclude, cv_select_lags, target_specific_lag_coun
 | ar_bic | operational | - | - | 이미 완료 |
 | ar_fixed_p | planned | v1.0 | phase-04 | benchmark 정리 |
 | ardi | registry_only | v1.0 | phase-04 | benchmark 정리 |
-| factor_model | registry_only | v1.0 | phase-04 | benchmark 정리 |
+| factor_model | registry_only | v1.0 (§1.4 impl) | phase-10 | **DEMOTED 2026-04-20 (§1.4 cleanup)** — implementation via auxiliary panel pending impl PR |
 | var | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | expert_benchmark | future | v1.1 | phase-10 | 전문가 벤치 |
 | paper_specific_benchmark | registry_only | v1.0 | phase-04 | replication 지원 |

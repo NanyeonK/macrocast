@@ -24,13 +24,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='category_subset',
             description='subset by FRED category',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='paper_replication_subset',
             description='paper-specific replication variable subset',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
@@ -54,12 +54,6 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='correlation_screened_subset',
             description='subset chosen by correlation screening',
-            status='registry_only',
-            priority='B',
-        ),
-        EnumRegistryEntry(
-            id='feature_selection_dynamic_subset',
-            description='dynamic subset selected per fold',
             status='registry_only',
             priority='B',
         ),

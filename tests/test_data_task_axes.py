@@ -26,7 +26,7 @@ _NEW_AXES = {
         'expected': {
             'all_variables', 'preselected_core', 'category_subset', 'paper_replication_subset',
             'target_specific_subset', 'expert_curated_subset', 'stability_filtered_subset',
-            'correlation_screened_subset', 'feature_selection_dynamic_subset',
+            'correlation_screened_subset',
         },
     },
     'separation_rule': {

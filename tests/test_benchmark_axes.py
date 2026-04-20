@@ -36,9 +36,7 @@ def test_benchmark_family_operational_set():
         "random_walk",
         "ar_fixed_p",
         "ardi",
-        "factor_model",
         "expert_benchmark",
-        "multi_benchmark_suite",
     )
     for name in expected_operational:
         assert statuses.get(name) == "operational", f"{name} expected operational, got {statuses.get(name)}"
