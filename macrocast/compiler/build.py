@@ -414,9 +414,14 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "survey_forecast_series": leaf_config.get("survey_forecast_series"),
         # §1.4 deterministic_components input channels
         "break_dates": leaf_config.get("break_dates"),
+        # §1.5 release_lag_rule + missing_availability + contemporaneous_x_rule input channels
+        "release_lag_per_series": leaf_config.get("release_lag_per_series"),
+        "x_imputation": leaf_config.get("x_imputation"),
         "oos_period": _selection_value(selection_map, "oos_period", default="all_oos_data"),
         "min_train_size": _selection_value(selection_map, "min_train_size", default="fixed_n_obs"),
         "structural_break_segmentation": _selection_value(selection_map, "structural_break_segmentation", default="none"),
+        "missing_availability": _selection_value(selection_map, "missing_availability", default="complete_case_only"),
+        "release_lag_rule": _selection_value(selection_map, "release_lag_rule", default="ignore_release_lag"),
         "benchmark_family": _selection_value(selection_map, "benchmark_family"),
         "data_vintage": leaf_config.get("data_vintage"),
     }

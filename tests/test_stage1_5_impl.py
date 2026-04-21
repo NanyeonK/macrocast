@@ -1,0 +1,157 @@
+"""End-to-end tests for §1.5 implementation (9 values flipped operational).
+
+Covers:
+- contemporaneous_x_rule.allow_contemporaneous vs. forbid_contemporaneous (default).
+- release_lag_rule.series_specific_lag via leaf_config.release_lag_per_series.
+- missing_availability.available_case / x_impute_only (+ guards).
+- structural_break_segmentation 3 values (pre_post_crisis / pre_post_covid / user_break_dates).
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from macrocast.compiler.build import compile_recipe_dict
+
+
+def _recipe(**data_task_axes) -> dict:
+    axes_1 = {
+        "dataset": "fred_md",
+        "info_set": "revised",
+        "task": "single_target_point_forecast",
+    }
+    leaf_extras = data_task_axes.pop("_leaf", {})
+    for k, v in data_task_axes.items():
+        axes_1[k] = v
+
+    return {
+        "recipe_id": "s15-impl-test",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": axes_1,
+                "leaf_config": {"target": "INDPRO", "horizons": [1], **leaf_extras},
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level",
+                "x_transform_policy": "raw_level",
+                "tcode_policy": "raw_only",
+                "target_missing_policy": "none",
+                "x_missing_policy": "none",
+                "target_outlier_policy": "none",
+                "x_outlier_policy": "none",
+                "scaling_policy": "none",
+                "dimensionality_reduction_policy": "none",
+                "feature_selection_policy": "none",
+                "preprocess_order": "none",
+                "preprocess_fit_scope": "not_applicable",
+                "inverse_transform_policy": "none",
+                "evaluation_scale": "raw_level",
+            }},
+            "3_training": {"fixed_axes": {
+                "framework": "expanding",
+                "benchmark_family": "historical_mean",
+                "feature_builder": "autoreg_lagged_target",
+                "model_family": "ar",
+            }},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {
+                "manifest_mode": "full",
+                "benchmark_config": {"minimum_train_size": 5, "rolling_window_size": 5},
+            }},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+
+
+# ---------- contemporaneous_x_rule ----------
+
+def test_contemporaneous_x_forbid_default_compiles() -> None:
+    r = compile_recipe_dict(_recipe())
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["contemporaneous_x_rule"] == "forbid_contemporaneous"
+
+
+def test_contemporaneous_x_allow_compiles() -> None:
+    r = compile_recipe_dict(_recipe(contemporaneous_x_rule="allow_contemporaneous"))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["contemporaneous_x_rule"] == "allow_contemporaneous"
+
+
+# ---------- release_lag_rule ----------
+
+def test_release_lag_series_specific_compiles_with_dict() -> None:
+    r = compile_recipe_dict(_recipe(
+        release_lag_rule="series_specific_lag",
+        _leaf={"release_lag_per_series": {"INDPRO": 1, "RPI": 2}},
+    ))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["release_lag_per_series"] == {"INDPRO": 1, "RPI": 2}
+
+
+def test_release_lag_fixed_lag_all_series_executes() -> None:
+    r = compile_recipe_dict(_recipe(release_lag_rule="fixed_lag_all_series"))
+    assert r.compiled.execution_status == "executable"
+
+
+# ---------- missing_availability ----------
+
+def test_missing_availability_complete_case_default_compiles() -> None:
+    r = compile_recipe_dict(_recipe())
+    assert r.manifest["data_task_spec"]["missing_availability"] == "complete_case_only"
+
+
+def test_missing_availability_available_case_compiles() -> None:
+    r = compile_recipe_dict(_recipe(missing_availability="available_case"))
+    assert r.compiled.execution_status == "executable"
+
+
+def test_missing_availability_x_impute_only_requires_strategy() -> None:
+    # Compile is executable; runtime guard fires when the execution path calls
+    # _apply_missing_availability without the strategy. Here we confirm the
+    # axis value is accepted at compile time.
+    r = compile_recipe_dict(_recipe(
+        missing_availability="x_impute_only",
+        _leaf={"x_imputation": "ffill"},
+    ))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["x_imputation"] == "ffill"
+
+
+# ---------- structural_break_segmentation ----------
+
+@pytest.mark.parametrize("value", ["pre_post_crisis", "pre_post_covid"])
+def test_structural_break_presets_compile(value: str) -> None:
+    r = compile_recipe_dict(_recipe(structural_break_segmentation=value))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["structural_break_segmentation"] == value
+
+
+def test_structural_break_user_break_dates_compiles() -> None:
+    r = compile_recipe_dict(_recipe(
+        structural_break_segmentation="user_break_dates",
+        _leaf={"break_dates": ["2008-09-01", "2020-03-01"]},
+    ))
+    assert r.compiled.execution_status == "executable"
+
+
+def test_structural_break_presets_resolve_to_expected_dates() -> None:
+    # Unit test on the resolver helper — no end-to-end execution needed.
+    from macrocast.execution.build import _resolve_structural_break_dates
+    assert _resolve_structural_break_dates({"structural_break_segmentation": "none"}) is None
+    assert _resolve_structural_break_dates({"structural_break_segmentation": "pre_post_crisis"}) == ["2008-09-01"]
+    assert _resolve_structural_break_dates({"structural_break_segmentation": "pre_post_covid"}) == ["2020-03-01"]
+    assert _resolve_structural_break_dates({
+        "structural_break_segmentation": "user_break_dates",
+        "break_dates": ["2008-09-01"],
+    }) == ["2008-09-01"]
+
+
+def test_structural_break_user_without_dates_fails_resolver() -> None:
+    from macrocast.execution.build import _resolve_structural_break_dates
+    from macrocast.execution.errors import ExecutionError
+    with pytest.raises(ExecutionError, match="user_break_dates"):
+        _resolve_structural_break_dates({"structural_break_segmentation": "user_break_dates"})

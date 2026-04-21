@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='series_specific_lag',
             description='apply per-series publication lag from lag table',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
     ),
