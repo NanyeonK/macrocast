@@ -75,10 +75,11 @@ def test_release_lag_fixed_lag_shifts_columns():
     assert out.data['INDPRO'].iloc[1] == 1.0
 
 
-@pytest.mark.parametrize('rule', ['complete_case_only', 'available_case', 'x_impute_only'])
-def test_missing_availability_passes_through(rule):
+def test_missing_availability_complete_case_is_noop():
+    # complete_case_only is the default no-op; available_case and x_impute_only
+    # now do real work (§1.5 impl) — see tests/test_stage1_5_impl.py for their coverage.
     r = _make_raw()
-    out = _apply_missing_availability(r, rule)
+    out = _apply_missing_availability(r, 'complete_case_only')
     assert out is r
 
 

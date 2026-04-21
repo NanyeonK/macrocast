@@ -10,7 +10,7 @@ Stage 1 holds **20 meta axes** under the `1_data_task` layer, organised into fiv
 | §1.2 | [Task & Target (1.2)](task.md) | 4 | What is being forecast (task shape), how multi-step is produced, what forecast object, and how y_{t+h} is constructed |
 | §1.3 | [Horizon & Evaluation Window (1.3)](horizon.md) | 4 | Training window size rule, training start, OOS regime filter, overlap handling |
 | §1.4 | [Benchmark & Predictor Universe (1.4)](benchmark.md) | 4 | Benchmark families, predictor family, variable universe, deterministic components |
-| §1.5 | Data handling policies (cleanup complete; impl pending) | 4 | Missing data policy, release lag, structural-break segmentation, contemporaneous X |
+| §1.5 | [Data Handling Policies (1.5)](policies.md) | 4 | Missing data policy, release lag, structural-break segmentation, contemporaneous X |
 
 Stage 1 does not fix which model, which preprocessor, or which evaluation metric — those belong to Stage 2+ layers.
 
@@ -26,7 +26,7 @@ Layer 1 covers 20 axes. After the v0.9.3 Tier 1-3 drop and the §1.1 / §1.2 / �
 - **§1.2 Task & Target** — fully operational (task / forecast_type / forecast_object / horizon_target_construction); horizon_target_construction applies as a metric-scale transform at the central row site.
 - **§1.3 Horizon & Evaluation Window** — fully operational (min_train_size / training_start_rule / oos_period / overlap_handling); see horizon.md for per-axis semantics.
 - **§1.4 Benchmark & Predictor Universe** — fully operational (benchmark_family / predictor_family / variable_universe / deterministic_components). 19 formerly-demoted values wired via leaf_config input channels + deterministic feature augmentation; 4 dropped values stay out of v1.0 scope.
-- **§1.5 Data Handling Policies** — cleanup complete (6 axes dropped, 12 values dropped, 9 demoted to registry_only). 4 axes retained (missing_availability / release_lag_rule / structural_break_segmentation / contemporaneous_x_rule). Impl PR pending to flip the 9 demoted values operational via simple leaf_config input channels + break-dummy additions. evaluation_scale re-homed to Layer 2 (where it always belonged as a PreprocessContract field).
+- **§1.5 Data Handling Policies** — fully operational (missing_availability / release_lag_rule / structural_break_segmentation / contemporaneous_x_rule). 9 formerly-demoted values wired via leaf_config input channels (x_imputation, release_lag_per_series, break_dates) + reuse of the §1.4 break_dummies augmentation. evaluation_scale re-homed to Layer 2 as a PreprocessContract field. See policies.md.
 
 Each §1.x group document flags the honest status of every value it covers. Treat the current `design.md` / `data/*.md` state as the source of truth rather than the raw registry dump.
 
@@ -46,6 +46,7 @@ source
 task
 horizon
 benchmark
+policies
 datasets/fred_md
 datasets/fred_qd
 datasets/fred_sd

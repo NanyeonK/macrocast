@@ -12,7 +12,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='allow_contemporaneous',
             description='allow contemporaneous',
-            status='registry_only',
+            status='operational',
             priority='B',
         ),
         EnumRegistryEntry(

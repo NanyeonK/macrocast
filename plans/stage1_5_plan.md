@@ -136,3 +136,29 @@ New §1.5 page mirroring `task.md` / `horizon.md` / `benchmark.md` style.
 - `vintage_policy` / `alignment_rule` — v1.1 FRED-SD real-time-vintage stack.
 - `missing_availability` complex imputations — v1.1+.
 - `structural_break_segmentation.break_test_detected` / `rolling_break_adaptive` — change-point detection library.
+
+---
+
+## 7. v1.0 implementation status (2026-04-21 follow-up)
+
+**All 9 demoted values flipped operational.** §1.5 registry has zero registry_only entries across all 4 axes.
+
+Implementations:
+
+- contemporaneous_x_rule.allow_contemporaneous — _build_raw_panel_training_data branches on the axis value: default forbid pairs (X_t, y_{t+h}); allow pairs (X_{t+h}, y_{t+h}) and uses X at origin_idx + horizon for prediction (oracle / data-leak benchmark).
+
+- release_lag_rule.series_specific_lag — _apply_release_lag rewritten with per-rule dispatch. series_specific_lag reads leaf_config.release_lag_per_series (dict[col -> int months]) and applies shift per column; missing dict raises ExecutionError. calendar_exact_lag / lag_conservative / lag_aggressive duplicates were dropped in the cleanup PR.
+
+- missing_availability.available_case / x_impute_only — _apply_missing_availability rewritten. available_case drops rows with any NaN across non-date columns. x_impute_only reads leaf_config.x_imputation in {mean, median, ffill, bfill} and fills predictor columns only (target retains NaNs).
+
+- structural_break_segmentation.pre_post_crisis / pre_post_covid / user_break_dates — new _resolve_structural_break_dates helper maps the axis value to a break-date list (2008-09-01 / 2020-03-01 presets, or leaf_config.break_dates). The list is passed to the existing §1.4 augment_array(component='break_dummies') path inside _build_raw_panel_training_data, so X_train and X_pred gain one 0/1 dummy per break date.
+
+Compiler propagates 3 additional leaf_config fields (release_lag_per_series, x_imputation, break_dates — already in place from §1.4) into data_task_spec. missing_availability + release_lag_rule now also appear explicitly in data_task_spec for manifest visibility.
+
+Tests: 12 new positive / guard tests in tests/test_stage1_5_impl.py. Stale available_case / x_impute_only pass-through check in test_data_task_axes_runtime.py reduced to complete_case_only only. Full suite 727 -> 737 passed.
+
+Docs:
+- docs/user_guide/data/policies.md written — §1.5 page mirroring task.md / horizon.md / benchmark.md style.
+- docs/user_guide/data/index.md §1.5 row now links to policies.md; Honest operational status paragraph refreshed; hidden toctree adds policies.
+
+Layer 1 per-axis walk complete — §1.1 through §1.5 all fully operational & honest.

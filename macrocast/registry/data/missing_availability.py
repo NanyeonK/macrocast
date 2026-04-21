@@ -18,13 +18,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='available_case',
             description='keep rows with available cases only (per-series)',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='x_impute_only',
             description='impute X only, drop rows where target missing',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
     ),

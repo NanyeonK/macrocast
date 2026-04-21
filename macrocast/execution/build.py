@@ -86,41 +86,98 @@ def _replace_raw_data(raw_result, new_data):
     return raw_result
 
 
-def _apply_release_lag(raw_result, rule: str):
-    if rule == 'ignore_release_lag':
-        return raw_result
-    lag_map = {
-        'fixed_lag_all_series': 1,
-        'series_specific_lag': 1,
-        'calendar_exact_lag': 2,
-        'lag_conservative': 2,
-        'lag_aggressive': 0,
-    }
-    lag = lag_map.get(rule, 0)
-    if lag == 0:
+def _apply_release_lag(raw_result, rule: str, *, spec: dict | None = None):
+    """Apply release_lag_rule to raw_result.data.
+
+    v1.0 operational rules:
+    - ``ignore_release_lag`` (default): no-op.
+    - ``fixed_lag_all_series``: shift every non-date column by 1 period.
+    - ``series_specific_lag``: shift each column by the lag supplied via
+      ``spec['release_lag_per_series']`` (dict[column → int months]).
+      Columns missing from the dict are left untouched.
+    """
+    if rule == 'ignore_release_lag' or not rule:
         return raw_result
     data = getattr(raw_result, 'data', None)
     if data is None:
         return raw_result
-    try:
-        new_data = data.copy()
-        cols = [c for c in new_data.columns if str(c).lower() != 'date']
-        for c in cols:
-            new_data[c] = new_data[c].shift(lag)
-    except Exception:
-        return raw_result
-    return _replace_raw_data(raw_result, new_data)
+    if rule == 'fixed_lag_all_series':
+        try:
+            new_data = data.copy()
+            cols = [c for c in new_data.columns if str(c).lower() != 'date']
+            for c in cols:
+                new_data[c] = new_data[c].shift(1)
+        except Exception:
+            return raw_result
+        return _replace_raw_data(raw_result, new_data)
+    if rule == 'series_specific_lag':
+        lag_map = (spec or {}).get('release_lag_per_series')
+        if not isinstance(lag_map, dict) or not lag_map:
+            raise ExecutionError("release_lag_rule='series_specific_lag' requires leaf_config.release_lag_per_series (dict[str, int])")
+        try:
+            new_data = data.copy()
+            for col, lag in lag_map.items():
+                if col in new_data.columns:
+                    new_data[col] = new_data[col].shift(int(lag))
+        except Exception as exc:
+            raise ExecutionError(f"series_specific_lag failed: {exc}") from exc
+        return _replace_raw_data(raw_result, new_data)
+    raise ExecutionError(f'unsupported release_lag_rule={rule!r}')
 
 
-def _apply_missing_availability(raw_result, rule: str):
-    if rule in {'complete_case_only', None}:
+def _apply_missing_availability(raw_result, rule: str, *, target: str | None = None, spec: dict | None = None):
+    """Apply missing_availability rule to the raw panel.
+
+    v1.0 operational rules:
+    - ``complete_case_only`` (default): no-op; downstream code drops NaNs per its own policy.
+    - ``available_case``: keep only rows where every non-date column is non-NaN.
+      Target rows with NaN outside this filter are kept (they will be skipped
+      later by the evaluator); X columns are also required complete per row.
+    - ``x_impute_only``: impute predictor columns (non-target, non-date) using the
+      strategy declared in ``spec['x_imputation']`` (one of 'mean', 'median', 'ffill', 'bfill').
+      Target column is left untouched so NaNs in y remain visible to the OOS loop.
+    """
+    if rule in {'complete_case_only', None} or not rule:
         return raw_result
+    data = getattr(raw_result, 'data', None)
+    if data is None:
+        return raw_result
+    spec = dict(spec or {})
+
     if rule == 'available_case':
-        return raw_result
-    if rule in {'x_impute_only', 'real_time_missing_as_missing', 'state_space_fill', 'factor_fill', 'em_fill'}:
-        return raw_result
-    if rule == 'target_date_drop_if_missing':
-        return raw_result
+        # Complete-case filter across the whole panel; legitimate in short
+        # fixture windows, aggressive for long panels.
+        new_data = data.dropna(how='any').copy()
+        if len(new_data) == 0:
+            # Fall back to original to avoid empty-data downstream crashes; the
+            # evaluator will raise a more informative error.
+            return raw_result
+        return _replace_raw_data(raw_result, new_data)
+
+    if rule == 'x_impute_only':
+        strategy = spec.get('x_imputation')
+        if strategy is None:
+            raise ExecutionError("missing_availability='x_impute_only' requires leaf_config.x_imputation (one of 'mean' / 'median' / 'ffill' / 'bfill')")
+        if strategy not in {'mean', 'median', 'ffill', 'bfill'}:
+            raise ExecutionError(f"missing_availability='x_impute_only': unsupported leaf_config.x_imputation={strategy!r}; allowed: mean / median / ffill / bfill")
+        x_cols = [c for c in data.columns if c != target and str(c).lower() != 'date']
+        new_data = data.copy()
+        if strategy == 'ffill':
+            new_data[x_cols] = new_data[x_cols].ffill().bfill()
+        elif strategy == 'bfill':
+            new_data[x_cols] = new_data[x_cols].bfill().ffill()
+        elif strategy == 'mean':
+            for c in x_cols:
+                col = new_data[c]
+                if col.isna().any():
+                    new_data[c] = col.fillna(col.mean())
+        elif strategy == 'median':
+            for c in x_cols:
+                col = new_data[c]
+                if col.isna().any():
+                    new_data[c] = col.fillna(col.median())
+        return _replace_raw_data(raw_result, new_data)
+
     raise ExecutionError(f'unsupported missing_availability={rule!r}')
 
 
@@ -281,6 +338,34 @@ def _benchmark_family(recipe: RecipeSpec) -> str:
 
 def _predictor_family(recipe: RecipeSpec) -> str:
     return str(recipe.data_task_spec.get("predictor_family", "all_macro_vars"))
+
+
+_STRUCTURAL_BREAK_PRESETS = {
+    "pre_post_crisis": ("2008-09-01",),
+    "pre_post_covid": ("2020-03-01",),
+}
+
+
+def _resolve_structural_break_dates(spec: dict | None) -> list[str] | None:
+    """Map structural_break_segmentation value to its break-date list.
+
+    v1.0 operational values:
+    - ``none`` (default)        : returns None (no augmentation).
+    - ``pre_post_crisis``       : single break at 2008-09-01 (NBER Great-Recession onset).
+    - ``pre_post_covid``        : single break at 2020-03-01 (NBER COVID-recession onset).
+    - ``user_break_dates``      : reads leaf_config.break_dates (list of ISO dates).
+    """
+    rule = (spec or {}).get("structural_break_segmentation", "none")
+    if rule == "none" or not rule:
+        return None
+    if rule in _STRUCTURAL_BREAK_PRESETS:
+        return list(_STRUCTURAL_BREAK_PRESETS[rule])
+    if rule == "user_break_dates":
+        dates = (spec or {}).get("break_dates")
+        if not isinstance(dates, (list, tuple)) or not dates:
+            raise ExecutionError("structural_break_segmentation='user_break_dates' requires leaf_config.break_dates (non-empty list)")
+        return list(dates)
+    raise ExecutionError(f"unsupported structural_break_segmentation={rule!r}")
 
 
 def _benchmark_window(recipe):
@@ -882,9 +967,21 @@ def _build_raw_panel_training_data(
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
         raise ExecutionError("insufficient history for raw_feature_panel training data")
-    X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
-    y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
-    X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    # §1.5 contemporaneous_x_rule: default forbid (X at origin + train pairs X_t with y_{t+h});
+    # allow uses X aligned to the target date (X_{t+h} with y_{t+h}) — the oracle / data-leak
+    # benchmark variant.
+    contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous")
+    if contemp_rule == "allow_contemporaneous":
+        X_train = frame[predictors].iloc[start_idx + horizon : origin_idx + 1].astype(float).copy()
+        y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+        pred_idx = origin_idx + horizon
+        if pred_idx >= len(frame):
+            raise ExecutionError("contemporaneous_x_rule='allow_contemporaneous' requires X observed at the target date; target falls beyond the available index")
+        X_pred = frame[predictors].iloc[[pred_idx]].astype(float).copy()
+    else:
+        X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
+        y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+        X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
     if len(X_train) == 0 or len(y_train) == 0:
         raise ExecutionError("raw_feature_panel produced empty training data")
     X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(X_train, y_train, X_pred, contract)
@@ -904,6 +1001,23 @@ def _build_raw_panel_training_data(
             X_pred_arr = _augment_deterministic_array(
                 X_pred_arr, det_component,
                 index=X_pred.index, break_dates=break_dates,
+            )
+        except ValueError as exc:
+            raise ExecutionError(str(exc)) from exc
+
+    # §1.5 structural_break_segmentation augmentation — reuses the break_dummies
+    # path from §1.4 deterministic_components with dates resolved from the axis
+    # value (pre_post_crisis / pre_post_covid presets or user_break_dates).
+    sb_dates = _resolve_structural_break_dates(spec)
+    if sb_dates:
+        try:
+            X_train_arr = _augment_deterministic_array(
+                X_train_arr, "break_dummies",
+                index=X_train.index, break_dates=sb_dates,
+            )
+            X_pred_arr = _augment_deterministic_array(
+                X_pred_arr, "break_dummies",
+                index=X_pred.index, break_dates=sb_dates,
             )
         except ValueError as exc:
             raise ExecutionError(str(exc)) from exc
@@ -3315,8 +3429,8 @@ def execute_recipe(
     _min_train_axis = _data_task_axis(recipe, "min_train_size")
     _break_seg = _data_task_axis(recipe, "structural_break_segmentation")
     _separation = _data_task_axis(recipe, "separation_rule")
-    raw_result = _apply_release_lag(raw_result, _release_lag)
-    raw_result = _apply_missing_availability(raw_result, _missing_avail)
+    raw_result = _apply_release_lag(raw_result, _release_lag, spec=dict(recipe.data_task_spec))
+    raw_result = _apply_missing_availability(raw_result, _missing_avail, target=str(recipe.target) if getattr(recipe, 'target', None) else None, spec=dict(recipe.data_task_spec))
     raw_result = _apply_variable_universe(raw_result, _var_universe, spec=dict(recipe.data_task_spec), target=str(recipe.target) if getattr(recipe, 'target', None) else None)
     targets = _recipe_targets(recipe)
     prediction_frames = []
