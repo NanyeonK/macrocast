@@ -18,7 +18,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='iterated',
             description='iterated',
-            status='registry_only',
+            status='operational',
             priority='B',
         ),
     ),

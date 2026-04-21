@@ -88,10 +88,7 @@ def test_dropped_value_is_rejected(axis: str, value: str) -> None:
 
 
 # Values demoted to registry_only — compile succeeds but execution is gated.
-DEMOTED: tuple[tuple[str, str], ...] = (
-    ("forecast_type", "iterated"),
-    ("forecast_object", "quantile"),
-)
+DEMOTED: tuple[tuple[str, str], ...] = ()
 
 
 @pytest.mark.parametrize("axis,value", DEMOTED)

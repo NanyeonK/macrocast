@@ -50,67 +50,120 @@ path:
 
 ## 1.2.2 `forecast_type`
 
-**Selects how h-step-ahead forecasts are produced.** Only one value is runtime-wired in v1.0.
+**Selects how h-step-ahead forecasts are produced.** Both values are operational in v1.0, but the two are tied to specific `feature_builder` choices — the pairing is what the current runtime actually implements, and the default is picked dynamically.
 
 ### Value catalog
 
-| Value | Status | What it does |
-|---|---|---|
-| `direct` | operational | Fit one model per horizon on `(X_t, y_{t+h})` pairs. This is what every executor in v1.0 does — sklearn / statsmodels / deep / AR all train direct-per-h. |
-| `iterated` | registry_only (v1.1) | Fit a 1-step model and roll forward h times. **Not implemented in v1.0.** Recipes that set this value compile to `execution_status=representable_but_not_executable`. |
+| Value | Status | Valid `feature_builder` | What it does |
+|---|---|---|---|
+| `direct` | operational | `raw_feature_panel`, `factor_pca`, `factors_plus_AR` | Fit one model on `(X_t, y_{t+h})` pairs and predict once. The raw panel path already does this — target `y_{t+h}` is shifted h steps into the future at training time. |
+| `iterated` | operational | `autoreg_lagged_target` | Fit a 1-step model on `(lags_t, y_{t+1})` pairs and recurse h times, appending each prediction to the lag history (`_recursive_predict_sklearn`). Default for autoreg recipes. |
 
-### v1.1 commitment
+### Dynamic default
 
-`iterated` will get a dedicated wrapper that runs any direct-1-step model recursively. Comparison against `direct` is the Marcellino-Stock-Watson (2006) classic — keeping `iterated` in the registry makes that comparison a first-class sweep axis.
+The compiler picks the default based on `feature_builder`:
+
+- `feature_builder = autoreg_lagged_target` → default `forecast_type = iterated`
+- `feature_builder = raw_feature_panel` (and other panel variants) → default `forecast_type = direct`
+
+### Compatibility guards (v1.0)
+
+Cross combinations are not runtime-wired in v1.0 and are rejected at compile time:
+
+- `forecast_type = iterated` + `feature_builder = raw_feature_panel` → `blocked_by_incompatibility` (would require exogenous X forecasting).
+- `forecast_type = direct` + `feature_builder = autoreg_lagged_target` → `blocked_by_incompatibility` (the autoreg path is iterated by construction; a true direct autoreg executor is deferred).
+
+### Functions & features
+
+- `macrocast.execution.build._recursive_predict_sklearn(model, train, horizon, lag_order)` — the iterated 1-step executor used by every autoreg_lagged_target model family.
+- `macrocast.execution.build._build_raw_panel_training_data(frame, target, horizon, start, origin, contract)` — builds the direct h-step target `y.iloc[start+horizon : origin+1]` used by the raw-panel executors.
+- Compiler-side wiring: `macrocast.compiler.build._data_task_spec` reads `feature_builder` and derives the default `forecast_type`; the compatibility guards live alongside the other §1.2 guards in the compile function's blocked-reasons block.
+- Manifest: `data_task_spec["forecast_type"]` records the value (default or explicit) used for the run.
 
 ### Dropped values
 
-`dirrec` (niche hybrid), `mimo`, `seq2seq` (deep-only strategies that belong to model capabilities rather than to a general forecast_type) — see coverage_ledger §1.3.2.
+`dirrec` (Taieb-Bontempi 2011 hybrid), `mimo`, `seq2seq` — niche / deep-only strategies that belong to model capabilities rather than to a general forecast_type. See coverage_ledger §1.3.2.
 
 ### Recipe usage
 
 ```yaml
-# v1.0 — only executable form
+# Autoreg recipe — iterated is the default; explicit is equivalent.
 path:
   1_data_task:
     fixed_axes:
-      forecast_type: direct
+      forecast_type: iterated        # optional (default for autoreg)
+  3_training:
+    fixed_axes:
+      feature_builder: autoreg_lagged_target
+      model_family: ridge
+```
+
+```yaml
+# Raw-panel recipe — direct is the default.
+path:
+  3_training:
+    fixed_axes:
+      feature_builder: raw_feature_panel
+      model_family: lasso
 ```
 
 ---
 
 ## 1.2.3 `forecast_object`
 
-**Selects what statistic of the predictive distribution the model emits.** Two operational values in v1.0.
+**Selects what statistic of the predictive distribution the model emits.** All three values are operational in v1.0.
 
 ### Value catalog
 
 | Value | Status | What it does |
 |---|---|---|
 | `point_mean` | operational | Default. Every executor emits a conditional-mean point forecast; MSFE / RMSE metrics are computed on this. |
-| `point_median` | operational | Conditional-median point forecast. `model_family=quantile_linear` is gated by the compiler (line 641) to require this value. |
-| `quantile` | registry_only (v1.1) | Quantile forecast at declared level(s). **Not implemented in v1.0.** |
+| `point_median` | operational | Conditional-median point forecast. Compatible with `model_family=quantile_linear` (which fits a quantile regression at `τ=0.5`). |
+| `quantile` | operational | Quantile forecast at a user-specified `τ`. Requires `model_family=quantile_linear`; the level comes from `training_spec.hp.quantile` (default `0.5`). |
 
-### v1.1 commitment
+### Compatibility guard (v1.0)
 
-`quantile` will be unlocked together with a conformal / quantile-loss pipeline. Prediction-interval output emerges as a by-product — there is no separate `interval` axis value.
+The v1.0 guard enforces `model_family=quantile_linear ⇒ forecast_object ∈ {point_median, quantile}`. Setting `forecast_object=point_mean` with `quantile_linear` is rejected at compile time.
+
+### Picking a quantile level
+
+```yaml
+# Upper-tail forecast at tau = 0.9
+path:
+  1_data_task:
+    fixed_axes:
+      forecast_object: quantile
+  3_training:
+    fixed_axes:
+      model_family: quantile_linear
+    leaf_config:
+      hp:
+        quantile: 0.9
+```
+
+If `quantile` is set but no explicit `hp.quantile` is provided, the underlying `QuantileRegressor` falls back to the library default `τ = 0.5` — numerically the same forecast as `point_median`. Pick the level explicitly when you want a non-median quantile.
+
+### Functions & features
+
+- `macrocast.execution.deep_training._build_model("quantile_linear", hp)` wraps `sklearn.linear_model.QuantileRegressor(quantile=hp.get("quantile", 0.5), alpha=hp.get("alpha", 1.0), solver="highs")`. The `quantile` hyperparameter is the τ level applied at fit time.
+- Compiler guard lives in `macrocast.compiler.build`'s main compile function and enforces `model_family=quantile_linear ⇒ forecast_object ∈ {point_median, quantile}`.
+- Manifest: `data_task_spec["forecast_object"]` records the selected value; the τ level (if provided) is carried through `training_spec["hp"]["quantile"]`.
 
 ### Dropped values
 
 - `direction`: sign of the point forecast; this is a metric view (Pesaran-Timmermann, binomial-hit), not an independent forecast object.
-- `interval`: subsumed by v1.1 conformal wrapper on the point forecast.
+- `interval`: subsumed by the v1.0 conformal wrapper on the point forecast (future work — not a separate axis).
 - `density`: v2 distributional work.
 - `turning_point`, `regime_probability`, `event_probability`: niche / bound to state_space / event modules that do not exist in v1.x.
 
 ### Recipe usage
 
 ```yaml
-# v1.0 executable forms
+# Default conditional-mean point forecast
 path:
   1_data_task:
     fixed_axes:
-      forecast_object: point_mean       # default
-      # or: forecast_object: point_median  (required with quantile_linear model)
+      forecast_object: point_mean
 ```
 
 ---
@@ -167,7 +220,8 @@ path:
 ## Task & Target (1.2) takeaways
 
 - **`task`** is the only §1.2 axis that truly branches at runtime today. It flows into multi-target aggregator activation and `experiment_unit` default derivation.
-- **`forecast_type`** and **`forecast_object`** each have one executable value in v1.0 (`direct` / `point_mean` + `point_median`). The remaining `registry_only` values (`iterated`, `quantile`) are the v1.1 acceptance criteria for §1.2 completeness in phase-10.
+- **`forecast_type`** is feature-builder-dynamic: `iterated` for `autoreg_lagged_target`, `direct` for `raw_feature_panel` and the panel variants. Cross combinations are blocked at compile time.
+- **`forecast_object`** has all three values operational (`point_mean`, `point_median`, `quantile`). `quantile` pairs with `model_family=quantile_linear`; level via `hp.quantile`.
 - **`horizon_target_construction`** is fully operational with 4 values — default `future_level_y_t_plus_h` plus 3 metric-scale transforms (`future_diff`, `future_logdiff`, `cumulative_growth_to_h`).
 - `target_family`, `multi_target_architecture`, `target_to_target_inclusion` are gone — see the "Dropped axes" note at the top.
 

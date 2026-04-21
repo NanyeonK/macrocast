@@ -170,9 +170,11 @@ These belong in the Phase 10 (v1.1) catalog section "Layer 1 deferred dispatch";
 - New module macrocast/execution/horizon_target.py exports forward_scalar (wired) plus build_horizon_target / inverse_horizon_target (reserved for a future training-time wiring).
 - Tests: tests/test_horizon_target_construction.py (8 cases). Full suite 705 passed.
 
-**Remaining registry_only values (v1.1 roadmap):**
+**All 5 deferred registry_only values are now operational** (second follow-up commit):
 
-- forecast_type=iterated
-- forecast_object=quantile
+- **forecast_type=iterated** — flipped operational. The autoreg_lagged_target executor path is already iterated by construction (1-step fit + recursive prediction); the compiler now picks forecast_type dynamically by feature_builder (autoreg → iterated, raw_panel → direct). Cross combinations blocked_by_incompatibility: raw_feature_panel+iterated (requires exogenous X forecasting) and autoreg_lagged_target+direct (true direct autoreg executor deferred). No executor refactor needed.
+- **forecast_object=quantile** — flipped operational. Compiler guard loosened from quantile_linear => forecast_object=point_median to quantile_linear => forecast_object IN {point_median, quantile}. The QuantileRegressor already reads quantile from training_spec.hp; users set leaf_config.training_spec.hp.quantile to pick the level (default 0.5 = numerically median).
 
-Both require per-executor wiring (new direct path for iterated; quantile level spec + quantile_linear extension for quantile) and are deferred to a follow-up session per user scope (B).
+**§1.2 registry final state** — task/forecast_type/forecast_object/horizon_target_construction: every value in every axis is either operational or dropped. No registry_only entries remain in §1.2.
+
+Tests: 9 new positive / guard tests in tests/test_forecast_type_quantile.py. Full suite 712 passed.

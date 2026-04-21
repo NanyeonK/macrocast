@@ -390,7 +390,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "information_set_type": information_set_type,
         "vintage_policy": _selection_value(selection_map, "vintage_policy", default=("single_vintage" if information_set_type == "real_time_vintage" else "latest_only")),
         "alignment_rule": _selection_value(selection_map, "alignment_rule", default="end_of_period"),
-        "forecast_type": _selection_value(selection_map, "forecast_type", default="direct"),
+        "forecast_type": _selection_value(selection_map, "forecast_type", default=("iterated" if feature_builder == "autoreg_lagged_target" else "direct")),
         "forecast_object": _selection_value(selection_map, "forecast_object", default="point_mean"),
         "horizon_target_construction": _selection_value(selection_map, "horizon_target_construction", default="future_level_y_t_plus_h"),
         "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
@@ -637,8 +637,17 @@ def _execution_status(
     if model_family == "ar" and feature_builder == "raw_feature_panel":
         blocked.append("raw_feature_panel is not compatible with model_family='ar' in the current runtime slice")
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
-    if model_family == "quantile_linear" and forecast_object != "point_median":
-        blocked.append("model_family='quantile_linear' currently requires forecast_object='point_median'")
+    if model_family == "quantile_linear" and forecast_object not in {"point_median", "quantile"}:
+        blocked.append("model_family='quantile_linear' requires forecast_object='point_median' or 'quantile'")
+
+    # §1.2.2 forecast_type × feature_builder compatibility (v1.0)
+    if feature_builder is not None:
+        forecast_type_default = "iterated" if feature_builder == "autoreg_lagged_target" else "direct"
+        forecast_type = _selection_value(selection_map, "forecast_type", default=forecast_type_default)
+        if feature_builder == "raw_feature_panel" and forecast_type == "iterated":
+            blocked.append("forecast_type='iterated' is not implemented for feature_builder='raw_feature_panel' in v1.0 (requires exogenous X forecasting)")
+        if feature_builder == "autoreg_lagged_target" and forecast_type == "direct":
+            blocked.append("forecast_type='direct' is not implemented for feature_builder='autoreg_lagged_target' in v1.0 (the operational path is iterated); use forecast_type='iterated' or leave unset to take the dynamic default")
 
     if feature_builder is not None:
         predictor_family = _selection_value(selection_map, "predictor_family", default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "all_macro_vars"))
