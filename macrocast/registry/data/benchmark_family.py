@@ -60,7 +60,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='factor_model',
             description='factor model',
-            status='operational',
+            status='registry_only',
             priority='B',
         ),
         EnumRegistryEntry(
@@ -84,7 +84,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='multi_benchmark_suite',
             description='multi benchmark suite',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
     ),

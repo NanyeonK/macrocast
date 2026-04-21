@@ -24,32 +24,20 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='all_except_target',
             description='all except target',
-            status="operational",
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='category_based',
             description='category based',
-            status="operational",
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='factor_only',
             description='factor only',
-            status="operational",
+            status='registry_only',
             priority='A',
-        ),
-        EnumRegistryEntry(
-            id='text_only',
-            description='text only',
-            status='future',
-            priority='B',
-        ),
-        EnumRegistryEntry(
-            id='mixed_blocks',
-            description='mixed blocks',
-            status='future',
-            priority='B',
         ),
         EnumRegistryEntry(
             id='handpicked_set',

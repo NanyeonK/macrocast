@@ -20,12 +20,13 @@ The 6 meta axes of Stage 0 ([design](../design.md)) — `research_design`, `expe
 
 ## Honest operational status
 
-Layer 1 covers 26 axes. After the v0.9.3 Tier 1-3 drop and the §1.1 / §1.2 / §1.3 per-group walks, the current breakdown is:
+Layer 1 covers 26 axes. After the v0.9.3 Tier 1-3 drop and the §1.1 / §1.2 / §1.3 per-group walks plus the §1.4 cleanup, the current breakdown is:
 
 - **§1.1 Source & Frame** — fully honest. 4 axes, all values either operational or dropped.
 - **§1.2 Task & Target** — fully operational (task / forecast_type / forecast_object / horizon_target_construction); horizon_target_construction applies as a metric-scale transform at the central row site.
 - **§1.3 Horizon & Evaluation Window** — fully operational (min_train_size / training_start_rule / oos_period / overlap_handling); see horizon.md for per-axis semantics.
-- **§1.4 / §1.5** (pending) — still contain the older mix of truly-wired, metadata-only flow-through, and hollow-dispatch values. The per-group walks for these sections will land in follow-up PRs.
+- **§1.4 Benchmark & Predictor Universe** — cleanup complete (4 values dropped, 9 demoted to registry_only). 14 op values truly wired; 19 registry_only values scheduled for v1.0 implementation via leaf_config input channels + simple deterministic feature additions. Impl PR pending.
+- **§1.5** (pending) — still contains the older mix of truly-wired, metadata-only flow-through, and hollow-dispatch values. Per-group walk in a follow-up PR.
 
 Each §1.x group document flags the honest status of every value it covers. Treat the current `design.md` / `data/*.md` state as the source of truth rather than the raw registry dump.
 
