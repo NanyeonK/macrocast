@@ -112,7 +112,7 @@ def test_benchmark_family_survey_forecast_compiles() -> None:
 
 # ---------- predictor_family ----------
 
-@pytest.mark.parametrize("value", ["all_except_target", "category_based", "factor_only", "handpicked_set"])
+@pytest.mark.parametrize("value", ["category_based", "factor_only", "handpicked_set"])
 def test_predictor_family_compiles(value: str) -> None:
     recipe = _recipe(predictor_family=value)
     # These values expect feature_builder != autoreg_lagged_target
@@ -129,16 +129,11 @@ def test_predictor_family_compiles(value: str) -> None:
 
 # ---------- variable_universe ----------
 
-def test_variable_universe_paper_replication_compiles() -> None:
-    recipe = _recipe(variable_universe="paper_replication_subset")
-    recipe["path"]["1_data_task"]["leaf_config"]["paper_replication_columns"] = ["RPI", "UNRATE"]
-    r = compile_recipe_dict(recipe)
-    assert r.compiled.execution_status == "executable"
 
 
-def test_variable_universe_expert_curated_compiles() -> None:
-    recipe = _recipe(variable_universe="expert_curated_subset")
-    recipe["path"]["1_data_task"]["leaf_config"]["expert_columns"] = ["CPIAUCSL"]
+def test_variable_universe_handpicked_set_compiles() -> None:
+    recipe = _recipe(variable_universe="handpicked_set")
+    recipe["path"]["1_data_task"]["leaf_config"]["variable_universe_columns"] = ["RPI", "UNRATE"]
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable"
 
@@ -158,21 +153,7 @@ def test_variable_universe_target_specific_compiles() -> None:
     assert r.compiled.execution_status == "executable"
 
 
-def test_variable_universe_stability_compiles() -> None:
-    recipe = _recipe(variable_universe="stability_filtered_subset")
-    recipe["path"]["1_data_task"]["leaf_config"]["stability_filtered_columns"] = ["RPI"]
-    r = compile_recipe_dict(recipe)
-    assert r.compiled.execution_status == "executable"
 
-
-def test_variable_universe_correlation_screened_compiles() -> None:
-    recipe = _recipe(variable_universe="correlation_screened_subset")
-    recipe["path"]["1_data_task"]["leaf_config"]["correlation_screened_columns"] = ["RPI"]
-    r = compile_recipe_dict(recipe)
-    assert r.compiled.execution_status == "executable"
-
-
-# ---------- deterministic_components ----------
 
 @pytest.mark.parametrize(
     "value",

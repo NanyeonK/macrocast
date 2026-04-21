@@ -22,12 +22,6 @@ AXIS_DEFINITION = AxisDefinition(
             priority='A',
         ),
         EnumRegistryEntry(
-            id='all_except_target',
-            description='all except target',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
             id='category_based',
             description='category based',
             status='operational',

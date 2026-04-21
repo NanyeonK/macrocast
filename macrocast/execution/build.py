@@ -182,10 +182,7 @@ def _apply_missing_availability(raw_result, rule: str, *, target: str | None = N
 
 
 _VARIABLE_UNIVERSE_SUBSET_FIELD: dict[str, str] = {
-    'paper_replication_subset': 'paper_replication_columns',
-    'expert_curated_subset': 'expert_columns',
-    'stability_filtered_subset': 'stability_filtered_columns',
-    'correlation_screened_subset': 'correlation_screened_columns',
+    'handpicked_set': 'variable_universe_columns',
 }
 
 
@@ -360,11 +357,6 @@ def _resolve_structural_break_dates(spec: dict | None) -> list[str] | None:
         return None
     if rule in _STRUCTURAL_BREAK_PRESETS:
         return list(_STRUCTURAL_BREAK_PRESETS[rule])
-    if rule == "user_break_dates":
-        dates = (spec or {}).get("break_dates")
-        if not isinstance(dates, (list, tuple)) or not dates:
-            raise ExecutionError("structural_break_segmentation='user_break_dates' requires leaf_config.break_dates (non-empty list)")
-        return list(dates)
     raise ExecutionError(f"unsupported structural_break_segmentation={rule!r}")
 
 
@@ -548,7 +540,7 @@ def _get_benchmark_executor(recipe: RecipeSpec):
     benchmark_family = _benchmark_family(recipe)
     if benchmark_family in {
         "historical_mean", "zero_change", "ar_bic", "custom_benchmark",
-        "rolling_mean", "random_walk", "ar_fixed_p", "ardi", "factor_model",
+        "rolling_mean", "ar_fixed_p", "ardi", "factor_model",
         "expert_benchmark", "multi_benchmark_suite",
         "paper_specific_benchmark", "survey_forecast",
     }:
@@ -681,7 +673,6 @@ def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: st
     predictor_family values wired in v1.0:
 
     - ``all_macro_vars`` (default) : every column except the target.
-    - ``all_except_target``        : alias of all_macro_vars (makes the intent explicit).
     - ``target_lags_only``         : empty predictor set — raw panel degrades to target-lag-only; the compiler guard already ties this value to feature_builder=autoreg_lagged_target, so this branch should not normally be reached.
     - ``category_based``           : user supplies a mapping (spec['predictor_category_columns'][spec['predictor_category']]).
     - ``factor_only``              : columns whose name starts with 'F_' (convention for factor outputs of factor_pca / factor_augmented_linear builders).
@@ -690,7 +681,7 @@ def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: st
     spec = dict(spec or {})
     all_except_target = [col for col in frame.columns if col != target]
 
-    if predictor_family in ("all_macro_vars", "all_except_target"):
+    if predictor_family == "all_macro_vars":
         cols = all_except_target
     elif predictor_family == "target_lags_only":
         cols = []  # compiler routes this to autoreg path; empty means 'no exogenous X'
@@ -1465,8 +1456,6 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
         from .evaluation.benchmark_resolver import _rolling_mean
         effective_len = window_len if window_len > 0 else len(train)
         return _rolling_mean(train, effective_len)
-    if benchmark_family == "random_walk":
-        return float(train.iloc[-1])
     if benchmark_family == "ar_fixed_p":
         from .evaluation.benchmark_resolver import _ar_fixed_p_forecast, BenchmarkResolverError
         try:
@@ -1520,7 +1509,7 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
         suite = recipe.data_task_spec.get("benchmark_suite") or []
         if not isinstance(suite, (list, tuple)) or not suite:
             raise ExecutionError("benchmark_family='multi_benchmark_suite' requires leaf_config.benchmark_suite (list[str])")
-        allowed = {"historical_mean", "zero_change", "ar_bic", "rolling_mean", "random_walk", "ar_fixed_p", "ardi"}
+        allowed = {"historical_mean", "zero_change", "ar_bic", "rolling_mean", "ar_fixed_p", "ardi"}
         preds = []
         original_family = benchmark_family
         for member in suite:
@@ -1532,7 +1521,7 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
             # instead, inline-dispatch on the member to avoid recipe mutation.
             if member == "historical_mean":
                 preds.append(_historical_mean_prediction(train))
-            elif member == "zero_change" or member == "random_walk":
+            elif member == "zero_change":
                 preds.append(float(train.iloc[-1]))
             elif member == "rolling_mean":
                 from .evaluation.benchmark_resolver import _rolling_mean as _rm

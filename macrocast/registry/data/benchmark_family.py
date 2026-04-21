@@ -40,12 +40,6 @@ AXIS_DEFINITION = AxisDefinition(
             priority='A',
         ),
         EnumRegistryEntry(
-            id='random_walk',
-            description='random walk',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
             id='ar_fixed_p',
             description='ar fixed p',
             status='operational',

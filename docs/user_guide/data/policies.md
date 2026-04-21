@@ -105,27 +105,26 @@ path:
 | `none` | operational | Default, no-op. |
 | `pre_post_crisis` | operational | Single break dummy at 2008-09-01 (NBER Great-Recession onset). |
 | `pre_post_covid` | operational | Single break dummy at 2020-03-01 (NBER COVID-recession onset). |
-| `user_break_dates` | operational | One dummy per date in `leaf_config.break_dates`. Dummy is 1 from the break date onward. |
 
 ### Functions & features
 
 - Resolution helper: `macrocast.execution.build._resolve_structural_break_dates(spec)` maps the axis value to a list of break dates.
 - The actual augmentation reuses the §1.4 `deterministic_components.break_dummies` path (`augment_array` in `macrocast.execution.deterministic`). Both X_train and X_pred receive the same dummy columns.
-- If both `deterministic_components=break_dummies` and `structural_break_segmentation` are set with break dates, the augmentations stack (both sets of dummies are added).
-- `user_break_dates` without `leaf_config.break_dates` raises `ExecutionError`.
+- If both `deterministic_components=break_dummies` and `structural_break_segmentation` are set, the augmentations stack (both sets of dummies are added). For user-supplied break dates, use `deterministic_components=break_dummies` with `leaf_config.break_dates` — this is the canonical path after the 2026-04-21 dedup.
 
 ### Dropped values
 
 - `break_test_detected`, `rolling_break_adaptive` — change-point detection / adaptive break algorithms; v1.1+.
+- `user_break_dates` (2026-04-21) — duplicate of `deterministic_components=break_dummies` + `leaf_config.break_dates`. Both values read the same leaf_config field and dispatched through the same `augment_array(component='break_dummies')` path. Use `deterministic_components=break_dummies` instead.
 
 ### Recipe usage
 
 ```yaml
-# Explicit 2008 + 2020 structural breaks via the user channel
+# Explicit 2008 + 2020 structural breaks — use deterministic_components
 path:
   1_data_task:
     fixed_axes:
-      structural_break_segmentation: user_break_dates
+      deterministic_components: break_dummies
     leaf_config:
       break_dates: ["2008-09-01", "2020-03-01"]
 ```

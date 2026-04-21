@@ -179,7 +179,6 @@ path:
 | `future_level_y_t_plus_h` | operational | Default. Metrics on the raw y-level: `error = y_{t+h} - ŷ_{t+h}`. |
 | `future_diff` | operational | Metrics on 1st-difference scale: `y_true = y_{t+h} - y_t`, `ŷ = ŷ_{t+h} - y_t`. Error equals level-scale error (anchor cancels), but reported y_true / y_pred move onto the diff scale. |
 | `future_logdiff` | operational | Metrics on log-growth scale: `y_true = log(y_{t+h}) - log(y_t)`, `ŷ = log(ŷ_{t+h}) - log(y_t)`. Error = `log(y_{t+h}/ŷ_{t+h})`, a relative / percentage-style residual. Requires strictly positive y. |
-| `cumulative_growth_to_h` | operational | Telescoping-sum identity `Σ (log y_{t+i} - log y_{t+i-1}) == log y_{t+h} - log y_t`. Numerically equivalent to `future_logdiff` for a single-series target — kept distinct as an explicit CLSS-style recipe label. |
 
 ### Semantics (v1.0)
 
@@ -208,11 +207,11 @@ path:
 ```
 
 ```yaml
-# Growth-rate evaluation (CLSS 2021 style)
+# Log-growth-rate evaluation (CLSS 2021 style)
 path:
   1_data_task:
     fixed_axes:
-      horizon_target_construction: cumulative_growth_to_h
+      horizon_target_construction: future_logdiff
 ```
 
 ---
@@ -222,7 +221,7 @@ path:
 - **`task`** is the only §1.2 axis that truly branches at runtime today. It flows into multi-target aggregator activation and `experiment_unit` default derivation.
 - **`forecast_type`** is feature-builder-dynamic: `iterated` for `autoreg_lagged_target`, `direct` for `raw_feature_panel` and the panel variants. Cross combinations are blocked at compile time.
 - **`forecast_object`** has all three values operational (`point_mean`, `point_median`, `quantile`). `quantile` pairs with `model_family=quantile_linear`; level via `hp.quantile`.
-- **`horizon_target_construction`** is fully operational with 4 values — default `future_level_y_t_plus_h` plus 3 metric-scale transforms (`future_diff`, `future_logdiff`, `cumulative_growth_to_h`).
+- **`horizon_target_construction`** is fully operational with 3 values — default `future_level_y_t_plus_h` plus 2 metric-scale transforms (`future_diff`, `future_logdiff`). `cumulative_growth_to_h` was dropped as a duplicate of future_logdiff (identical telescoping-sum formula).
 - `target_family`, `multi_target_architecture`, `target_to_target_inclusion` are gone — see the "Dropped axes" note at the top.
 
 Next group: §1.3 Horizon & evaluation window (coming).

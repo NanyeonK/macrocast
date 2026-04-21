@@ -33,7 +33,6 @@ def test_benchmark_family_operational_set():
         "ar_bic",
         "custom_benchmark",
         "rolling_mean",
-        "random_walk",
         "ar_fixed_p",
         "ardi",
         "expert_benchmark",

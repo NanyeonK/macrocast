@@ -26,7 +26,6 @@ _AXIS_NAME_ALIASES = {
 }
 
 _AXIS_VALUE_ALIASES = {
-    ("information_set_type", "real_time"): "real_time_vintage",
 }
 
 _DATASET_DEFAULT_FREQUENCY = {
@@ -400,10 +399,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "variable_universe_category": leaf_config.get("variable_universe_category"),
         "variable_universe_category_columns": leaf_config.get("variable_universe_category_columns"),
         "target_specific_columns": leaf_config.get("target_specific_columns"),
-        "paper_replication_columns": leaf_config.get("paper_replication_columns"),
-        "expert_columns": leaf_config.get("expert_columns"),
-        "stability_filtered_columns": leaf_config.get("stability_filtered_columns"),
-        "correlation_screened_columns": leaf_config.get("correlation_screened_columns"),
+        "variable_universe_columns": leaf_config.get("variable_universe_columns"),
         # §1.4 predictor_family input channels
         "handpicked_columns": leaf_config.get("handpicked_columns"),
         "predictor_category": leaf_config.get("predictor_category"),
@@ -523,8 +519,6 @@ def _build_stage0_and_recipe(
     feature_builders = feature_axis.selected_values
     wrapper_family = leaf_config.get("wrapper_family")
 
-    if information_set_type == "real_time_vintage" and not data_vintage:
-        raise CompileValidationError("information_set_type='real_time_vintage' requires leaf_config.data_vintage")
     if task == "multi_target_point_forecast":
         if len(targets) < 2:
             raise CompileValidationError("task='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
@@ -562,11 +556,7 @@ def _build_stage0_and_recipe(
     }[framework]
     info_set_token = {
         "revised": "revised_monthly",
-        "real_time_vintage": "real_time_vintage",
         "pseudo_oos_revised": "pseudo_oos_revised",
-        "pseudo_oos_vintage_aware": "pseudo_oos_vintage_aware",
-        "release_calendar_aware": "release_calendar_aware",
-        "publication_lag_aware": "publication_lag_aware",
     }.get(information_set_type, information_set_type)
 
     stage0 = build_design_frame(

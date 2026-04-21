@@ -29,7 +29,6 @@ Declares **which benchmark to compare against, which predictors the model sees, 
 |---|---|---|
 | `historical_mean` | operational | Training-set mean. Default. |
 | `zero_change` | operational | Random-walk at `y_t`. |
-| `random_walk` | operational | Same as zero_change — separate label for recipe expressivity. |
 | `ar_bic` | operational | AR model with BIC-selected lag order. |
 | `ar_fixed_p` | operational | AR model at a fixed lag `p` (`benchmark_config.benchmark_fixed_p`). |
 | `ardi` | operational | AR + Diffusion Index (factor) model. |
@@ -45,7 +44,7 @@ Declares **which benchmark to compare against, which predictors the model sees, 
 
 - `macrocast.execution.build._run_benchmark_executor` dispatches by `benchmark_family` value.
 - `factor_model`: z-scored leading-factor regression; falls back to `historical_mean` for training windows < 6 rows.
-- `multi_benchmark_suite`: inline dispatch over `leaf_config.benchmark_suite` members (allowed set: historical_mean, zero_change, ar_bic, rolling_mean, random_walk, ar_fixed_p, ardi).
+- `multi_benchmark_suite`: inline dispatch over `leaf_config.benchmark_suite` members (allowed set: historical_mean, zero_change, ar_bic, rolling_mean, ar_fixed_p, ardi).
 - `paper_specific_benchmark` / `survey_forecast`: look up the forecast at `train.index[-1] + horizon` months (monthly freq); fall back to the most recent trailing value on miss.
 
 ### Recipe usage
@@ -74,7 +73,6 @@ path:
 |---|---|---|
 | `target_lags_only` | operational | Only the target's own lags (forces `feature_builder=autoreg_lagged_target`). Default for autoreg recipes. |
 | `all_macro_vars` | operational | Every column except the target. Default for raw-panel recipes. |
-| `all_except_target` | operational | Alias of `all_macro_vars` (makes intent explicit). |
 | `category_based` | operational | User-supplied category mapping: `leaf_config.predictor_category_columns: dict[str, list[str]]` + `leaf_config.predictor_category`. |
 | `factor_only` | operational | Columns whose name starts with `F_` (factor outputs). |
 | `handpicked_set` | operational | User-supplied column list: `leaf_config.handpicked_columns: list[str]`. |
@@ -116,10 +114,7 @@ path:
 |---|---|---|
 | `all_variables` | operational | Default. No filter. |
 | `preselected_core` | operational | FRED-MD core macro variables (`_PRESELECTED_CORE` set). |
-| `paper_replication_subset` | operational | User-supplied list: `leaf_config.paper_replication_columns: list[str]`. |
-| `expert_curated_subset` | operational | `leaf_config.expert_columns`. |
-| `stability_filtered_subset` | operational | `leaf_config.stability_filtered_columns` (user pre-computed). |
-| `correlation_screened_subset` | operational | `leaf_config.correlation_screened_columns` (user pre-computed). |
+| `handpicked_set` | operational | User-supplied column list: `leaf_config.variable_universe_columns: list[str]`. Consolidates the former paper_replication / expert_curated / stability_filtered / correlation_screened subsets — all four had identical runtime semantics (drop_duplicate cleanup, 2026-04-21). |
 | `category_subset` | operational | `leaf_config.variable_universe_category_columns: dict[str, list[str]]` + `leaf_config.variable_universe_category`. |
 | `target_specific_subset` | operational | `leaf_config.target_specific_columns: dict[target, list[str]]`. |
 
@@ -132,10 +127,12 @@ path:
 ### Dropped values
 
 - `feature_selection_dynamic_subset`: CV-in-training feature selection loop requires a tuning-engine extension — deferred to v1.1.
+- `paper_replication_subset`, `expert_curated_subset`, `stability_filtered_subset`, `correlation_screened_subset` (2026-04-21): four labels shared identical runtime semantics (single `list[str]` input + column filter). Consolidated into `handpicked_set`.
 
 ### Recipe usage
 
 ```yaml
+# target-specific subset
 path:
   1_data_task:
     fixed_axes:
@@ -144,6 +141,16 @@ path:
       target_specific_columns:
         INDPRO: [RPI, UNRATE, CPIAUCSL]
         PAYEMS: [UNRATE, AWHMAN, CPIAUCSL]
+```
+
+```yaml
+# hand-picked column list
+path:
+  1_data_task:
+    fixed_axes:
+      variable_universe: handpicked_set
+    leaf_config:
+      variable_universe_columns: [RPI, UNRATE, CPIAUCSL]
 ```
 
 ---
