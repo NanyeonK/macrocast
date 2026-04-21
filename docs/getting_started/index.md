@@ -9,6 +9,7 @@ Welcome to macrocast. This guide will take you from zero to running your first f
 | 1. [Quickstart](quickstart.md) | 5 min | Run your first forecast in 10 lines of Python |
 | 2. [Your First Study](first_study.md) | 20 min | Design a complete Ridge vs Lasso comparison study |
 | 3. [Understanding Output](understanding_output.md) | 10 min | Read predictions, metrics, and statistical test results |
+| 4. [Stages Reference](stages_reference.md) | reference | Every operational value on every axis for the two completed stages (0 + 1) |
 
 ## Prerequisites
 
@@ -33,4 +34,5 @@ horse_race_quickstart
 quickstart
 first_study
 understanding_output
+stages_reference
 ```
