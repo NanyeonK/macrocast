@@ -9,9 +9,6 @@ Four constructions are operational in v1.0:
 - ``future_level_y_t_plus_h``  : y_{t+h}                   (default, identity inverse)
 - ``future_diff``              : y_{t+h} - y_t              inverse: y_t + ŷ
 - ``future_logdiff``           : log(y_{t+h}) - log(y_t)    inverse: y_t * exp(ŷ)
-- ``cumulative_growth_to_h``   : log(y_{t+h}) - log(y_t)    same formula as future_logdiff;
-                                                            kept distinct for recipe-level
-                                                            expressivity (CLSS-style label).
 
 All constructions share a single vectorised forward implementation.  The inverse
 takes scalar ŷ (a point forecast) plus the anchor level y_t (value at the
@@ -29,7 +26,6 @@ OPERATIONAL_CONSTRUCTIONS: Final[frozenset[str]] = frozenset({
     "future_level_y_t_plus_h",
     "future_diff",
     "future_logdiff",
-    "cumulative_growth_to_h",
 })
 
 
@@ -59,8 +55,6 @@ def build_horizon_target(y: pd.Series, horizon: int, construction: str) -> pd.Se
         return y_future
     if construction == "future_diff":
         return y_future - y
-    # Both logdiff and cumulative_growth_to_h are the telescoping sum identity
-    #   sum_{i=1}^{h} (log y_{t+i} - log y_{t+i-1}) == log y_{t+h} - log y_t
     log_y = _log_or_raise(y, construction=construction)
     log_y_future = _log_or_raise(y_future.dropna(), construction=construction).reindex(y.index)
     return log_y_future - log_y
@@ -84,7 +78,7 @@ def inverse_horizon_target(
         return y_hat_f
     if construction == "future_diff":
         return float(y_anchor) + y_hat_f
-    # logdiff / cumulative_growth_to_h
+    # logdiff
     if y_anchor <= 0:
         raise ValueError(
             f"horizon_target_construction={construction!r} inverse requires "
@@ -95,7 +89,7 @@ def inverse_horizon_target(
 
 def is_log_space(construction: str) -> bool:
     """True if the forecast scale is logarithmic (logdiff / cumulative_growth_to_h)."""
-    return construction in {"future_logdiff", "cumulative_growth_to_h"}
+    return construction == "future_logdiff"
 
 
 def forward_scalar(y_val: float, y_anchor: float, construction: str) -> float:
@@ -114,7 +108,7 @@ def forward_scalar(y_val: float, y_anchor: float, construction: str) -> float:
         return y_val_f
     if construction == "future_diff":
         return y_val_f - float(y_anchor)
-    # logdiff / cumulative_growth_to_h
+    # logdiff
     if y_val_f <= 0 or float(y_anchor) <= 0:
         raise ValueError(
             f"horizon_target_construction={construction!r} forward requires "

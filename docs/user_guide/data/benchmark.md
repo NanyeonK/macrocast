@@ -116,10 +116,7 @@ path:
 |---|---|---|
 | `all_variables` | operational | Default. No filter. |
 | `preselected_core` | operational | FRED-MD core macro variables (`_PRESELECTED_CORE` set). |
-| `paper_replication_subset` | operational | User-supplied list: `leaf_config.paper_replication_columns: list[str]`. |
-| `expert_curated_subset` | operational | `leaf_config.expert_columns`. |
-| `stability_filtered_subset` | operational | `leaf_config.stability_filtered_columns` (user pre-computed). |
-| `correlation_screened_subset` | operational | `leaf_config.correlation_screened_columns` (user pre-computed). |
+| `handpicked_set` | operational | User-supplied column list: `leaf_config.variable_universe_columns: list[str]`. Consolidates the former paper_replication / expert_curated / stability_filtered / correlation_screened subsets — all four had identical runtime semantics (drop_duplicate cleanup, 2026-04-21). |
 | `category_subset` | operational | `leaf_config.variable_universe_category_columns: dict[str, list[str]]` + `leaf_config.variable_universe_category`. |
 | `target_specific_subset` | operational | `leaf_config.target_specific_columns: dict[target, list[str]]`. |
 
@@ -132,10 +129,12 @@ path:
 ### Dropped values
 
 - `feature_selection_dynamic_subset`: CV-in-training feature selection loop requires a tuning-engine extension — deferred to v1.1.
+- `paper_replication_subset`, `expert_curated_subset`, `stability_filtered_subset`, `correlation_screened_subset` (2026-04-21): four labels shared identical runtime semantics (single `list[str]` input + column filter). Consolidated into `handpicked_set`.
 
 ### Recipe usage
 
 ```yaml
+# target-specific subset
 path:
   1_data_task:
     fixed_axes:
@@ -144,6 +143,16 @@ path:
       target_specific_columns:
         INDPRO: [RPI, UNRATE, CPIAUCSL]
         PAYEMS: [UNRATE, AWHMAN, CPIAUCSL]
+```
+
+```yaml
+# hand-picked column list
+path:
+  1_data_task:
+    fixed_axes:
+      variable_universe: handpicked_set
+    leaf_config:
+      variable_universe_columns: [RPI, UNRATE, CPIAUCSL]
 ```
 
 ---

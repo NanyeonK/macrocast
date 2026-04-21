@@ -4,7 +4,7 @@ Covers:
 - contemporaneous_x_rule.allow_contemporaneous vs. forbid_contemporaneous (default).
 - release_lag_rule.series_specific_lag via leaf_config.release_lag_per_series.
 - missing_availability.available_case / x_impute_only (+ guards).
-- structural_break_segmentation 3 values (pre_post_crisis / pre_post_covid / user_break_dates).
+- structural_break_segmentation 2 presets (pre_post_crisis / pre_post_covid); user_break_dates was dropped as a duplicate of deterministic_components.break_dummies.
 """
 from __future__ import annotations
 
@@ -130,12 +130,6 @@ def test_structural_break_presets_compile(value: str) -> None:
     assert r.manifest["data_task_spec"]["structural_break_segmentation"] == value
 
 
-def test_structural_break_user_break_dates_compiles() -> None:
-    r = compile_recipe_dict(_recipe(
-        structural_break_segmentation="user_break_dates",
-        _leaf={"break_dates": ["2008-09-01", "2020-03-01"]},
-    ))
-    assert r.compiled.execution_status == "executable"
 
 
 def test_structural_break_presets_resolve_to_expected_dates() -> None:
@@ -144,14 +138,3 @@ def test_structural_break_presets_resolve_to_expected_dates() -> None:
     assert _resolve_structural_break_dates({"structural_break_segmentation": "none"}) is None
     assert _resolve_structural_break_dates({"structural_break_segmentation": "pre_post_crisis"}) == ["2008-09-01"]
     assert _resolve_structural_break_dates({"structural_break_segmentation": "pre_post_covid"}) == ["2020-03-01"]
-    assert _resolve_structural_break_dates({
-        "structural_break_segmentation": "user_break_dates",
-        "break_dates": ["2008-09-01"],
-    }) == ["2008-09-01"]
-
-
-def test_structural_break_user_without_dates_fails_resolver() -> None:
-    from macrocast.execution.build import _resolve_structural_break_dates
-    from macrocast.execution.errors import ExecutionError
-    with pytest.raises(ExecutionError, match="user_break_dates"):
-        _resolve_structural_break_dates({"structural_break_segmentation": "user_break_dates"})

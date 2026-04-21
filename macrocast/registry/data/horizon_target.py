@@ -27,12 +27,6 @@ AXIS_DEFINITION = AxisDefinition(
             status='operational',
             priority='A',
         ),
-        EnumRegistryEntry(
-            id='cumulative_growth_to_h',
-            description='cumulative growth to h',
-            status='operational',
-            priority='A',
-        ),
     ),
     compatible_with={},
     incompatible_with={},

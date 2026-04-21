@@ -179,7 +179,6 @@ path:
 | `future_level_y_t_plus_h` | operational | Default. Metrics on the raw y-level: `error = y_{t+h} - ŷ_{t+h}`. |
 | `future_diff` | operational | Metrics on 1st-difference scale: `y_true = y_{t+h} - y_t`, `ŷ = ŷ_{t+h} - y_t`. Error equals level-scale error (anchor cancels), but reported y_true / y_pred move onto the diff scale. |
 | `future_logdiff` | operational | Metrics on log-growth scale: `y_true = log(y_{t+h}) - log(y_t)`, `ŷ = log(ŷ_{t+h}) - log(y_t)`. Error = `log(y_{t+h}/ŷ_{t+h})`, a relative / percentage-style residual. Requires strictly positive y. |
-| `cumulative_growth_to_h` | operational | Telescoping-sum identity `Σ (log y_{t+i} - log y_{t+i-1}) == log y_{t+h} - log y_t`. Numerically equivalent to `future_logdiff` for a single-series target — kept distinct as an explicit CLSS-style recipe label. |
 
 ### Semantics (v1.0)
 

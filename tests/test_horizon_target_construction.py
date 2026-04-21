@@ -23,7 +23,6 @@ OPERATIONAL_CONSTRUCTIONS = (
     "future_level_y_t_plus_h",
     "future_diff",
     "future_logdiff",
-    "cumulative_growth_to_h",
 )
 
 
@@ -153,13 +152,3 @@ def test_future_logdiff_changes_error_scale(tmp_path: Path) -> None:
     assert (logdiff["horizon_target_construction"] == "future_logdiff").all()
 
 
-def test_cumulative_growth_equivalent_to_future_logdiff(tmp_path: Path) -> None:
-    """cumulative_growth_to_h uses the telescoping-sum identity
-       sum_{i=1..h} (log y_{t+i} - log y_{t+i-1}) == log y_{t+h} - log y_t
-    so its metric-scale errors must numerically equal future_logdiff."""
-    logdiff = _predictions(_run("future_logdiff", tmp_path / "ld"))
-    cumg = _predictions(_run("cumulative_growth_to_h", tmp_path / "cg"))
-    assert np.allclose(logdiff["error"], cumg["error"], atol=1e-12, equal_nan=True)
-    assert np.allclose(
-        logdiff["squared_error"], cumg["squared_error"], atol=1e-12, equal_nan=True
-    )

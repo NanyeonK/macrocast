@@ -169,7 +169,6 @@ def test_registry_loader_discovers_information_set_type_axis() -> None:
     assert entry.allowed_values == (
         "revised",
         "pseudo_oos_revised",
-        "pseudo_oos_vintage_aware",
     )
 
 

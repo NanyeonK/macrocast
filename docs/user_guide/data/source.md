@@ -166,7 +166,6 @@ Usually omitted (dataset implies the frequency). Explicit only when the manifest
 |---|---|---|
 | `revised` | operational | Latest revised values (post-revision truth). Default. |
 | `pseudo_oos_revised` | operational | Pseudo out-of-sample: latest revised values but masked according to (fake) release-lag discipline. |
-| `pseudo_oos_vintage_aware` | registry_only (v1.1) | Vintage-aware pseudo-OOS; needs release-calendar infrastructure. |
 
 ### Functions & features
 
@@ -176,6 +175,7 @@ Usually omitted (dataset implies the frequency). Explicit only when the manifest
 ### Dropped values
 
 - `real_time_vintage`, `release_calendar_aware`, `publication_lag_aware` — real-time vintage / release-calendar / publication-lag stacks require data-infrastructure that is outside v1.0 scope. The associated `vintage_policy` axis was dropped in the §1.5 cleanup for the same reason.
+- `pseudo_oos_vintage_aware` — metadata-only label whose intended semantics (publication-lag-aware pseudo OOS) is already expressible through `release_lag_rule` (§1.5, `fixed_lag_all_series` / `series_specific_lag`). Dropped to remove the duplicate surface.
 
 ### Recipe usage
 

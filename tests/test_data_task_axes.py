@@ -21,9 +21,8 @@ _NEW_AXES = {
     'variable_universe': {
         'layer': '1_data_task',
         'expected': {
-            'all_variables', 'preselected_core', 'category_subset', 'paper_replication_subset',
-            'target_specific_subset', 'expert_curated_subset', 'stability_filtered_subset',
-            'correlation_screened_subset',
+            'all_variables', 'preselected_core', 'category_subset',
+            'target_specific_subset', 'handpicked_set',
         },
     },
     'separation_rule': {
@@ -73,7 +72,7 @@ def test_min_train_size_values_match_plan():
 
 def test_structural_break_segmentation_values_match_plan():
     # v1.0 §1.5 cleanup trimmed 2 future values (break_test_detected, rolling_break_adaptive).
-    expected = {"none", "pre_post_crisis", "pre_post_covid", "user_break_dates"}
+    expected = {"none", "pre_post_crisis", "pre_post_covid"}
     assert set(get_axis_registry()['structural_break_segmentation'].allowed_values) == expected
 
 

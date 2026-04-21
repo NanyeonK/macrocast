@@ -21,12 +21,6 @@ AXIS_DEFINITION = AxisDefinition(
             status="operational",
             priority='A',
         ),
-        EnumRegistryEntry(
-            id='pseudo_oos_vintage_aware',
-            description='pseudo oos vintage aware',
-            status='registry_only',
-            priority='B',
-        ),
     ),
     compatible_with={},
     incompatible_with={},

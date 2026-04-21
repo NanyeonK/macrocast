@@ -27,12 +27,6 @@ AXIS_DEFINITION = AxisDefinition(
             status='operational',
             priority='A',
         ),
-        EnumRegistryEntry(
-            id='user_break_dates',
-            description='user break dates',
-            status='operational',
-            priority='A',
-        ),
     ),
     compatible_with={},
     incompatible_with={},
