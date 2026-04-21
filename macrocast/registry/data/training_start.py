@@ -11,31 +11,13 @@ AXIS_DEFINITION = AxisDefinition(
     entries=(
         EnumRegistryEntry(
             id='earliest_possible',
-            description='earliest possible',
+            description='earliest possible (default)',
             status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='fixed_start',
-            description='fixed start',
-            status="operational",
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='post_warmup_start',
-            description='post warmup start',
-            status="operational",
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='post_break_start',
-            description='post break start',
-            status='registry_only',
-            priority='B',
-        ),
-        EnumRegistryEntry(
-            id='rolling_train_start',
-            description='rolling train start',
+            description='fixed start (leaf_config.training_start_date)',
             status='operational',
             priority='A',
         ),

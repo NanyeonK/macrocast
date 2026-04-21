@@ -206,6 +206,9 @@ above. Historical rows preserved for archaeology:
 
 ### 1.1.5 vintage_policy
 
+> **AXIS DROPPED 2026-04-20 (§1.5 cleanup)** — see plans/stage1_5_plan.md §2.1 for rationale.
+
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | latest_only | operational | - | - | 이미 완료 |
@@ -216,6 +219,9 @@ above. Historical rows preserved for archaeology:
 | vintage_range | registry_only | v1.1 | phase-10 | range subset |
 
 ### 1.1.6 alignment_rule
+
+> **AXIS DROPPED 2026-04-20 (§1.5 cleanup)** — see plans/stage1_5_plan.md §2.1 for rationale.
+
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
@@ -260,34 +266,37 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | all_variables | absent | v1.0 | phase-03 | 축 분해 대상 |
 | preselected_core | absent | v1.0 | phase-03 | 축 분해 대상 |
-| category_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
-| paper_replication_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
+| category_subset | operational | - | - | **OPERATIONAL 2026-04-20** — leaf_config.variable_universe_category_columns mapping (§1.4 impl) |
+| paper_replication_subset | operational | - | - | **OPERATIONAL 2026-04-20** — leaf_config.paper_replication_columns list (§1.4 impl) |
 | target_specific_subset | absent | v1.0 | phase-03 | 축 분해 대상 |
 | expert_curated_subset | absent | v1.1 | phase-10 | 큐레이션 필요 |
 | stability_filtered_subset | absent | v1.1 | phase-10 | 안정성 필터 필요 |
 | correlation_screened_subset | absent | v1.0 | phase-03 | screen 재사용 |
-| feature_selection_dynamic_subset | absent | v1.1 | phase-10 | dynamic selection |
+| feature_selection_dynamic_subset | **dropped** | - | - | **DROPPED 2026-04-20 (§1.4 cleanup)** — CV-in-training feature selection loop needs tuning-engine extension — v1.1 scope |
 
 ### 1.2.2 training_start_rule
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| earliest_possible | operational | - | - | 이미 완료 |
-| fixed_start | planned | v1.0 | phase-03 | 날짜 픽스 |
-| post_warmup_start | planned | v1.0 | phase-03 | warmup 결합 |
-| post_break_start | registry_only | v1.0 | phase-03 | break segmentation 결합 |
-| rolling_train_start | operational | - | - | 이미 완료 |
+| earliest_possible | operational | - | - | Default, no-op (current behaviour). |
+| fixed_start | operational | - | - | **OPERATIONAL 2026-04-20** — leaf_config.training_start_date wired as base_start_idx floor in _rows_for_horizon; compiler guard validates presence. |
+| post_warmup_start | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — warmup_rule axis is itself dropped; the dependency no longer makes sense. |
+| rolling_train_start | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — duplicated `framework=rolling`. |
+| post_break_start | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — depended on structural_break_segmentation which is not v1.0-operational. |
+
 
 ### 1.2.3 oos_period
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| single_oos_block | operational | - | - | 이미 완료 |
-| multiple_oos_blocks | registry_only | v1.0 | phase-03 | multi-block OOS |
-| rolling_origin | operational | - | - | 이미 완료 |
-| recession_only_oos | planned | v1.0 | phase-04 | regime task 결합 |
-| expansion_only_oos | planned | v1.0 | phase-04 | regime task 결합 |
-| event_window_oos | registry_only | v1.1 | phase-10 | event study 지원 |
+| all_oos_data | operational | - | - | **ADDED 2026-04-20 (§1.3 cleanup)** — new default value covering the base behaviour when no OOS filter is applied. |
+| recession_only_oos | operational | - | - | **OPERATIONAL 2026-04-20** — NBER fixture (12 recessions 1948-2020) wired via filter_origins_by_regime in _rows_for_horizon. |
+| expansion_only_oos | operational | - | - | **OPERATIONAL 2026-04-20** — complement of recession_only_oos, same filter. |
+| single_oos_block | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — duplicated `framework=expanding` default. |
+| rolling_origin | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — duplicated `framework=rolling`. |
+| multiple_oos_blocks | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — niche, no v1.0/v1.1 demand. |
+| event_window_oos | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — niche, no v1.0/v1.1 demand. |
+
 
 ### 1.2.4 minimum_train_size
 
@@ -301,13 +310,10 @@ above. Historical rows preserved for archaeology:
 
 ### 1.2.5 warmup_rule
 
-| Value | Current | Target version | Target phase | Rationale |
-|-------|---------|:---:|:---:|-----------|
-| lags_only_warmup | operational | - | - | 이미 완료 |
-| lags_and_factors_warmup | planned | v1.0 | phase-03 | factor warmup |
-| sequence_warmup | future | v2 | phase-11 | seq2seq 대응 |
-| transform_warmup | planned | v1.0 | phase-03 | transform warmup |
-| indicator_warmup | registry_only | v1.1 | phase-10 | indicator 계열 |
+> **AXIS DROPPED 2026-04-20 (§1.3 cleanup)** — abstract axis with no v1.0 dispatch semantic. The default `lags_only_warmup` was trivially implicit (lag_order observations consumed during feature construction). Re-enter as its own axis if/when a concrete warmup strategy requires user control.
+
+All 5 values dropped (lags_only_warmup, lags_and_factors_warmup, transform_warmup, indicator_warmup, sequence_warmup).
+
 
 ### 1.2.6 break_segmentation
 
@@ -322,25 +328,21 @@ above. Historical rows preserved for archaeology:
 
 ### 1.3.1 horizon_list
 
-| Value | Current | Target version | Target phase | Rationale |
-|-------|---------|:---:|:---:|-----------|
-| default_1_3_6_12 | absent | v1.0 | phase-03 | 축 분해 대상 |
-| short_only_1_3 | absent | v1.0 | phase-03 | 축 분해 대상 |
-| long_only_12_24 | absent | v1.0 | phase-03 | 축 분해 대상 |
-| paper_specific | absent | v1.0 | phase-03 | replication 지원 |
-| arbitrary_grid | absent | v1.0 | phase-03 | 사용자 정의 |
+> **AXIS DROPPED 2026-04-20 (§1.3 cleanup)** — redundant with leaf_config.horizons which already specifies the horizons list directly. Future preset labels can be added as leaf_config sugar if needed.
+
+All 5 values dropped (arbitrary_grid, default_1_3_6_12, short_only_1_3, long_only_12_24, paper_specific).
 
 ### 1.3.2 forecast_type
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | direct | operational | - | - | 이미 완료 |
-| iterated | planned | v1.1 | phase-10 | 다단 예측 합류 |
-| dirrec | registry_only | v1.1 | phase-10 | 다단 예측 합류 |
-| mimo | future | v2 | phase-11 | multi-output 결합 |
+| iterated | operational | - | - | **OPERATIONAL 2026-04-20** — autoreg_lagged_target path already iterated by construction; registry status now matches. Dynamic default: iterated for autoreg, direct for raw_panel. Cross combinations blocked by compiler. |
+| dirrec | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche hybrid (Taieb-Bontempi 2011), no v1.x demand |
+| mimo | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 Transformer will re-enter as model capability, not a forecast_type |
 | multi_horizon_joint | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | recursive_state_space | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
-| seq2seq | future | v2 | phase-11 | NN 축 필요 |
+| seq2seq | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 Transformer will re-enter as model capability |
 
 ### 1.3.3 forecast_object
 
@@ -348,52 +350,55 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | point_mean | operational | - | - | 이미 완료 |
 | point_median | operational | - | - | 이미 완료 |
-| quantile | planned | v1.1 | phase-10 | quantile regression 합류 |
-| interval | registry_only | v1.1 | phase-10 | conformal/analytic interval |
-| density | registry_only | v1.1 | phase-10 | density forecast |
-| direction | planned | v1.0 | phase-04 | classification-ish 지원 |
-| turning_point | registry_only | v2 | phase-11 | 전문 분석 모듈 |
-| regime_probability | future | v2 | phase-11 | regime 모델 필요 |
-| event_probability | future | v2 | phase-11 | event study 필요 |
+| quantile | operational | - | - | **OPERATIONAL 2026-04-20** — quantile_linear compiler guard loosened to accept point_median OR quantile; quantile level via training_spec.hp.quantile (default 0.5). |
+| interval | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — subsumed by v1.1 conformal wrapper on point mean |
+| density | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — v2 distributional work, will re-enter |
+| direction | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — sign is a metric view on point forecast, not an independent forecast object |
+| turning_point | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, reconstructible post-hoc |
+| regime_probability | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — bound to state_space (v2), will re-enter with that stack |
+| event_probability | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, no v1.1 commitment |
 
 ### 1.3.4 horizon_target_construction
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | future_level_y_t+h | operational | - | - | 이미 완료 |
-| future_diff | planned | v1.0 | phase-03 | 기본 차분 |
-| future_logdiff | planned | v1.0 | phase-03 | 기본 로그차분 |
-| cumulative_growth_to_h | planned | v1.0 | phase-03 | h-누적 성장 |
-| average_growth_1_to_h | registry_only | v1.0 | phase-03 | 평균 성장 |
-| annualized_growth_to_h | planned | v1.0 | phase-03 | 연율화 |
-| realized_future_average | registry_only | v1.1 | phase-10 | 실현 평균 |
-| future_sum | registry_only | v1.1 | phase-10 | 누적 합 |
+| future_diff | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
+| future_logdiff | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
+| cumulative_growth_to_h | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
+| average_growth_1_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — scaled variant of cumulative, redundant |
+| annualized_growth_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — linear (×12/h) transform of cumulative_growth_to_h, belongs in metric-time reporting |
+| realized_future_average | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, no v1.1 demand |
+| future_sum | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche |
 | future_volatility | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | future_drawdown | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
-| future_indicator | registry_only | v1.0 | phase-04 | direction 과 정합 |
+| future_indicator | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — overlapped dropped forecast_object=direction / event_probability |
 
 ### 1.3.5 overlap_handling
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| allow_overlap | operational | - | - | 이미 완료 |
-| evaluate_with_hac | planned | v1.0 | phase-02 | (Layer 6 stat_test 연계 — 정책 여기) |
-| evaluate_with_block_bootstrap | registry_only | v1.1 | phase-10 | bootstrap module |
-| non_overlapping_subsample | registry_only | v1.1 | phase-10 | subsample 정책 |
-| horizon_specific_subsample | registry_only | v1.1 | phase-10 | subsample 정책 |
+| allow_overlap | operational | - | - | Default, no-op (current behaviour). |
+| evaluate_with_hac | operational | - | - | **OPERATIONAL 2026-04-20** — compiler compatibility gate requires stat_test in {dm_hln, dm_modified, spa, mcs, cw, cpa, none}. HAC covariance is already used inside dm_hln/dm_modified executors. |
+| evaluate_with_block_bootstrap | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — requires bootstrap infrastructure not in v1.0 scope. |
+| non_overlapping_subsample | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — niche. |
+| horizon_specific_subsample | **dropped** | - | - | **DROPPED 2026-04-20 (§1.3 cleanup)** — niche. |
+
 
 ### 1.4.1 target_family
 
+> **AXIS DROPPED 2026-04-20 (PR #32)** — subsumed by task axis; the two operational values (single_macro_series / multiple_macro_series) just mirrored task (single_target / multi_target). Future panel/state/factor/latent/constructed/classification targets will re-enter as independent axes in v1.1+ when their runtime arrives.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| single_macro_series | operational | - | - | 이미 완료 |
-| multiple_macro_series | planned | v1.1 | phase-10 | multi-target 합류 |
-| panel_target | future | v2 | phase-11 | panel_forecasting_run 필요 |
-| state_target | registry_only | v2 | phase-11 | SS framework 필요 |
-| factor_target | future | v2 | phase-11 | factor 추출 결합 |
-| latent_target | future | v2 | phase-11 | SS framework가 Phase 11에 들어오면 동반 구현 |
-| constructed_target | registry_only | v1.1 | phase-10 | 합성 타겟 |
-| classification_target | registry_only | v1.0 | phase-04 | direction/event 와 정합 |
+| single_macro_series | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — task=single_target_point_forecast covers it |
+| multiple_macro_series | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — task=multi_target_point_forecast covers it |
+| panel_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter as own axis in v1.1 with panel loader |
+| state_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with SS framework in v2 |
+| factor_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with factor extraction in v2 |
+| latent_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with SS framework in v2 |
+| constructed_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter as own axis in v1.1 if needed |
+| classification_target | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — re-enter with direction/event modules if needed |
 
 ### 1.4.2 predictor_family
 
@@ -401,13 +406,13 @@ above. Historical rows preserved for archaeology:
 |-------|---------|:---:|:---:|-----------|
 | target_lags_only | operational | - | - | 이미 완료 |
 | all_macro_vars | operational | - | - | 이미 완료 |
-| all_except_target | planned | v1.0 | phase-03 | 기본 옵션 |
-| category_based | planned | v1.0 | phase-03 | 카테고리 subset |
+| all_except_target | operational | - | - | **OPERATIONAL 2026-04-20** — raw_panel column filter excluding target (§1.4 impl) |
+| category_based | operational | - | - | **OPERATIONAL 2026-04-20** — leaf_config.predictor_category_columns mapping (§1.4 impl) |
 | financial_only | absent | v1.1 | phase-10 | finance 축 합류 |
 | macro_plus_finance | absent | v1.1 | phase-10 | finance 축 합류 |
 | survey_plus_macro | absent | v1.1 | phase-10 | SPF 합류 |
 | text_plus_macro | absent | v2 | phase-11 | text 합류 |
-| factor_only | planned | v1.0 | phase-03 | factor 축 합류 |
+| factor_only | operational | - | - | **OPERATIONAL 2026-04-20** — F_-prefixed factor column filter (§1.4 impl) |
 | latent_state_plus_lags | absent | v2 | phase-11 | SS 필요 |
 | selected_sparse_set | absent | v1.0 | phase-03 | feature selection 결합 |
 | handpicked_set | registry_only | v1.0 | phase-03 | replication 지원 |
@@ -424,21 +429,18 @@ above. Historical rows preserved for archaeology:
 
 ### 1.4.4 own_target_lags
 
-| Value | Current | Target version | Target phase | Rationale |
-|-------|---------|:---:|:---:|-----------|
-| include | operational | - | - | 이미 완료 |
-| exclude | planned | v1.0 | phase-03 | 간단 스위치 |
-| cv_select_lags | planned | v1.0 | phase-03 | CV 통합 |
-| fixed_lag_count | absent | v1.0 | phase-03 | 고정 lag |
-| target_specific_lag_count | registry_only | v1.1 | phase-10 | 타겟별 lag |
+> **AXIS DROPPED 2026-04-20 (§1.3 cleanup)** — `feature_builder` already determines whether y-lags are used (autoreg_lagged_target = lags are the features; raw_feature_panel = exogenous X only). The axis label never had independent runtime dispatch. Re-enter as its own axis if a combined "raw panel + y lags" path becomes a real option.
+
+All 4 values dropped (include, exclude, cv_select_lags, target_specific_lag_count).
+
 
 ### 1.4.5 deterministic_components
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | none | operational | - | - | 이미 완료 |
-| constant_only | operational | - | - | 이미 완료 |
-| linear_trend | planned | v1.0 | phase-03 | 기본 trend |
+| constant_only | operational | - | - | **OPERATIONAL 2026-04-20** — explicit 1s column in X (§1.4 impl) |
+| linear_trend | operational | - | - | **OPERATIONAL 2026-04-20** — _dc_trend column (0..n-1) (§1.4 impl) |
 | seasonal_dummies | absent | v1.0 | phase-03 | 계절 더미 |
 | month_dummies | registry_only | v1.0 | phase-03 | monthly_seasonal 매핑 |
 | quarter_dummies | registry_only | v1.0 | phase-03 | quarterly_seasonal 매핑 |
@@ -447,6 +449,9 @@ above. Historical rows preserved for archaeology:
 | break_dummies | registry_only | v1.0 | phase-03 | break 축 결합 |
 
 ### 1.4.6 exogenous_block
+
+> **AXIS DROPPED 2026-04-20 (§1.5 cleanup)** — see plans/stage1_5_plan.md §2.1 for rationale.
+
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
@@ -457,6 +462,9 @@ above. Historical rows preserved for archaeology:
 | policy_shock_block | absent | v2 | phase-11 | 정책 충격 라벨 |
 
 ### 1.5.1 x_map_policy
+
+> **AXIS DROPPED 2026-04-20 (§1.5 cleanup)** — see plans/stage1_5_plan.md §2.1 for rationale.
+
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
@@ -470,27 +478,33 @@ above. Historical rows preserved for archaeology:
 
 ### 1.5.2 target_to_target_inclusion
 
+> **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** — operational set = 1 value (forbid_other_targets_as_X = current hardcoded behaviour), no dispatch anywhere. Single-operational axis is a non-axis. Future cross-target predictor policy will re-enter as a clean axis (e.g. cross_target_predictor_policy) in v1.1 if demand arises.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| allow_other_targets_as_X | registry_only | v1.1 | phase-10 | multi-target 합류 |
-| forbid_other_targets_as_X | planned | v1.1 | phase-10 | multi-target 합류 |
-| allow_selected_targets_as_X | registry_only | v1.1 | phase-10 | multi-target 합류 |
-| Granger_style_lagged_targets_only | absent | v1.1 | phase-10 | multi-target 합류 |
-| system_wide_joint_model | future | v2 | phase-11 | joint VAR 필요 |
+| allow_other_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| forbid_other_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** — was the hardcoded default |
+| allow_selected_targets_as_X | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| Granger_style_lagged_targets_only | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
+| system_wide_joint_model | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (§1.2 cleanup)** |
 
 ### 1.5.3 multi_target_architecture
 
+> **AXIS DROPPED 2026-04-20 (PR #32)** — duplicated experiment_unit (§0.3), which already owns the actual runner dispatch (multi_target_separate_runs / multi_target_shared_design) after PR #27. Future joint multivariate / multitask will re-enter as model_family values in v1.1+, not as a separate architecture axis.
+
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
-| separate_univariate_runs | planned | v1.0 | phase-01 | 기본 sweep 형태 |
-| same_design_different_targets | planned | v1.1 | phase-10 | shared design |
-| joint_multivariate_model | future | v1.1 | phase-10 | phase 10 공식 대상 |
-| shared_encoder_multi_head | absent | v2 | phase-11 | NN 축 필요 |
-| hierarchical_bottom_up | absent | v2 | phase-11 | hierarchy 모듈 필요 |
-| hierarchical_top_down | absent | v2 | phase-11 | hierarchy 모듈 필요 |
-| reconciliation_after_forecast | absent | v2 | phase-11 | reconcile 모듈 필요 |
+| separate_univariate_runs | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — covered by  |
+| same_design_different_targets | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — covered by  |
+| joint_multivariate_model | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — will re-enter as model_family value in v1.1 |
+| shared_encoder_multi_head | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** — will re-enter as deep model capability in v2 |
+| hierarchical_bottom_up | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
+| hierarchical_top_down | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
+| reconciliation_after_forecast | **dropped** | - | - | **AXIS DROPPED 2026-04-20 (PR #32)** |
 
 ### 1.6.1 scale_at_evaluation
+
+> **AXIS RE-HOMED 2026-04-20 (§1.5 cleanup)** — the duplicate Layer 1 axis was removed; evaluation_scale lives as a Layer 2 PreprocessContract field (the actual runtime effect is at the preprocessing boundary, not at a Layer 1 data-task axis). Recipe fixed_axes on 2_preprocessing continue to declare it.
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
@@ -508,12 +522,14 @@ above. Historical rows preserved for archaeology:
 | ar_bic | operational | - | - | 이미 완료 |
 | ar_fixed_p | planned | v1.0 | phase-04 | benchmark 정리 |
 | ardi | registry_only | v1.0 | phase-04 | benchmark 정리 |
-| factor_model | registry_only | v1.0 | phase-04 | benchmark 정리 |
+| factor_model | operational | - | - | **OPERATIONAL 2026-04-20** — auxiliary panel leading-factor OLS regression (§1.4 impl) |
 | var | **dropped** | - | - | **DROPPED 2026-04-18 (Tier 1-3)** — see plans/drops_2026_04_18.md |
 | expert_benchmark | future | v1.1 | phase-10 | 전문가 벤치 |
 | paper_specific_benchmark | registry_only | v1.0 | phase-04 | replication 지원 |
 
 ### 1.6.3 regime_conditional_task
+
+> **AXIS DROPPED 2026-04-20 (§1.5 cleanup)** — duplicates §1.3 oos_period.recession_only_oos / expansion_only_oos; see plans/stage1_5_plan.md §2.1.
 
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|

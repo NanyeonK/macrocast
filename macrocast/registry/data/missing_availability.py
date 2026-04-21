@@ -22,38 +22,8 @@ AXIS_DEFINITION = AxisDefinition(
             priority='A',
         ),
         EnumRegistryEntry(
-            id='target_date_drop_if_missing',
-            description='drop dates where target value is missing',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
             id='x_impute_only',
             description='impute X only, drop rows where target missing',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='real_time_missing_as_missing',
-            description='preserve real-time missingness',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='state_space_fill',
-            description='state-space (Kalman) imputation',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='factor_fill',
-            description='factor-model based imputation',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
-            id='em_fill',
-            description='EM algorithm imputation',
             status='operational',
             priority='A',
         ),

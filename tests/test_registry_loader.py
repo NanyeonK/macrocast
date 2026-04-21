@@ -7,7 +7,7 @@ from macrocast.registry.types import AxisRegistryEntry
 
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 134
+    assert len(registry) == 125
     assert {"research_design", "dataset", "information_set_type", "task", "model_family", "importance_method", "dataset_source", "relative_metrics", "direction_metrics", "regime_definition"}.issubset(registry)
 
 
@@ -52,7 +52,7 @@ def test_base_registry_types_available() -> None:
 
 def test_registry_loader_discovers_axis_type_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 134
+    assert len(registry) == 125
     assert "axis_type" in registry
     entry = get_axis_registry_entry("axis_type")
     assert entry.allowed_values == (
@@ -67,7 +67,7 @@ def test_registry_loader_discovers_axis_type_meta_axis() -> None:
 
 def test_registry_loader_discovers_reproducibility_mode_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 134
+    assert len(registry) == 125
     assert "reproducibility_mode" in registry
     entry = get_axis_registry_entry("reproducibility_mode")
     assert entry.allowed_values == (
@@ -81,7 +81,7 @@ def test_registry_loader_discovers_reproducibility_mode_meta_axis() -> None:
 
 def test_registry_loader_discovers_failure_policy_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 134
+    assert len(registry) == 125
     assert "failure_policy" in registry
     entry = get_axis_registry_entry("failure_policy")
     assert entry.allowed_values == (
@@ -98,7 +98,7 @@ def test_registry_loader_discovers_failure_policy_meta_axis() -> None:
 
 def test_registry_loader_discovers_compute_mode_meta_axis() -> None:
     registry = get_axis_registry()
-    assert len(registry) == 134
+    assert len(registry) == 125
     assert "compute_mode" in registry
     entry = get_axis_registry_entry("compute_mode")
     assert entry.allowed_values == (
@@ -119,8 +119,6 @@ def test_registry_loader_discovers_stage1_data_task_axes() -> None:
         "dataset_source",
         "frequency",
         "information_set_type",
-        "vintage_policy",
-        "alignment_rule",
         "forecast_type",
         "forecast_object",
         "horizon_target_construction",
@@ -129,15 +127,9 @@ def test_registry_loader_discovers_stage1_data_task_axes() -> None:
         "training_start_rule",
         "oos_period",
         "min_train_size",
-        "warmup_rule",
         "structural_break_segmentation",
         "contemporaneous_x_rule",
-        "own_target_lags",
         "deterministic_components",
-        "exogenous_block",
-        "x_map_policy",
-        "target_to_target_inclusion",
-        "regime_task",
     }
     assert expected.issubset(registry)
 
@@ -169,18 +161,14 @@ def test_registry_loader_discovers_stage4_evaluation_axes() -> None:
 def test_registry_loader_moves_benchmark_family_and_evaluation_scale_to_data_task() -> None:
     registry = get_axis_registry()
     assert registry["benchmark_family"].layer == "1_data_task"
-    assert registry["evaluation_scale"].layer == "1_data_task"
+    assert registry["evaluation_scale"].layer == "2_preprocessing"  # §1.5 cleanup: re-homed to Layer 2 where the PreprocessContract field lives
 
 
 def test_registry_loader_discovers_information_set_type_axis() -> None:
     entry = get_axis_registry_entry("information_set_type")
     assert entry.allowed_values == (
         "revised",
-        "real_time_vintage",
         "pseudo_oos_revised",
-        "pseudo_oos_vintage_aware",
-        "release_calendar_aware",
-        "publication_lag_aware",
     )
 
 

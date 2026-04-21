@@ -40,12 +40,6 @@ AXIS_DEFINITION = AxisDefinition(
             priority='A',
         ),
         EnumRegistryEntry(
-            id='random_walk',
-            description='random walk',
-            status='operational',
-            priority='A',
-        ),
-        EnumRegistryEntry(
             id='ar_fixed_p',
             description='ar fixed p',
             status='operational',
@@ -72,13 +66,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='paper_specific_benchmark',
             description='paper specific benchmark',
-            status='registry_only',
+            status='operational',
             priority='B',
         ),
         EnumRegistryEntry(
             id='survey_forecast',
             description='survey forecast',
-            status='registry_only',
+            status='operational',
             priority='B',
         ),
         EnumRegistryEntry(

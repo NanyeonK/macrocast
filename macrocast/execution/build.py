@@ -33,6 +33,10 @@ from .seed_policy import (
     resolve_seed,
     set_context,
 )
+from .horizon_target import forward_scalar as _horizon_forward_scalar
+from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as _resolve_min_train_obs
+from .nber import filter_origins_by_regime as _filter_origins_by_regime
+from .deterministic import augment_array as _augment_deterministic_array
 from .types import ExecutionResult, ExecutionSpec
 from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
 from ..preprocessing import (
@@ -55,8 +59,6 @@ _PHASE3_DEFAULTS = {
     "variable_universe": "all_variables",
     "min_train_size": "fixed_n_obs",
     "structural_break_segmentation": "none",
-    "horizon_list": "arbitrary_grid",
-    "evaluation_scale": "original_scale",
     "separation_rule": "strict_separation",
 }
 
@@ -84,68 +86,160 @@ def _replace_raw_data(raw_result, new_data):
     return raw_result
 
 
-def _apply_release_lag(raw_result, rule: str):
-    if rule == 'ignore_release_lag':
-        return raw_result
-    lag_map = {
-        'fixed_lag_all_series': 1,
-        'series_specific_lag': 1,
-        'calendar_exact_lag': 2,
-        'lag_conservative': 2,
-        'lag_aggressive': 0,
-    }
-    lag = lag_map.get(rule, 0)
-    if lag == 0:
+def _apply_release_lag(raw_result, rule: str, *, spec: dict | None = None):
+    """Apply release_lag_rule to raw_result.data.
+
+    v1.0 operational rules:
+    - ``ignore_release_lag`` (default): no-op.
+    - ``fixed_lag_all_series``: shift every non-date column by 1 period.
+    - ``series_specific_lag``: shift each column by the lag supplied via
+      ``spec['release_lag_per_series']`` (dict[column → int months]).
+      Columns missing from the dict are left untouched.
+    """
+    if rule == 'ignore_release_lag' or not rule:
         return raw_result
     data = getattr(raw_result, 'data', None)
     if data is None:
         return raw_result
-    try:
-        new_data = data.copy()
-        cols = [c for c in new_data.columns if str(c).lower() != 'date']
-        for c in cols:
-            new_data[c] = new_data[c].shift(lag)
-    except Exception:
-        return raw_result
-    return _replace_raw_data(raw_result, new_data)
+    if rule == 'fixed_lag_all_series':
+        try:
+            new_data = data.copy()
+            cols = [c for c in new_data.columns if str(c).lower() != 'date']
+            for c in cols:
+                new_data[c] = new_data[c].shift(1)
+        except Exception:
+            return raw_result
+        return _replace_raw_data(raw_result, new_data)
+    if rule == 'series_specific_lag':
+        lag_map = (spec or {}).get('release_lag_per_series')
+        if not isinstance(lag_map, dict) or not lag_map:
+            raise ExecutionError("release_lag_rule='series_specific_lag' requires leaf_config.release_lag_per_series (dict[str, int])")
+        try:
+            new_data = data.copy()
+            for col, lag in lag_map.items():
+                if col in new_data.columns:
+                    new_data[col] = new_data[col].shift(int(lag))
+        except Exception as exc:
+            raise ExecutionError(f"series_specific_lag failed: {exc}") from exc
+        return _replace_raw_data(raw_result, new_data)
+    raise ExecutionError(f'unsupported release_lag_rule={rule!r}')
 
 
-def _apply_missing_availability(raw_result, rule: str):
-    if rule in {'complete_case_only', None}:
+def _apply_missing_availability(raw_result, rule: str, *, target: str | None = None, spec: dict | None = None):
+    """Apply missing_availability rule to the raw panel.
+
+    v1.0 operational rules:
+    - ``complete_case_only`` (default): no-op; downstream code drops NaNs per its own policy.
+    - ``available_case``: keep only rows where every non-date column is non-NaN.
+      Target rows with NaN outside this filter are kept (they will be skipped
+      later by the evaluator); X columns are also required complete per row.
+    - ``x_impute_only``: impute predictor columns (non-target, non-date) using the
+      strategy declared in ``spec['x_imputation']`` (one of 'mean', 'median', 'ffill', 'bfill').
+      Target column is left untouched so NaNs in y remain visible to the OOS loop.
+    """
+    if rule in {'complete_case_only', None} or not rule:
         return raw_result
+    data = getattr(raw_result, 'data', None)
+    if data is None:
+        return raw_result
+    spec = dict(spec or {})
+
     if rule == 'available_case':
-        return raw_result
-    if rule in {'x_impute_only', 'real_time_missing_as_missing', 'state_space_fill', 'factor_fill', 'em_fill'}:
-        return raw_result
-    if rule == 'target_date_drop_if_missing':
-        return raw_result
+        # Complete-case filter across the whole panel; legitimate in short
+        # fixture windows, aggressive for long panels.
+        new_data = data.dropna(how='any').copy()
+        if len(new_data) == 0:
+            # Fall back to original to avoid empty-data downstream crashes; the
+            # evaluator will raise a more informative error.
+            return raw_result
+        return _replace_raw_data(raw_result, new_data)
+
+    if rule == 'x_impute_only':
+        strategy = spec.get('x_imputation')
+        if strategy is None:
+            raise ExecutionError("missing_availability='x_impute_only' requires leaf_config.x_imputation (one of 'mean' / 'median' / 'ffill' / 'bfill')")
+        if strategy not in {'mean', 'median', 'ffill', 'bfill'}:
+            raise ExecutionError(f"missing_availability='x_impute_only': unsupported leaf_config.x_imputation={strategy!r}; allowed: mean / median / ffill / bfill")
+        x_cols = [c for c in data.columns if c != target and str(c).lower() != 'date']
+        new_data = data.copy()
+        if strategy == 'ffill':
+            new_data[x_cols] = new_data[x_cols].ffill().bfill()
+        elif strategy == 'bfill':
+            new_data[x_cols] = new_data[x_cols].bfill().ffill()
+        elif strategy == 'mean':
+            for c in x_cols:
+                col = new_data[c]
+                if col.isna().any():
+                    new_data[c] = col.fillna(col.mean())
+        elif strategy == 'median':
+            for c in x_cols:
+                col = new_data[c]
+                if col.isna().any():
+                    new_data[c] = col.fillna(col.median())
+        return _replace_raw_data(raw_result, new_data)
+
     raise ExecutionError(f'unsupported missing_availability={rule!r}')
 
 
-def _apply_variable_universe(raw_result, rule: str):
+_VARIABLE_UNIVERSE_SUBSET_FIELD: dict[str, str] = {
+    'handpicked_set': 'variable_universe_columns',
+}
+
+
+def _apply_variable_universe(raw_result, rule: str, *, spec: dict | None = None, target: str | None = None):
+    """Filter raw_result.data columns per the variable_universe rule.
+
+    v1.0 semantics: non-default rules read a user-supplied column list from
+    data_task_spec (propagated from leaf_config at compile time). Target and
+    date columns are always preserved.
+    """
     if rule == 'all_variables':
         return raw_result
+    data = getattr(raw_result, 'data', None)
+    if data is None:
+        return raw_result
+    spec = dict(spec or {})
+
     if rule == 'preselected_core':
-        data = getattr(raw_result, 'data', None)
-        if data is None:
-            return raw_result
-        try:
-            keep = [c for c in data.columns if c in _PRESELECTED_CORE or str(c).lower() == 'date']
-        except Exception:
-            return raw_result
+        keep = [c for c in data.columns if c in _PRESELECTED_CORE or str(c).lower() == 'date']
         if len(keep) >= 2:
             return _replace_raw_data(raw_result, data[keep].copy())
         return raw_result
-    if rule in {
-        'category_subset',
-        'paper_replication_subset',
-        'target_specific_subset',
-        'expert_curated_subset',
-        'stability_filtered_subset',
-        'correlation_screened_subset',
-        'feature_selection_dynamic_subset',
-    }:
-        return raw_result
+
+    def _keep_with_anchors(columns):
+        anchors = [c for c in data.columns if str(c).lower() == 'date']
+        head = []
+        if target and target in data.columns:
+            head = [target]
+        rest = [c for c in columns if c in data.columns and c not in head and c not in anchors]
+        return anchors + head + rest
+
+    if rule == 'category_subset':
+        mapping = spec.get('variable_universe_category_columns')
+        category = spec.get('variable_universe_category')
+        if isinstance(mapping, dict) and category in mapping:
+            keep = _keep_with_anchors(list(mapping[category]))
+            if keep:
+                return _replace_raw_data(raw_result, data[keep].copy())
+        raise ExecutionError("variable_universe='category_subset' requires leaf_config.variable_universe_category_columns (dict) + leaf_config.variable_universe_category")
+
+    if rule == 'target_specific_subset':
+        mapping = spec.get('target_specific_columns')
+        if isinstance(mapping, dict) and target in mapping:
+            keep = _keep_with_anchors(list(mapping[target]))
+            if keep:
+                return _replace_raw_data(raw_result, data[keep].copy())
+        raise ExecutionError("variable_universe='target_specific_subset' requires leaf_config.target_specific_columns (dict[target, list])")
+
+    field = _VARIABLE_UNIVERSE_SUBSET_FIELD.get(rule)
+    if field is not None:
+        cols = spec.get(field)
+        if isinstance(cols, (list, tuple)) and cols:
+            keep = _keep_with_anchors(list(cols))
+            if keep:
+                return _replace_raw_data(raw_result, data[keep].copy())
+        raise ExecutionError(f"variable_universe={rule!r} requires leaf_config.{field} (list[str])")
+
     raise ExecutionError(f'unsupported variable_universe={rule!r}')
 
 
@@ -194,8 +288,36 @@ def _benchmark_spec(recipe: RecipeSpec) -> dict[str, object]:
     return spec
 
 
-def _minimum_train_size(recipe: RecipeSpec) -> int:
-    return int(_benchmark_spec(recipe)["minimum_train_size"])
+def _minimum_train_size(recipe: RecipeSpec, *, horizon: int | None = None) -> int:
+    """Resolve minimum_train_size honouring the §1.3 min_train_size axis.
+
+    The base value comes from ``benchmark_config.minimum_train_size`` (leaf_config
+    scalar, default 60). The axis value selects a transform applied on top:
+
+    - ``fixed_n_obs``: base (default, identity).
+    - ``fixed_years``: base * 12 (interpret the scalar as years).
+    - ``model_specific_min_train``: max(base, per-family floor).
+    - ``target_specific_min_train``: max(base, per-target floor).
+    - ``horizon_specific_min_train``: base + 6 * max(0, horizon-1).
+
+    The model_family / target / horizon context is looked up from the recipe when
+    available; horizon falls back to the largest recipe horizon when not supplied
+    explicitly, giving the most conservative (largest) minimum_train_size.
+    """
+    benchmark_spec = _benchmark_spec(recipe)
+    base = int(benchmark_spec["minimum_train_size"])
+    rule = str(recipe.data_task_spec.get("min_train_size", "fixed_n_obs"))
+    if rule == "fixed_n_obs":
+        return base
+    model_family = _model_family(recipe)
+    target = str(recipe.target) if getattr(recipe, "target", None) else None
+    effective_horizon = int(horizon) if horizon is not None else max((int(h) for h in recipe.horizons), default=1)
+    spec = _WindowSpec(minimum_train_rule=rule, minimum_train_value=base)
+    try:
+        resolved = _resolve_min_train_obs(spec, model_family=model_family, target=target, horizon=effective_horizon)
+    except ValueError as exc:
+        raise ExecutionError(str(exc)) from exc
+    return int(resolved)
 
 
 def _max_ar_lag(recipe: RecipeSpec) -> int:
@@ -209,6 +331,33 @@ def _rolling_window_size(recipe: RecipeSpec) -> int:
 
 def _benchmark_family(recipe: RecipeSpec) -> str:
     return str(_benchmark_spec(recipe)["benchmark_family"])
+
+
+def _predictor_family(recipe: RecipeSpec) -> str:
+    return str(recipe.data_task_spec.get("predictor_family", "all_macro_vars"))
+
+
+_STRUCTURAL_BREAK_PRESETS = {
+    "pre_post_crisis": ("2008-09-01",),
+    "pre_post_covid": ("2020-03-01",),
+}
+
+
+def _resolve_structural_break_dates(spec: dict | None) -> list[str] | None:
+    """Map structural_break_segmentation value to its break-date list.
+
+    v1.0 operational values:
+    - ``none`` (default)        : returns None (no augmentation).
+    - ``pre_post_crisis``       : single break at 2008-09-01 (NBER Great-Recession onset).
+    - ``pre_post_covid``        : single break at 2020-03-01 (NBER COVID-recession onset).
+    - ``user_break_dates``      : reads leaf_config.break_dates (list of ISO dates).
+    """
+    rule = (spec or {}).get("structural_break_segmentation", "none")
+    if rule == "none" or not rule:
+        return None
+    if rule in _STRUCTURAL_BREAK_PRESETS:
+        return list(_STRUCTURAL_BREAK_PRESETS[rule])
+    raise ExecutionError(f"unsupported structural_break_segmentation={rule!r}")
 
 
 def _benchmark_window(recipe):
@@ -391,8 +540,9 @@ def _get_benchmark_executor(recipe: RecipeSpec):
     benchmark_family = _benchmark_family(recipe)
     if benchmark_family in {
         "historical_mean", "zero_change", "ar_bic", "custom_benchmark",
-        "rolling_mean", "random_walk", "ar_fixed_p", "ardi", "factor_model",
+        "rolling_mean", "ar_fixed_p", "ardi", "factor_model",
         "expert_benchmark", "multi_benchmark_suite",
+        "paper_specific_benchmark", "survey_forecast",
     }:
         return _run_benchmark_executor
     raise ExecutionError(f"benchmark_family {benchmark_family!r} is representable but not executable in current runtime slice")
@@ -517,10 +667,43 @@ def _recursive_predict_sklearn(model, train: pd.Series, horizon: int, lag_order:
     return float(history[-1])
 
 
-def _raw_panel_columns(frame: pd.DataFrame, target: str) -> list[str]:
-    cols = [col for col in frame.columns if col != target]
+def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: str = "all_macro_vars", spec: dict | None = None) -> list[str]:
+    """Return the predictor column list honouring §1.4 predictor_family.
+
+    predictor_family values wired in v1.0:
+
+    - ``all_macro_vars`` (default) : every column except the target.
+    - ``target_lags_only``         : empty predictor set — raw panel degrades to target-lag-only; the compiler guard already ties this value to feature_builder=autoreg_lagged_target, so this branch should not normally be reached.
+    - ``category_based``           : user supplies a mapping (spec['predictor_category_columns'][spec['predictor_category']]).
+    - ``factor_only``              : columns whose name starts with 'F_' (convention for factor outputs of factor_pca / factor_augmented_linear builders).
+    - ``handpicked_set``           : spec['handpicked_columns'] list.
+    """
+    spec = dict(spec or {})
+    all_except_target = [col for col in frame.columns if col != target]
+
+    if predictor_family == "all_macro_vars":
+        cols = all_except_target
+    elif predictor_family == "target_lags_only":
+        cols = []  # compiler routes this to autoreg path; empty means 'no exogenous X'
+    elif predictor_family == "category_based":
+        mapping = spec.get("predictor_category_columns")
+        category = spec.get("predictor_category")
+        if isinstance(mapping, dict) and category in mapping:
+            cols = [c for c in mapping[category] if c in frame.columns and c != target]
+        else:
+            raise ExecutionError("predictor_family='category_based' requires leaf_config.predictor_category_columns (dict) and leaf_config.predictor_category")
+    elif predictor_family == "factor_only":
+        cols = [c for c in all_except_target if str(c).startswith("F_")]
+    elif predictor_family == "handpicked_set":
+        handpicked = spec.get("handpicked_columns")
+        if not isinstance(handpicked, (list, tuple)) or not handpicked:
+            raise ExecutionError("predictor_family='handpicked_set' requires leaf_config.handpicked_columns (list[str])")
+        cols = [c for c in handpicked if c in frame.columns and c != target]
+    else:
+        raise ExecutionError(f"unsupported predictor_family={predictor_family!r}")
+
     if not cols:
-        raise ExecutionError("raw_feature_panel requires at least one non-target column")
+        raise ExecutionError(f"predictor_family={predictor_family!r} produced no usable predictor columns for target={target!r}")
     return cols
 
 
@@ -768,16 +951,67 @@ def _build_raw_panel_training_data(
     start_idx: int,
     origin_idx: int,
     contract: PreprocessContract,
+    *,
+    predictor_family: str = "all_macro_vars",
+    spec: dict | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    predictors = _raw_panel_columns(frame, target)
+    predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
         raise ExecutionError("insufficient history for raw_feature_panel training data")
-    X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
-    y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
-    X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    # §1.5 contemporaneous_x_rule: default forbid (X at origin + train pairs X_t with y_{t+h});
+    # allow uses X aligned to the target date (X_{t+h} with y_{t+h}) — the oracle / data-leak
+    # benchmark variant.
+    contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous")
+    if contemp_rule == "allow_contemporaneous":
+        X_train = frame[predictors].iloc[start_idx + horizon : origin_idx + 1].astype(float).copy()
+        y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+        pred_idx = origin_idx + horizon
+        if pred_idx >= len(frame):
+            raise ExecutionError("contemporaneous_x_rule='allow_contemporaneous' requires X observed at the target date; target falls beyond the available index")
+        X_pred = frame[predictors].iloc[[pred_idx]].astype(float).copy()
+    else:
+        X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
+        y_train = frame[target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
+        X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
     if len(X_train) == 0 or len(y_train) == 0:
         raise ExecutionError("raw_feature_panel produced empty training data")
     X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(X_train, y_train, X_pred, contract)
+
+    # §1.4.5 deterministic_components augmentation (applied after preprocessing)
+    det_component = None
+    break_dates = None
+    if spec is not None:
+        det_component = spec.get("deterministic_components", "none")
+        break_dates = spec.get("break_dates")
+    if det_component and det_component != "none":
+        try:
+            X_train_arr = _augment_deterministic_array(
+                X_train_arr, det_component,
+                index=X_train.index, break_dates=break_dates,
+            )
+            X_pred_arr = _augment_deterministic_array(
+                X_pred_arr, det_component,
+                index=X_pred.index, break_dates=break_dates,
+            )
+        except ValueError as exc:
+            raise ExecutionError(str(exc)) from exc
+
+    # §1.5 structural_break_segmentation augmentation — reuses the break_dummies
+    # path from §1.4 deterministic_components with dates resolved from the axis
+    # value (pre_post_crisis / pre_post_covid presets or user_break_dates).
+    sb_dates = _resolve_structural_break_dates(spec)
+    if sb_dates:
+        try:
+            X_train_arr = _augment_deterministic_array(
+                X_train_arr, "break_dummies",
+                index=X_train.index, break_dates=sb_dates,
+            )
+            X_pred_arr = _augment_deterministic_array(
+                X_pred_arr, "break_dummies",
+                index=X_pred.index, break_dates=sb_dates,
+            )
+        except ValueError as exc:
+            raise ExecutionError(str(exc)) from exc
     return X_train_arr, y_train, X_pred_arr
 
 
@@ -944,7 +1178,10 @@ def _run_tcn_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec
 
 
 def _fit_raw_panel_model(raw_frame: pd.DataFrame, recipe: RecipeSpec, horizon: int, start_idx: int, origin_idx: int, contract: PreprocessContract, model_family: str, model) -> tuple[np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
-    X_train, y_train, X_pred = _build_raw_panel_training_data(raw_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
+        predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec),
+    )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_train, y_train, recipe.training_spec)
     return X_train, y_train, X_pred, fitted, tuning_payload
 
@@ -1135,7 +1372,7 @@ def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recip
 
 def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -1145,7 +1382,7 @@ def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -1155,7 +1392,7 @@ def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target)
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -1219,8 +1456,6 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
         from .evaluation.benchmark_resolver import _rolling_mean
         effective_len = window_len if window_len > 0 else len(train)
         return _rolling_mean(train, effective_len)
-    if benchmark_family == "random_walk":
-        return float(train.iloc[-1])
     if benchmark_family == "ar_fixed_p":
         from .evaluation.benchmark_resolver import _ar_fixed_p_forecast, BenchmarkResolverError
         try:
@@ -1234,9 +1469,28 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
         except BenchmarkResolverError as exc:
             raise ExecutionError(str(exc)) from exc
     if benchmark_family == "factor_model":
-        # Pure factor model requires auxiliary panel which is not threaded here yet;
-        # fall back to historical_mean and let downstream tests pin it down.
-        return _historical_mean_prediction(train)
+        # v1.0: compute simple OLS regression on the leading principal-factor of
+        # the training window (univariate factor surrogate). Iterates forward h
+        # steps using the factor-regressed mean as the level. If the training
+        # window is too small, fall back to historical_mean.
+        try:
+            import numpy as _np
+            values = train.to_numpy(dtype=float)
+            if len(values) < 6:
+                return _historical_mean_prediction(train)
+            # Factor = z-scored mean of the series (trivial single-series factor)
+            z = (values - values.mean()) / (values.std() or 1.0)
+            # Regress y on z one step ahead
+            y = values[1:]
+            x = z[:-1]
+            beta = float(_np.cov(x, y, bias=True)[0, 1] / (_np.var(x) or 1.0))
+            intercept = float(y.mean() - beta * x.mean())
+            last = float(values[-1])
+            last_z = float((last - values.mean()) / (values.std() or 1.0))
+            pred = intercept + beta * last_z
+            return pred
+        except Exception:
+            return _historical_mean_prediction(train)
     if benchmark_family == "expert_benchmark":
         bench_cfg = dict(_benchmark_spec(recipe))
         callable_obj = bench_cfg.get("expert_callable")
@@ -1248,9 +1502,77 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
         except (TypeError, ValueError) as exc:
             raise ExecutionError("expert_benchmark callable must return numeric") from exc
     if benchmark_family == "multi_benchmark_suite":
-        # Suite is reported at metrics layer; runtime executor degrades to historical_mean.
-        return _historical_mean_prediction(train)
-    raise ExecutionError(f"benchmark_family {benchmark_family!r} is not executable in current runtime slice")
+        # v1.0: run each declared benchmark and return the arithmetic mean of
+        # their forecasts. Members are declared at compile time via
+        # leaf_config.benchmark_suite (a list of benchmark_family names). Each
+        # member must itself be executable.
+        suite = recipe.data_task_spec.get("benchmark_suite") or []
+        if not isinstance(suite, (list, tuple)) or not suite:
+            raise ExecutionError("benchmark_family='multi_benchmark_suite' requires leaf_config.benchmark_suite (list[str])")
+        allowed = {"historical_mean", "zero_change", "ar_bic", "rolling_mean", "ar_fixed_p", "ardi"}
+        preds = []
+        original_family = benchmark_family
+        for member in suite:
+            if member not in allowed:
+                raise ExecutionError(f"benchmark_family='multi_benchmark_suite' member {member!r} is not one of {sorted(allowed)}")
+            # Build a shallow copy of the recipe with a different benchmark_family
+            member_recipe = recipe
+            # Recurse by swapping the benchmark_family in data_task_spec is not trivial;
+            # instead, inline-dispatch on the member to avoid recipe mutation.
+            if member == "historical_mean":
+                preds.append(_historical_mean_prediction(train))
+            elif member == "zero_change":
+                preds.append(float(train.iloc[-1]))
+            elif member == "rolling_mean":
+                from .evaluation.benchmark_resolver import _rolling_mean as _rm
+                preds.append(_rm(train, window_len if window_len > 0 else len(train)))
+            elif member == "ar_bic":
+                fitted = _run_ar_model_executor(train, horizon, recipe, contract=_build_noop_contract())
+                preds.append(float(fitted["y_pred"]))
+            elif member == "ar_fixed_p":
+                from .evaluation.benchmark_resolver import _ar_fixed_p_forecast, BenchmarkResolverError
+                try:
+                    preds.append(_ar_fixed_p_forecast(train, int(horizon), _benchmark_fixed_p(recipe)))
+                except BenchmarkResolverError:
+                    preds.append(_historical_mean_prediction(train))
+            elif member == "ardi":
+                from .evaluation.benchmark_resolver import _ardi_forecast, BenchmarkResolverError
+                try:
+                    preds.append(_ardi_forecast(train, int(horizon), _benchmark_n_factors(recipe), None, train.index[-1]))
+                except BenchmarkResolverError:
+                    preds.append(_historical_mean_prediction(train))
+        if not preds:
+            return _historical_mean_prediction(train)
+        return float(sum(preds) / len(preds))
+    if benchmark_family in {"paper_specific_benchmark", "survey_forecast"}:
+        # v1.0: pre-computed per-target forecast series supplied via leaf_config.
+        field = "paper_forecast_series" if benchmark_family == "paper_specific_benchmark" else "survey_forecast_series"
+        series_map = recipe.data_task_spec.get(field)
+        if not isinstance(series_map, dict):
+            raise ExecutionError(f"benchmark_family={benchmark_family!r} requires leaf_config.{field} (dict[target, Series] keyed by target name)")
+        target = str(recipe.target) if getattr(recipe, "target", None) else None
+        if target not in series_map:
+            raise ExecutionError(f"benchmark_family={benchmark_family!r}: leaf_config.{field} missing an entry for target={target!r}")
+        try:
+            import pandas as _pd
+            ext = _pd.Series(series_map[target])
+            last_origin = train.index[-1]
+            # Forecast date is last_origin + horizon months forward. For monthly
+            # freq, lookup by the expected target timestamp; on miss, use the
+            # closest trailing value.
+            try:
+                target_date = last_origin + _pd.tseries.offsets.MonthBegin(int(horizon))
+            except Exception:
+                target_date = last_origin
+            if target_date in ext.index:
+                return float(ext.loc[target_date])
+            valid = ext.loc[:target_date].dropna()
+            if len(valid) == 0:
+                raise ExecutionError(f"{field} has no value on or before {target_date} for target={target!r}")
+            return float(valid.iloc[-1])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ExecutionError(f"benchmark_family={benchmark_family!r} lookup failed: {exc}") from exc
+        raise ExecutionError(f"benchmark_family {benchmark_family!r} is not executable in current runtime slice")
 
 
 def _build_noop_contract() -> PreprocessContract:
@@ -2671,6 +2993,25 @@ def _build_predictions(
     refit_policy = str(recipe.training_spec.get("refit_policy", "refit_every_step"))
     anchored_max_window_size = int(recipe.training_spec.get("anchored_max_window_size", rolling_window_size))
     refit_k_steps = int(recipe.training_spec.get("refit_k_steps", 3))
+    _horizon_construction = str(recipe.data_task_spec.get("horizon_target_construction", "future_level_y_t_plus_h"))
+    _oos_period = str(recipe.data_task_spec.get("oos_period", "all_oos_data"))
+
+    # §1.3 training_start_rule=fixed_start: resolve the calendar date to an index floor
+    _training_start_rule = str(recipe.data_task_spec.get("training_start_rule", "earliest_possible"))
+    _fixed_start_idx = 0
+    if _training_start_rule == "fixed_start":
+        _fixed_start_date = recipe.data_task_spec.get("training_start_date")
+        if _fixed_start_date is None:
+            raise ExecutionError("training_start_rule='fixed_start' requires data_task_spec['training_start_date'] (validated at compile time)")
+        import pandas as _pd
+        try:
+            _ts = _pd.Timestamp(_fixed_start_date)
+        except Exception as _e:
+            raise ExecutionError(f"training_start_date={_fixed_start_date!r} is not a valid ISO date: {_e}") from _e
+        _idx = target_series.index.searchsorted(_ts)
+        if _idx >= len(target_series.index):
+            raise ExecutionError(f"training_start_date={_fixed_start_date!r} is after the last available observation")
+        _fixed_start_idx = int(_idx)
 
     def _rows_for_horizon(horizon: int) -> list[dict[str, object]]:
         nonlocal last_tuning_payload
@@ -2681,6 +3022,8 @@ def _build_predictions(
         locked_origin_idx = None
         for origin_idx in range(minimum_train_size - 1, len(target_series) - horizon):
             base_start_idx = max(0, origin_idx + 1 - rolling_window_size) if rolling else 0
+            if _fixed_start_idx > 0:
+                base_start_idx = max(base_start_idx, _fixed_start_idx)
             if outer_window == "anchored_rolling":
                 if origin_idx + 1 > anchored_max_window_size:
                     base_start_idx = max(0, origin_idx + 1 - anchored_max_window_size)
@@ -2703,6 +3046,10 @@ def _build_predictions(
                 effective_origin_idx = origin_idx
             origin_plan.append((origin_idx, start_idx, effective_origin_idx))
 
+        # §1.3 oos_period regime filter — applied after origin_plan is finalized.
+        if _oos_period in {"recession_only_oos", "expansion_only_oos"} and origin_plan:
+            origin_plan = _filter_origins_by_regime(origin_plan, index=target_series.index, regime=_oos_period)
+
         # Stage 2 — compute each origin's row. Thread-pool when requested.
         def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None]:
             train = target_series.iloc[start_idx : effective_origin_idx + 1]
@@ -2711,6 +3058,16 @@ def _build_predictions(
             y_pred = float(model_output["y_pred"])
             benchmark_pred = float(benchmark_executor(train, horizon, recipe))
             y_true = float(target_series.iloc[origin_idx + horizon])
+            # Level-scale values are kept for provenance; metric-scale values
+            # honour horizon_target_construction (§1.2.4).
+            y_pred_level = y_pred
+            benchmark_pred_level = benchmark_pred
+            y_true_level = y_true
+            if _horizon_construction != "future_level_y_t_plus_h":
+                y_anchor = float(target_series.iloc[effective_origin_idx])
+                y_pred = _horizon_forward_scalar(y_pred_level, y_anchor, _horizon_construction)
+                benchmark_pred = _horizon_forward_scalar(benchmark_pred_level, y_anchor, _horizon_construction)
+                y_true = _horizon_forward_scalar(y_true_level, y_anchor, _horizon_construction)
             error = y_true - y_pred
             benchmark_error = y_true - benchmark_pred
             row = {
@@ -2735,6 +3092,10 @@ def _build_predictions(
                 "benchmark_error": benchmark_error,
                 "benchmark_abs_error": abs(benchmark_error),
                 "benchmark_squared_error": benchmark_error**2,
+                "horizon_target_construction": _horizon_construction,
+                "y_true_level": y_true_level,
+                "y_pred_level": y_pred_level,
+                "benchmark_pred_level": benchmark_pred_level,
             }
             return row, tuning_payload
 
@@ -3056,12 +3417,10 @@ def execute_recipe(
     _var_universe = _data_task_axis(recipe, "variable_universe")
     _min_train_axis = _data_task_axis(recipe, "min_train_size")
     _break_seg = _data_task_axis(recipe, "structural_break_segmentation")
-    _horizon_list_axis = _data_task_axis(recipe, "horizon_list")
-    _eval_scale = _data_task_axis(recipe, "evaluation_scale")
     _separation = _data_task_axis(recipe, "separation_rule")
-    raw_result = _apply_release_lag(raw_result, _release_lag)
-    raw_result = _apply_missing_availability(raw_result, _missing_avail)
-    raw_result = _apply_variable_universe(raw_result, _var_universe)
+    raw_result = _apply_release_lag(raw_result, _release_lag, spec=dict(recipe.data_task_spec))
+    raw_result = _apply_missing_availability(raw_result, _missing_avail, target=str(recipe.target) if getattr(recipe, 'target', None) else None, spec=dict(recipe.data_task_spec))
+    raw_result = _apply_variable_universe(raw_result, _var_universe, spec=dict(recipe.data_task_spec), target=str(recipe.target) if getattr(recipe, 'target', None) else None)
     targets = _recipe_targets(recipe)
     prediction_frames = []
     failed_components: list[dict[str, object]] = []

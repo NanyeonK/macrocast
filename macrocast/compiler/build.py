@@ -26,8 +26,6 @@ _AXIS_NAME_ALIASES = {
 }
 
 _AXIS_VALUE_ALIASES = {
-    ("information_set_type", "real_time"): "real_time_vintage",
-    ("evaluation_scale", "raw_level"): "original_scale",
 }
 
 _DATASET_DEFAULT_FREQUENCY = {
@@ -388,27 +386,39 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "dataset_source": _selection_value(selection_map, "dataset_source", default=dataset),
         "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
         "information_set_type": information_set_type,
-        "vintage_policy": _selection_value(selection_map, "vintage_policy", default=("single_vintage" if information_set_type == "real_time_vintage" else "latest_only")),
-        "alignment_rule": _selection_value(selection_map, "alignment_rule", default="end_of_period"),
-        "forecast_type": _selection_value(selection_map, "forecast_type", default="direct"),
+        "forecast_type": _selection_value(selection_map, "forecast_type", default=("iterated" if feature_builder == "autoreg_lagged_target" else "direct")),
         "forecast_object": _selection_value(selection_map, "forecast_object", default="point_mean"),
         "horizon_target_construction": _selection_value(selection_map, "horizon_target_construction", default="future_level_y_t_plus_h"),
         "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
         "predictor_family": _selection_value(selection_map, "predictor_family", default=predictor_family_default),
         "contemporaneous_x_rule": _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous"),
-        "own_target_lags": _selection_value(selection_map, "own_target_lags", default="include"),
         "deterministic_components": _selection_value(selection_map, "deterministic_components", default="none"),
-        "exogenous_block": _selection_value(selection_map, "exogenous_block", default=("endogenous_allowed" if feature_builder == "raw_feature_panel" else "none")),
-        "training_start_rule": _selection_value(selection_map, "training_start_rule", default=("rolling_train_start" if framework == "rolling" else "earliest_possible")),
-        "oos_period": _selection_value(selection_map, "oos_period", default=("rolling_origin" if framework == "rolling" else "single_oos_block")),
+        "training_start_rule": _selection_value(selection_map, "training_start_rule", default="earliest_possible"),
+        "training_start_date": leaf_config.get("training_start_date"),
+        # §1.4 variable_universe input channels
+        "variable_universe_category": leaf_config.get("variable_universe_category"),
+        "variable_universe_category_columns": leaf_config.get("variable_universe_category_columns"),
+        "target_specific_columns": leaf_config.get("target_specific_columns"),
+        "variable_universe_columns": leaf_config.get("variable_universe_columns"),
+        # §1.4 predictor_family input channels
+        "handpicked_columns": leaf_config.get("handpicked_columns"),
+        "predictor_category": leaf_config.get("predictor_category"),
+        "predictor_category_columns": leaf_config.get("predictor_category_columns"),
+        # §1.4 benchmark_family input channels
+        "benchmark_suite": leaf_config.get("benchmark_suite"),
+        "paper_forecast_series": leaf_config.get("paper_forecast_series"),
+        "survey_forecast_series": leaf_config.get("survey_forecast_series"),
+        # §1.4 deterministic_components input channels
+        "break_dates": leaf_config.get("break_dates"),
+        # §1.5 release_lag_rule + missing_availability + contemporaneous_x_rule input channels
+        "release_lag_per_series": leaf_config.get("release_lag_per_series"),
+        "x_imputation": leaf_config.get("x_imputation"),
+        "oos_period": _selection_value(selection_map, "oos_period", default="all_oos_data"),
         "min_train_size": _selection_value(selection_map, "min_train_size", default="fixed_n_obs"),
-        "warmup_rule": _selection_value(selection_map, "warmup_rule", default="lags_only_warmup"),
         "structural_break_segmentation": _selection_value(selection_map, "structural_break_segmentation", default="none"),
-        "x_map_policy": _selection_value(selection_map, "x_map_policy", default="shared_X"),
-        "target_to_target_inclusion": _selection_value(selection_map, "target_to_target_inclusion", default="forbid_other_targets_as_X"),
-        "evaluation_scale": _selection_value(selection_map, "evaluation_scale", default="original_scale"),
+        "missing_availability": _selection_value(selection_map, "missing_availability", default="complete_case_only"),
+        "release_lag_rule": _selection_value(selection_map, "release_lag_rule", default="ignore_release_lag"),
         "benchmark_family": _selection_value(selection_map, "benchmark_family"),
-        "regime_task": _selection_value(selection_map, "regime_task", default="unconditional"),
         "data_vintage": leaf_config.get("data_vintage"),
     }
 
@@ -509,8 +519,6 @@ def _build_stage0_and_recipe(
     feature_builders = feature_axis.selected_values
     wrapper_family = leaf_config.get("wrapper_family")
 
-    if information_set_type == "real_time_vintage" and not data_vintage:
-        raise CompileValidationError("information_set_type='real_time_vintage' requires leaf_config.data_vintage")
     if task == "multi_target_point_forecast":
         if len(targets) < 2:
             raise CompileValidationError("task='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
@@ -548,11 +556,7 @@ def _build_stage0_and_recipe(
     }[framework]
     info_set_token = {
         "revised": "revised_monthly",
-        "real_time_vintage": "real_time_vintage",
         "pseudo_oos_revised": "pseudo_oos_revised",
-        "pseudo_oos_vintage_aware": "pseudo_oos_vintage_aware",
-        "release_calendar_aware": "release_calendar_aware",
-        "publication_lag_aware": "publication_lag_aware",
     }.get(information_set_type, information_set_type)
 
     stage0 = build_design_frame(
@@ -603,9 +607,11 @@ def _build_stage0_and_recipe(
 def _execution_status(
     selections: tuple[AxisSelection, ...],
     preprocess_contract,
+    leaf_config: dict[str, Any] | None = None,
 ) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
     warnings: list[str] = []
     blocked: list[str] = []
+    leaf_config = dict(leaf_config or {})
     selection_map = _selection_map(selections)
     registry = get_axis_registry()
 
@@ -638,8 +644,34 @@ def _execution_status(
     if model_family == "ar" and feature_builder == "raw_feature_panel":
         blocked.append("raw_feature_panel is not compatible with model_family='ar' in the current runtime slice")
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
-    if model_family == "quantile_linear" and forecast_object != "point_median":
-        blocked.append("model_family='quantile_linear' currently requires forecast_object='point_median'")
+    if model_family == "quantile_linear" and forecast_object not in {"point_median", "quantile"}:
+        blocked.append("model_family='quantile_linear' requires forecast_object='point_median' or 'quantile'")
+
+    # §1.3 training_start_rule=fixed_start requires leaf_config.training_start_date
+    if feature_builder is not None:
+        _ts_rule = _selection_value(selection_map, "training_start_rule", default="earliest_possible")
+        if _ts_rule == "fixed_start" and not leaf_config.get("training_start_date"):
+            blocked.append("training_start_rule='fixed_start' requires leaf_config.training_start_date (ISO date string)")
+
+        # §1.2.2 forecast_type × feature_builder compatibility (v1.0)
+    if feature_builder is not None:
+        forecast_type_default = "iterated" if feature_builder == "autoreg_lagged_target" else "direct"
+        forecast_type = _selection_value(selection_map, "forecast_type", default=forecast_type_default)
+        if feature_builder == "raw_feature_panel" and forecast_type == "iterated":
+            blocked.append("forecast_type='iterated' is not implemented for feature_builder='raw_feature_panel' in v1.0 (requires exogenous X forecasting)")
+        if feature_builder == "autoreg_lagged_target" and forecast_type == "direct":
+            blocked.append("forecast_type='direct' is not implemented for feature_builder='autoreg_lagged_target' in v1.0 (the operational path is iterated); use forecast_type='iterated' or leave unset to take the dynamic default")
+
+    # §1.3 overlap_handling=evaluate_with_hac compatibility (v1.0)
+    _overlap = _selection_value(selection_map, "overlap_handling", default="allow_overlap")
+    if _overlap == "evaluate_with_hac":
+        _stat_test = _selection_value(selection_map, "stat_test", default="none")
+        _hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
+        if _stat_test not in _hac_compatible and _stat_test != "none":
+            blocked.append(
+                f"overlap_handling='evaluate_with_hac' requires a HAC-capable stat_test "
+                f"(one of {sorted(_hac_compatible)}); got stat_test={_stat_test!r}"
+            )
 
     if feature_builder is not None:
         predictor_family = _selection_value(selection_map, "predictor_family", default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "all_macro_vars"))
@@ -766,7 +798,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
 
     preprocess_contract = _build_preprocess_contract(selection_map)
     stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)
-    execution_status, warnings, blocked = _execution_status(selections, preprocess_contract)
+    execution_status, warnings, blocked = _execution_status(selections, preprocess_contract, leaf_config=leaf_config)
     tree_context = _build_tree_context(stage0, run_spec, selections, leaf_config)
     wrapper_handoff = _build_wrapper_handoff(
         stage0,
