@@ -950,7 +950,6 @@ def test_compile_recipe_records_stage2_preprocess_governance_defaults() -> None:
     compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
     contract = compile_result.manifest["preprocess_contract"]
     assert contract["representation_policy"] == "raw_only"
-    assert contract["preprocessing_axis_role"] == "fixed_preprocessing"
     assert contract["tcode_application_scope"] == "apply_tcode_to_none"
 
 
@@ -968,9 +967,9 @@ def test_compile_recipe_accepts_stage2_preprocess_axes() -> None:
                 "target_missing_policy": "none", "x_missing_policy": "mean_impute", "target_outlier_policy": "none", "x_outlier_policy": "winsorize",
                 "scaling_policy": "minmax", "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
                 "preprocess_order": "extra_only", "preprocess_fit_scope": "train_only", "inverse_transform_policy": "none", "evaluation_scale": "raw_level",
-                "representation_policy": "raw_only", "preprocessing_axis_role": "fixed_preprocessing", "tcode_application_scope": "apply_tcode_to_none",
+                "representation_policy": "raw_only", "tcode_application_scope": "apply_tcode_to_none",
                 "target_transform": "level", "target_normalization": "none", "target_domain": "unconstrained", "scaling_scope": "columnwise",
-                "additional_preprocessing": "none", "x_lag_creation": "no_x_lags", "feature_grouping": "none", "recipe_mode": "fixed_recipe"
+                "additional_preprocessing": "none", "x_lag_creation": "no_x_lags", "feature_grouping": "none",
             }},
             "3_training": {"fixed_axes": {"framework": "rolling", "benchmark_family": "zero_change", "feature_builder": "raw_feature_panel", "model_family": "ridge"}},
             "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},

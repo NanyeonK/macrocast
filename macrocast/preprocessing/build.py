@@ -26,11 +26,6 @@ _REPRESENTATION_POLICY = {
     "tcode_only",
     "custom_transform_only",
 }
-_AXIS_ROLE = {
-    "fixed_preprocessing",
-    "swept_preprocessing",
-    "ablation_preprocessing",
-}
 _TCODE_APPLICATION_SCOPE = {
     "apply_tcode_to_target",
     "apply_tcode_to_X",
@@ -162,13 +157,6 @@ _FEATURE_GROUPING = {
     "lag_group",
     "factor_group",
 }
-_RECIPE_MODE = {
-    "fixed_recipe",
-    "recipe_grid",
-    "recipe_ablation",
-    "paper_exact_recipe",
-    "model_specific_recipe",
-}
 
 
 def build_preprocess_contract(
@@ -188,7 +176,6 @@ def build_preprocess_contract(
     inverse_transform_policy: str,
     evaluation_scale: str,
     representation_policy: str = "raw_only",
-    preprocessing_axis_role: str = "fixed_preprocessing",
     tcode_application_scope: str = "apply_tcode_to_none",
     target_transform: str = "level",
     target_normalization: str = "none",
@@ -197,7 +184,6 @@ def build_preprocess_contract(
     additional_preprocessing: str = "none",
     x_lag_creation: str = "no_x_lags",
     feature_grouping: str = "none",
-    recipe_mode: str = "fixed_recipe",
 ) -> PreprocessContract:
     allowed_map = {
         "target_transform_policy": _TARGET,
@@ -215,7 +201,6 @@ def build_preprocess_contract(
         "inverse_transform_policy": _INVERSE,
         "evaluation_scale": _EVAL_SCALE,
         "representation_policy": _REPRESENTATION_POLICY,
-        "preprocessing_axis_role": _AXIS_ROLE,
         "tcode_application_scope": _TCODE_APPLICATION_SCOPE,
         "target_transform": _TARGET_TRANSFORM,
         "target_normalization": _TARGET_NORMALIZATION,
@@ -224,7 +209,6 @@ def build_preprocess_contract(
         "additional_preprocessing": _ADDITIONAL,
         "x_lag_creation": _X_LAG,
         "feature_grouping": _FEATURE_GROUPING,
-        "recipe_mode": _RECIPE_MODE,
     }
     selected = {
         "target_transform_policy": target_transform_policy,
@@ -242,7 +226,6 @@ def build_preprocess_contract(
         "inverse_transform_policy": inverse_transform_policy,
         "evaluation_scale": evaluation_scale,
         "representation_policy": representation_policy,
-        "preprocessing_axis_role": preprocessing_axis_role,
         "tcode_application_scope": tcode_application_scope,
         "target_transform": target_transform,
         "target_normalization": target_normalization,
@@ -251,7 +234,6 @@ def build_preprocess_contract(
         "additional_preprocessing": additional_preprocessing,
         "x_lag_creation": x_lag_creation,
         "feature_grouping": feature_grouping,
-        "recipe_mode": recipe_mode,
     }
     for field_name, value in selected.items():
         if value not in allowed_map[field_name]:
@@ -296,8 +278,6 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
         return False
     if contract.representation_policy != "raw_only":
         return False
-    if contract.preprocessing_axis_role != "fixed_preprocessing":
-        return False
     if contract.tcode_application_scope != "apply_tcode_to_none":
         return False
     if contract.tcode_policy != "extra_preprocess_without_tcode":
@@ -317,8 +297,6 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
     if contract.x_lag_creation not in {"no_x_lags", "fixed_x_lags"}:
         return False
     if contract.feature_grouping != "none":
-        return False
-    if contract.recipe_mode != "fixed_recipe":
         return False
     if contract.target_transform not in {"level", "difference", "log", "log_difference", "growth_rate"}:
         return False
@@ -372,9 +350,6 @@ def check_preprocess_governance(
     model_sweep: bool = False,
 ) -> None:
     extra_present = _has_extra_preprocessing(contract)
-
-    if contract.preprocessing_axis_role == "fixed_preprocessing" and preprocessing_sweep:
-        raise PreprocessValidationError("fixed_preprocessing cannot be placed in preprocessing sweep")
 
     if contract.representation_policy == "raw_only":
         if contract.tcode_application_scope != "apply_tcode_to_none":
@@ -458,8 +433,6 @@ def check_preprocess_governance(
         raise PreprocessValidationError("current runtime slice does not support x_lag_creation beyond no_x_lags / fixed_x_lags")
     if contract.feature_grouping != "none":
         raise PreprocessValidationError("current runtime slice does not support feature_grouping beyond none")
-    if contract.recipe_mode != "fixed_recipe" and not preprocessing_sweep:
-        raise PreprocessValidationError("non-fixed recipe_mode requires preprocessing sweep context")
 
 
 def preprocess_to_dict(contract: PreprocessContract) -> dict[str, str]:
@@ -479,7 +452,6 @@ def preprocess_to_dict(contract: PreprocessContract) -> dict[str, str]:
         "inverse_transform_policy": contract.inverse_transform_policy,
         "evaluation_scale": contract.evaluation_scale,
         "representation_policy": contract.representation_policy,
-        "preprocessing_axis_role": contract.preprocessing_axis_role,
         "tcode_application_scope": contract.tcode_application_scope,
         "target_transform": contract.target_transform,
         "target_normalization": contract.target_normalization,
@@ -488,7 +460,6 @@ def preprocess_to_dict(contract: PreprocessContract) -> dict[str, str]:
         "additional_preprocessing": contract.additional_preprocessing,
         "x_lag_creation": contract.x_lag_creation,
         "feature_grouping": contract.feature_grouping,
-        "recipe_mode": contract.recipe_mode,
     }
 
 

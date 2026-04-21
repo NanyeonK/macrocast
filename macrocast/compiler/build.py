@@ -232,7 +232,6 @@ def _build_preprocess_contract(selection_map: dict[str, AxisSelection]) -> Any:
     }
     defaults = {
         "representation_policy": "raw_only",
-        "preprocessing_axis_role": "fixed_preprocessing",
         "tcode_application_scope": "apply_tcode_to_none",
         "target_transform": "level",
         "target_normalization": "none",
@@ -241,7 +240,6 @@ def _build_preprocess_contract(selection_map: dict[str, AxisSelection]) -> Any:
         "additional_preprocessing": "none",
         "x_lag_creation": "no_x_lags",
         "feature_grouping": "none",
-        "recipe_mode": "fixed_recipe",
     }
     missing = sorted(axis for axis in required if axis not in selection_map)
     if missing:

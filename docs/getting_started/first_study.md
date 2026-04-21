@@ -30,7 +30,6 @@ For a data-rich panel like FRED-MD, we need to handle missing values and scale p
 
 - `x_missing_policy`: `em_impute` (EM algorithm, train-only fit)
 - `scaling_policy`: `standard` (zero mean, unit variance, train-only fit)
-- `preprocessing_axis_role`: `fixed_preprocessing` (same preprocessing for both models)
 
 ## Step 4: Write the YAML recipe
 
@@ -70,7 +69,6 @@ path:
       preprocess_fit_scope: train_only
       inverse_transform_policy: none
       representation_policy: raw_only
-      preprocessing_axis_role: fixed_preprocessing
       tcode_application_scope: apply_tcode_to_none
       target_transform: level
       target_normalization: none
@@ -79,7 +77,6 @@ path:
       additional_preprocessing: none
       x_lag_creation: no_x_lags
       feature_grouping: none
-      recipe_mode: fixed_recipe
 
   3_training:
     fixed_axes:
