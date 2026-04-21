@@ -117,20 +117,28 @@ path:
 
 ## 1.2.4 `horizon_target_construction`
 
-**Selects how `y_{t+h}` is constructed from the raw series.** One operational value in v1.0; three v1.1 commitments for the target-transform inverse pipeline.
+**Selects the metric scale on which forecasts are evaluated.** All four values are operational in v1.0.
 
 ### Value catalog
 
 | Value | Status | What it does |
 |---|---|---|
-| `future_level_y_t_plus_h` | operational | `y_{t+h}` is the raw level — `y.shift(-h)`. Metrics are on the same scale as the input series. |
-| `future_diff` | registry_only (v1.1) | `y_{t+h} - y_t`. Requires inverse-transform to return forecasts and metrics on the original level. |
-| `future_logdiff` | registry_only (v1.1) | `log(y_{t+h}) - log(y_t)` — log-growth. |
-| `cumulative_growth_to_h` | registry_only (v1.1) | `log(y_{t+h}) - log(y_t)` aggregated over the h-step window (CLSS 2021 style). |
+| `future_level_y_t_plus_h` | operational | Default. Metrics on the raw y-level: `error = y_{t+h} - ŷ_{t+h}`. |
+| `future_diff` | operational | Metrics on 1st-difference scale: `y_true = y_{t+h} - y_t`, `ŷ = ŷ_{t+h} - y_t`. Error equals level-scale error (anchor cancels), but reported y_true / y_pred move onto the diff scale. |
+| `future_logdiff` | operational | Metrics on log-growth scale: `y_true = log(y_{t+h}) - log(y_t)`, `ŷ = log(ŷ_{t+h}) - log(y_t)`. Error = `log(y_{t+h}/ŷ_{t+h})`, a relative / percentage-style residual. Requires strictly positive y. |
+| `cumulative_growth_to_h` | operational | Telescoping-sum identity `Σ (log y_{t+i} - log y_{t+i-1}) == log y_{t+h} - log y_t`. Numerically equivalent to `future_logdiff` for a single-series target — kept distinct as an explicit CLSS-style recipe label. |
 
-### v1.1 commitment
+### Semantics (v1.0)
 
-The three non-`future_level_y_t_plus_h` values share one v1.1 deliverable: a target-transform pipeline with real forward + inverse mapping so metrics land on the raw scale. Today's `target_transform` axis (Layer 2) is forward-only — metrics come out on the transformed scale, which is a known v0.9.2 limitation.
+v1.0 implements `horizon_target_construction` as a **metric-scale transform** at the central row-computation site (`_compute_origin` in `execution.build`). The model executor always emits a level-scale forecast `ŷ_{t+h}`. Immediately before the row is assembled, both the forecast and the realised `y_{t+h}` are forward-transformed using `y_anchor = y_t` (the last observed level at the forecast origin), so `error` / `abs_error` / `squared_error` — and the corresponding benchmark fields — land on the construction scale. Level-scale values are preserved as `y_true_level` / `y_pred_level` / `benchmark_pred_level` on every row for provenance.
+
+Training-time target transforms (fit the model directly on the transformed y, with an inverse mapping from prediction back to level) are **not** what v1.0 does — those land in the Layer-2 `target_transform` work and remain on the v1.1 roadmap for bidirectional wiring.
+
+### Functions & features
+
+- `macrocast.execution.horizon_target.forward_scalar(y_val, y_anchor, construction)` — applies the selected construction to a single scalar.
+- `build_horizon_target(y, horizon, construction)` / `inverse_horizon_target(y_hat, y_anchor, construction)` are exported for future training-time use but are not yet wired in v1.0.
+- Provenance columns added to every prediction row: `horizon_target_construction`, `y_true_level`, `y_pred_level`, `benchmark_pred_level`.
 
 ### Dropped values
 
@@ -139,11 +147,19 @@ The three non-`future_level_y_t_plus_h` values share one v1.1 deliverable: a tar
 ### Recipe usage
 
 ```yaml
-# v1.0 — only executable form
+# Default: level-scale metrics
 path:
   1_data_task:
     fixed_axes:
       horizon_target_construction: future_level_y_t_plus_h
+```
+
+```yaml
+# Growth-rate evaluation (CLSS 2021 style)
+path:
+  1_data_task:
+    fixed_axes:
+      horizon_target_construction: cumulative_growth_to_h
 ```
 
 ---
@@ -151,8 +167,8 @@ path:
 ## Task & Target (1.2) takeaways
 
 - **`task`** is the only §1.2 axis that truly branches at runtime today. It flows into multi-target aggregator activation and `experiment_unit` default derivation.
-- **`forecast_type`**, **`forecast_object`**, **`horizon_target_construction`** each have exactly one executable value in v1.0. Every other value survives as `registry_only` with an explicit v1.1 runtime commitment, or was dropped.
-- **Five registry_only values** constitute the v1.1 §1.2 roadmap: `iterated`, `quantile`, `future_diff`, `future_logdiff`, `cumulative_growth_to_h`. They are the acceptance criteria for §1.2 completeness in phase-10.
+- **`forecast_type`** and **`forecast_object`** each have one executable value in v1.0 (`direct` / `point_mean` + `point_median`). The remaining `registry_only` values (`iterated`, `quantile`) are the v1.1 acceptance criteria for §1.2 completeness in phase-10.
+- **`horizon_target_construction`** is fully operational with 4 values — default `future_level_y_t_plus_h` plus 3 metric-scale transforms (`future_diff`, `future_logdiff`, `cumulative_growth_to_h`).
 - `target_family`, `multi_target_architecture`, `target_to_target_inclusion` are gone — see the "Dropped axes" note at the top.
 
 Next group: §1.3 Horizon & evaluation window (coming).

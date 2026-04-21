@@ -18,19 +18,19 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='future_diff',
             description='future diff',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='future_logdiff',
             description='future logdiff',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
             id='cumulative_growth_to_h',
             description='cumulative growth to h',
-            status='registry_only',
+            status='operational',
             priority='A',
         ),
     ),

@@ -361,9 +361,9 @@ above. Historical rows preserved for archaeology:
 | Value | Current | Target version | Target phase | Rationale |
 |-------|---------|:---:|:---:|-----------|
 | future_level_y_t+h | operational | - | - | 이미 완료 |
-| future_diff | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — v1.1 target-transform inverse pipeline (§1.2 cleanup plan) |
-| future_logdiff | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — same pipeline as future_diff |
-| cumulative_growth_to_h | registry_only | v1.1 | phase-10 | **DEMOTED 2026-04-20 → registry_only** — CLSS-style cumulative, same pipeline |
+| future_diff | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
+| future_logdiff | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
+| cumulative_growth_to_h | operational | - | - | **OPERATIONAL 2026-04-20** — v1.0 metric-scale transform wired in execution._compute_origin (§1.2 cleanup implementation) |
 | average_growth_1_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — scaled variant of cumulative, redundant |
 | annualized_growth_to_h | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — linear (×12/h) transform of cumulative_growth_to_h, belongs in metric-time reporting |
 | realized_future_average | **dropped** | - | - | **DROPPED 2026-04-20 (§1.2 cleanup)** — niche, no v1.1 demand |
