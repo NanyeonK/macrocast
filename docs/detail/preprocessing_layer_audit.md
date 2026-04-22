@@ -61,7 +61,7 @@ records what the current runtime can execute today.
 | `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Cannot be combined with dimensionality reduction. |
 | `feature_grouping` | `none` | Non-`none` grouping is blocked in governance. |
 | `target_transform` | `level`, `difference`, `log`, `log_difference`, `growth_rate` | Applied to the target series before model execution, with limited inverse/evaluation semantics. |
-| `target_normalization` | `none`, `zscore_train_only`, `robust_zscore` | Current support is narrow; no general metric-scale system yet. |
+| `target_normalization` | `none` | Z-score variants are helper-tested but registry-only until normalization is fit inside each training window. |
 | `target_domain` | `unconstrained` | Domain constraints are not implemented. |
 | `target_missing_policy` | `none` | Target-side missing algorithms are not supported in the operational contract. |
 | `target_outlier_policy` | `none` | Target-side outlier algorithms are not supported in the operational contract. |
@@ -69,7 +69,7 @@ records what the current runtime can execute today.
 | `evaluation_scale` | `raw_level`, `original_scale` | `transformed_scale` and `both` remain representable but are registry-only until inverse/evaluation semantics are finalized. |
 | `preprocess_order` | `none`, derived `tcode_only`, `extra_only`, `tcode_then_extra` | `tcode_then_extra` is executable for supported raw-panel extra preprocessing after Layer 1 official t-codes. |
 | `preprocess_fit_scope` | `not_applicable`, `train_only` | Extra preprocessing requires `train_only` today. |
-| `separation_rule` | helper supports several values | The helper is tested, but not wired into the main execution loop as a general dispatcher. |
+| `separation_rule` | `strict_separation` | Non-strict helper modes are registry-only until wired into the main execution loop as a general dispatcher. |
 | `custom_preprocessor` | fixed registered plugin name or `none` | X-side function must return transformed X_train/X_test and must not transform y. |
 | `target_transformer` | fixed registered plugin name or `none` | Executable under target-transformer constraints; raw-scale evaluation only. |
 
@@ -91,6 +91,25 @@ only for raw-panel style feature builders.** The default official T-code path is
 executable, and supported extra preprocessing can now be attached after the
 Layer 1 official T-code step through the derived
 `tcode_then_extra_preprocess` bridge contract.
+
+## Full Closure Status
+
+Layer 2 is closed for fixed full recipes under the current runtime scope:
+
+- all Layer 2 axes have canonical ownership and honest registry status;
+- `dataset_tcode_only`, `raw_only`, `raw_train_only_extra`, and
+  `dataset_tcode_then_train_only_extra` compile and execute where their
+  constraints are satisfied;
+- representable-but-not-executable values remain in the grammar as
+  `registry_only`, not `operational`;
+- the simple API still does not expose preprocessing sweeps.
+
+The closed full profile is therefore a fixed single-run or fixed controlled
+recipe, not an arbitrary public sweep. Full recipes can represent broader
+research intentions, but unsupported target-side normalization/inversion,
+non-strict separation rules, feature grouping, IPCA, CV-selected X lags, and
+dual-scale evaluation stay blocked until they receive runtime integration and
+acceptance tests.
 
 ## Current Default
 
@@ -236,6 +255,8 @@ Constraints:
 - Supported extra preprocessing is X-side only: X missing, X outlier, scaling,
   HP filter, fixed X lags, dimensionality reduction, or feature selection.
 - Target-side missing/outlier handling remains non-executable.
+- Target normalization beyond `none` remains registry-only until normalization
+  is fit inside each training window.
 - `inverse_transform_policy` must remain `none`.
 - `evaluation_scale` must remain `raw_level` or `original_scale`.
 - Legacy bridge fields remain compatibility fields. New recipes should set the
@@ -260,6 +281,11 @@ The registry now marks representable-but-not-executable Layer 2 values as
 | `feature_grouping='lag_group'` | `registry_only` | governance blocks non-`none` feature grouping |
 | `evaluation_scale='transformed_scale'` | `registry_only` | inverse/evaluation-scale semantics are not finalized |
 | `evaluation_scale='both'` | `registry_only` | dual-scale reporting is not implemented |
+| `target_normalization='zscore_train_only'` | `registry_only` | helper exists, but runtime does not fit normalization per training window |
+| `target_normalization='robust_zscore'` | `registry_only` | helper exists, but runtime does not fit normalization per training window |
+| `separation_rule='shared_transform_then_split'` | `registry_only` | helper exists, but main execution does not dispatch this rule |
+| `separation_rule='X_only_transform'` | `registry_only` | helper exists, but main execution does not dispatch this rule |
+| `separation_rule='target_only_transform'` | `registry_only` | helper exists, but main execution does not dispatch this rule |
 
 These values stay in the grammar so full research designs remain representable,
 but public docs should not describe them as executable choices until runtime
@@ -295,7 +321,7 @@ Reasons:
    preprocessing contract, not as a public simple sweep.
 3. Co-sweeping model and preprocessing is explicitly rejected by governance for
    ordinary baseline comparison.
-4. Target-side inverse/evaluation-scale semantics are not finalized.
+4. Target-side normalization, inverse, and evaluation-scale semantics are not finalized.
 5. Some full grammar values remain `registry_only`.
 
 Therefore, the executable MVP is:

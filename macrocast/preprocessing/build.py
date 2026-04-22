@@ -321,7 +321,7 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
         return False
     if contract.target_transform not in {"level", "difference", "log", "log_difference", "growth_rate"}:
         return False
-    if contract.target_normalization not in {"none", "zscore_train_only", "robust_zscore"}:
+    if contract.target_normalization != "none":
         return False
     if contract.target_domain != "unconstrained":
         return False

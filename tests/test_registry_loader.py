@@ -217,6 +217,8 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     scaling = get_axis_registry_entry("scaling_policy")
     dimred = get_axis_registry_entry("dimensionality_reduction_policy")
     feature_selection = get_axis_registry_entry("feature_selection_policy")
+    tcode_policy = get_axis_registry_entry("tcode_policy")
+    preprocess_order = get_axis_registry_entry("preprocess_order")
     assert x_missing.current_status["mean_impute"] == "operational"
     assert x_missing.current_status["median_impute"] == "operational"
     assert x_outlier.current_status["winsorize"] == "operational"
@@ -226,6 +228,8 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     assert dimred.current_status["static_factor"] == "operational"
     assert feature_selection.current_status["correlation_filter"] == "operational"
     assert feature_selection.current_status["lasso_select"] == "operational"
+    assert tcode_policy.current_status["tcode_then_extra_preprocess"] == "operational"
+    assert preprocess_order.current_status["tcode_then_extra"] == "operational"
 
 
 def test_registry_loader_demotes_stage2_non_executable_values() -> None:
@@ -234,6 +238,8 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     x_lag = get_axis_registry_entry("x_lag_creation")
     feature_grouping = get_axis_registry_entry("feature_grouping")
     evaluation_scale = get_axis_registry_entry("evaluation_scale")
+    target_normalization = get_axis_registry_entry("target_normalization")
+    separation_rule = get_axis_registry_entry("separation_rule")
 
     assert target_missing.current_status["em_impute"] == "registry_only"
     assert dimred.current_status["ipca"] == "registry_only"
@@ -242,6 +248,11 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     assert feature_grouping.current_status["lag_group"] == "registry_only"
     assert evaluation_scale.current_status["transformed_scale"] == "registry_only"
     assert evaluation_scale.current_status["both"] == "registry_only"
+    assert target_normalization.current_status["zscore_train_only"] == "registry_only"
+    assert target_normalization.current_status["robust_zscore"] == "registry_only"
+    assert separation_rule.current_status["shared_transform_then_split"] == "registry_only"
+    assert separation_rule.current_status["X_only_transform"] == "registry_only"
+    assert separation_rule.current_status["target_only_transform"] == "registry_only"
 
 
 

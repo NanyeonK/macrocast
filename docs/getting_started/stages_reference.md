@@ -1,8 +1,14 @@
 # Stages Reference (0 and 1)
 
-A one-page map of every operational value on every axis in the two completed stages. Use this as a quick cheat sheet: pick a recipe shape from Stage 0, pick data decisions from Stage 1, then cross over to the in-depth user-guide pages for per-axis semantics and recipe YAML examples.
+A one-page map of every operational value on every axis in the first two
+completed user-facing stages. Use this as a quick cheat sheet: pick a recipe
+shape from Stage 0, pick data decisions from Stage 1, then cross over to the
+in-depth user-guide pages for per-axis semantics and recipe YAML examples.
 
-**Scope.** Layer 0 (Design, 0.1–0.6) + Layer 1 (Data, 1.1–1.5). Layer 2+ (preprocessing, training, evaluation, provenance, stat tests, importance) are still in active development and are intentionally out of scope for the user-facing docs.
+**Scope.** Layer 0 (Design, 0.1–0.6) + Layer 1 (Data, 1.1–1.5).
+Layer 2 full fixed recipes are documented in
+`docs/detail/preprocessing_layer_audit.md`; public preprocessing sweeps remain
+blocked. Layers 3+ are outside this quick-reference page.
 
 **At a glance.**
 

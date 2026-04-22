@@ -196,7 +196,7 @@ Layer 0 can represent more designs than simple API should expose today.
 
 | Desired public feature | Layer 0 need | Blocker |
 |------------------------|--------------|---------|
-| preprocessing-only sweep | controlled variation with preprocessing axis recorded in `VaryingDesign` | Layer 2 contract not executable for t-code then extra preprocessing |
+| preprocessing-only sweep | controlled variation with preprocessing axis recorded in `VaryingDesign` | fixed Layer 2 contracts execute, but public sweep governance and reporting are not finalized |
 | model x preprocessing grid | explicit advanced grid, likely wrapper or advanced internal sweep | governance and result interpretation not fixed |
 | custom benchmark suite | wrapper bundle or multi-benchmark design | Layer 4 benchmark/result contract not public |
 | custom metric ranking | controlled variation with metric direction metadata | Layer 4 custom metric contract not public |

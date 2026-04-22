@@ -93,7 +93,7 @@ def test_level_default_is_identity():
     pd.testing.assert_series_equal(out, s.astype(float))
 
 
-def test_registry_promotions_are_operational():
+def test_target_transform_registry_statuses_are_operational():
     from macrocast.registry.build import _discover_axis_definitions
 
     defs = _discover_axis_definitions()
@@ -104,4 +104,4 @@ def test_registry_promotions_are_operational():
     for v in ("difference", "log", "log_difference", "growth_rate"):
         assert _status("target_transform", v) == "operational"
     for v in ("zscore_train_only", "robust_zscore"):
-        assert _status("target_normalization", v) == "operational"
+        assert _status("target_normalization", v) == "registry_only"

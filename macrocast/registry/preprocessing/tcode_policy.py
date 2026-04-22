@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='tcode_then_extra_preprocess',
             description='tcode then extra preprocess',
-            status='registry_only',
+            status='operational',
             priority="A",
         ),
         EnumRegistryEntry(
