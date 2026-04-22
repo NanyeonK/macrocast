@@ -39,8 +39,8 @@ Canonical Layer 2 ownership now includes:
 - `temporal_feature_block`;
 - `feature_block_combination`.
 
-These axes decide how `H`, `X`, and `Y` become `Z`; they are not model
-estimator choices.
+These axes decide how `H`, `X`, and target history become `Z`; they are not
+model estimator choices.
 
 Legacy runtime code still uses these names for executor dispatch. That is a
 compatibility shape, not the canonical boundary. Future implementation should

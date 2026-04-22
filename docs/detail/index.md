@@ -20,6 +20,7 @@ layer0_meta_audit
 layer1_data_task_audit
 registry_axes
 layer2_feature_representation
+layer2_revision_plan
 layer3_training_audit
 execution_engine
 artifacts_and_manifest

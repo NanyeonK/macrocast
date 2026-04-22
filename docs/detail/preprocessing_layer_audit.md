@@ -23,7 +23,7 @@ scoring metrics, or statistical tests.
 
 This means the canonical Layer 2 question is not "what preprocessing happens by
 default?" but "what feature representation `Z` should the researcher construct
-from Layer 1 outputs `H`, `X`, and `Y` before Layer 3 fits a model?"
+from Layer 1 outputs `H`, `X`, and target history before Layer 3 fits a model?"
 
 ## Layer 2 Decision Space
 
@@ -112,8 +112,9 @@ This definition pass splits the migrated representation axes into general
 feature-block primitives: target-lag blocks, transformed-X lag blocks, factor
 blocks, level add-backs, lag rotations, local temporal factors, volatility
 blocks, and custom blocks. The split is defined in
-`layer2_feature_representation.md`; runtime support remains a separate
-implementation task.
+`layer2_feature_representation.md`; the implementation sequence is defined in
+`layer2_revision_plan.md`. Runtime support remains a separate implementation
+task.
 
 
 ## Full Closure Status
