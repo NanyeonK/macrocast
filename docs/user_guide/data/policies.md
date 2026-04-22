@@ -43,7 +43,7 @@ Declares **how the raw panel is prepared before it reaches the model** — offic
 | `zero_fill_before_start` | operational | Default. Within the selected sample period, predictor leading missing values are filled with 0. Fully missing predictors are also filled with 0 and warned. Target leading missing dates are reported; target mid-sample missing blocks execution. |
 | `complete_case_only` | operational | No panel-level filter; downstream executors handle NaNs per their own policy. |
 | `available_case` | operational | Drop rows where any non-date column has NaN before training. Aggressive but legitimate on short fixture windows. |
-| `x_impute_only` | operational | Impute predictor (non-target) columns using `leaf_config.x_imputation` ∈ {`mean`, `median`, `ffill`, `bfill`}. Target column retains NaNs so the OOS loop still sees missingness in y. |
+| `x_impute_only` | operational | Impute predictor (non-target) columns using `leaf_config.x_imputation` ∈ {`mean`, `median`, `ffill`, `bfill`}. Target column retains NaNs so the OOS loop still sees target missingness. |
 
 ### Functions & features
 
@@ -60,7 +60,7 @@ Declares **how the raw panel is prepared before it reaches the model** — offic
 ### Recipe usage
 
 ```yaml
-# Forward-fill X columns, keep y NaNs visible
+# Forward-fill predictor columns, keep target NaNs visible
 path:
   1_data_task:
     fixed_axes:
@@ -229,8 +229,8 @@ path:
 
 ### Functions & features
 
-- Wired inside `macrocast.execution.build._build_raw_panel_training_data` — the axis value selects how `X_train` and `X_pred` align with `y`.
-- Applies to raw-panel recipes only (autoreg_lagged_target uses y-lags, so the axis is irrelevant there).
+- Wired inside `macrocast.execution.build._build_raw_panel_training_data` — the axis value selects how `X_train` and `X_pred` align with the target.
+- Applies to raw-panel recipes only (autoreg_lagged_target uses target lags, so the axis is irrelevant there).
 
 ### Recipe usage
 

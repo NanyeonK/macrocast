@@ -172,9 +172,9 @@ def register_target_transformer(
     MVP registration records the contract but execution is intentionally not
     wired yet. The transformer instance must provide:
 
-    ``fit(y_train, context)``
-    ``transform(y, context)``
-    ``inverse_transform_prediction(y_pred, context)``
+    ``fit(target_train, context)``
+    ``transform(target, context)``
+    ``inverse_transform_prediction(target_pred, context)``
 
     Target transformer execution must return final forecasts and metrics on
     the raw target scale.

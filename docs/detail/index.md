@@ -10,6 +10,7 @@ These pages are skeletons. Final prose should be rewritten after the public `Exp
 :maxdepth: 1
 
 philosophy
+terminology
 experiment_object
 default_profiles
 recipe_layers

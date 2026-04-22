@@ -65,7 +65,9 @@ These axes are no longer Layer 1 target-structure choices:
 - `predictor_family` and `feature_builder`: Layer 2, because they choose the
   feature representation handed to the forecast generator.
 - `horizon_target_construction`: Layer 2, because level/diff/logdiff target
-  construction is target representation.
+  construction is target representation. Coulombe-style direct average and
+  path-average growth/difference targets are also Layer 2 target representation
+  choices, even where runtime support is still registry-only.
 - `multi_target_architecture`: Layer 0, through `experiment_unit`.
 
 Layer 1 owns target identity and target cardinality. Layer 0 owns how that

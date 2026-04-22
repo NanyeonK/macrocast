@@ -14,7 +14,7 @@ the eligible variable universe. Layer 2 starts after that point.
 
 The purpose of Layer 2 is to support research designs that ask how forecasts
 change when the researcher changes the representation handed to the forecast
-generator. It owns optional transformations of X and y, feature engineering,
+generator. It owns optional transformations of predictors and the target, feature engineering,
 feature-block selection, predictor family, feature builders, dimensionality
 reduction, factor-count decisions, target-scale handling, preprocessing order,
 and leakage discipline. It does not own dataset identity, official data
@@ -35,9 +35,9 @@ feature-representation bridge axes. The canonical decision groups are:
 | Research feature representation | `feature_builder`, `predictor_family`, `data_richness_mode`, `factor_count`, `feature_block_set`, `target_lag_block`, `x_lag_feature_block`, `factor_feature_block`, `level_feature_block`, `rotation_feature_block`, `temporal_feature_block`, `feature_block_combination` | Which feature matrix `Z` is constructed from Layer 1 outputs before forecasting. Current runtime uses the migrated compatibility names; the explicit feature-block axes are registry-only. |
 | X additional preprocessing | `x_missing_policy`, `x_outlier_policy`, `scaling_policy`, `scaling_scope`, `additional_preprocessing`, `x_lag_creation` | How predictor columns are imputed, clipped, scaled, filtered, or lag-augmented after Layer 1. |
 | X representation and selection | `dimensionality_reduction_policy`, `feature_selection_policy`, `feature_grouping` | Whether the predictor panel is reduced to factors/components, screened to a subset, or grouped before modeling. |
-| Target-side preprocessing | `target_transform`, `target_normalization`, `target_domain`, `target_missing_policy`, `target_outlier_policy`, `inverse_transform_policy`, `evaluation_scale`, `target_transformer` | How y is transformed or normalized, how forecasts are inverted, and which scale metrics use. |
+| Target-side preprocessing | `horizon_target_construction`, `target_transform`, `target_normalization`, `target_domain`, `target_missing_policy`, `target_outlier_policy`, `inverse_transform_policy`, `evaluation_scale`, `target_transformer` | How the target is constructed, transformed, normalized, inverted, and evaluated. |
 | Preprocessing order and leakage discipline | `preprocess_order`, `preprocess_fit_scope`, `separation_rule` | Whether extra preprocessing is applied before/after official transforms, and whether each step is fit on train-only data. |
-| Custom extension hooks | `custom_preprocessor`, `target_transformer` | Researcher-supplied X-side and y-side preprocessing protocols when built-ins are insufficient. |
+| Custom extension hooks | `custom_preprocessor`, `target_transformer` | Researcher-supplied predictor-side and target-side preprocessing protocols when built-ins are insufficient. |
 | Legacy representation bridge | `target_transform_policy`, `x_transform_policy`, `tcode_policy`, `representation_policy`, `tcode_application_scope` | Compatibility fields that still help the runtime `PreprocessContract` represent raw vs official T-code frames. They are not the canonical place to choose official transforms in new recipes. |
 
 The natural full Layer 2 profile is
@@ -66,7 +66,7 @@ records what the current runtime can execute today.
 | `predictor_family` | `target_lags_only`, `all_macro_vars`, `category_based`, `factor_only`, `handpicked_set` | Canonical Layer 2 owner; runtime support is constrained by `feature_builder` compatibility guards. |
 | `data_richness_mode` | `target_lags_only`, `factor_plus_lags`, `full_high_dimensional_X`, `selected_sparse_X` | Canonical Layer 2 owner; `mixed_mode` remains registry-only. |
 | `factor_count` | `fixed`, `cv_select`, `BaiNg_rule` | Canonical Layer 2 owner for factor representation dimensions. `variance_explained_rule` and `model_specific` remain registry-only. |
-| `x_missing_policy` | `none`, `drop`, `drop_rows`, `drop_columns`, `drop_if_above_threshold`, `missing_indicator`, `em_impute`, `mean_impute`, `median_impute`, `ffill`, `interpolate_linear` | Executes in the raw-panel extra-preprocess path. `drop` and `drop_rows` are pass-through aliases because X/y row coordination happens upstream. |
+| `x_missing_policy` | `none`, `drop`, `drop_rows`, `drop_columns`, `drop_if_above_threshold`, `missing_indicator`, `em_impute`, `mean_impute`, `median_impute`, `ffill`, `interpolate_linear` | Executes in the raw-panel extra-preprocess path. `drop` and `drop_rows` are pass-through aliases because predictor/target row coordination happens upstream. |
 | `x_outlier_policy` | `none`, `winsorize`, `trim`, `iqr_clip`, `mad_clip`, `zscore_clip`, `outlier_to_missing` | Operates on post-frame X_train/X_pred. Raw-source outlier handling belongs to Layer 1. |
 | `scaling_policy` | `none`, `standard`, `robust`, `minmax`, `demean_only`, `unit_variance_only` | Fitted on X_train and applied to X_pred. |
 | `scaling_scope` | `columnwise`, `global_train_only` | Other scopes are blocked by governance. |
@@ -75,6 +75,7 @@ records what the current runtime can execute today.
 | `dimensionality_reduction_policy` | `none`, `pca`, `static_factor` | Cannot be combined with feature selection. |
 | `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Cannot be combined with dimensionality reduction. |
 | `feature_grouping` | `none` | Non-`none` grouping is blocked in governance. |
+| `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff` | Direct/path-average average-growth and average-difference target constructions are registry-only until multi-step target execution is wired. |
 | `target_transform` | `level`, `difference`, `log`, `log_difference`, `growth_rate` | Applied to the target series before model execution, with limited inverse/evaluation semantics. |
 | `target_normalization` | `none` | Z-score variants are helper-tested but registry-only until normalization is fit inside each training window. |
 | `target_domain` | `unconstrained` | Domain constraints are not implemented. |
@@ -85,7 +86,7 @@ records what the current runtime can execute today.
 | `preprocess_order` | `none`, derived `tcode_only`, `extra_only`, `tcode_then_extra` | `tcode_then_extra` is executable for supported raw-panel extra preprocessing after Layer 1 official t-codes. |
 | `preprocess_fit_scope` | `not_applicable`, `train_only` | Extra preprocessing requires `train_only` today. |
 | `separation_rule` | `strict_separation` | Non-strict helper modes are registry-only until wired into the main execution loop as a general dispatcher. |
-| `custom_preprocessor` | fixed registered plugin name or `none` | X-side function must return transformed X_train/X_test and must not transform y. |
+| `custom_preprocessor` | fixed registered plugin name or `none` | Predictor-side function must return transformed X_train/X_test and must not transform the target. |
 | `target_transformer` | fixed registered plugin name or `none` | Executable under target-transformer constraints; raw-scale evaluation only. |
 
 Current runtime profiles:

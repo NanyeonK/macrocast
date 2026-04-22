@@ -36,6 +36,7 @@ _AXIS_NAME_ALIASES = {
 }
 
 _AXIS_VALUE_ALIASES = {
+    ("horizon_target_construction", "future_level_y_t_plus_h"): "future_target_level_t_plus_h",
 }
 
 _DATASET_DEFAULT_FREQUENCY = {
@@ -812,7 +813,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "information_set_type": information_set_type,
         "forecast_type": _selection_value(selection_map, "forecast_type", default=("iterated" if feature_builder == "autoreg_lagged_target" else "direct")),
         "forecast_object": _selection_value(selection_map, "forecast_object", default="point_mean"),
-        "horizon_target_construction": _selection_value(selection_map, "horizon_target_construction", default="future_level_y_t_plus_h"),
+        "horizon_target_construction": _selection_value(selection_map, "horizon_target_construction", default="future_target_level_t_plus_h"),
         "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
         "predictor_family": _selection_value(selection_map, "predictor_family", default=predictor_family_default),
         "contemporaneous_x_rule": _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous"),
@@ -1157,7 +1158,7 @@ def _execution_status(
                 f"got {model_family!r}"
             )
         if getattr(preprocess_contract, "target_transform", "level") != "level":
-            blocked.append("target_transformer requires target_transform='level' until built-in and custom y transforms are composed")
+            blocked.append("target_transformer requires target_transform='level' until built-in and custom target transforms are composed")
         if getattr(preprocess_contract, "target_normalization", "none") != "none":
             blocked.append("target_transformer requires target_normalization='none' until normalization composition is implemented")
         if getattr(preprocess_contract, "inverse_transform_policy", "none") != "none":

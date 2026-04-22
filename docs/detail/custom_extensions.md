@@ -53,17 +53,17 @@ Target transformer skeleton:
 ```python
 @mc.target_transformer("my_target_transform")
 class MyTargetTransform:
-    def fit(self, y_train, context):
+    def fit(self, target_train, context):
         ...
         return self
 
-    def transform(self, y, context):
+    def transform(self, target, context):
         ...
-        return y_transformed
+        return target_transformed
 
-    def inverse_transform_prediction(self, y_pred, context):
+    def inverse_transform_prediction(self, target_pred, context):
         ...
-        return y_pred_raw
+        return target_pred_raw
 ```
 
 Registered target transformers are executable for `feature_builder="autoreg_lagged_target"` and raw-scale evaluation. See `target_transformer` for the full scale contract.

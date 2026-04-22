@@ -1,7 +1,7 @@
 """End-to-end tests for horizon_target_construction (1.2.4).
 
-Each operational value (future_level_y_t_plus_h, future_diff, future_logdiff,
-cumulative_growth_to_h) must:
+Each operational value (future_target_level_t_plus_h, future_diff,
+future_logdiff) must:
 1. compile to execution_status == "executable",
 2. produce rows carrying `horizon_target_construction` + level-scale provenance,
 3. produce metrics (error / squared_error / benchmark_error) on the declared
@@ -20,7 +20,7 @@ from macrocast.compiler.build import run_compiled_recipe
 
 
 OPERATIONAL_CONSTRUCTIONS = (
-    "future_level_y_t_plus_h",
+    "future_target_level_t_plus_h",
     "future_diff",
     "future_logdiff",
 )
@@ -104,7 +104,7 @@ def test_horizon_target_construction_executes(construction: str, tmp_path: Path)
 def test_future_level_matches_level_scale_metrics(tmp_path: Path) -> None:
     """Default construction keeps y_pred / y_true on level scale; level-preserved
     copies should equal the primary fields."""
-    execution = _run("future_level_y_t_plus_h", tmp_path)
+    execution = _run("future_target_level_t_plus_h", tmp_path)
     predictions = _predictions(execution)
     assert not predictions.empty
     # Level-preserved columns should be present and identical to primary fields
@@ -113,7 +113,7 @@ def test_future_level_matches_level_scale_metrics(tmp_path: Path) -> None:
     assert np.allclose(predictions["y_true"], predictions["y_true_level"], equal_nan=True)
     assert np.allclose(predictions["y_pred"], predictions["y_pred_level"], equal_nan=True)
     # Construction column records the value used
-    assert (predictions["horizon_target_construction"] == "future_level_y_t_plus_h").all()
+    assert (predictions["horizon_target_construction"] == "future_target_level_t_plus_h").all()
 
 
 def test_future_diff_shifts_metrics_by_anchor(tmp_path: Path) -> None:
@@ -140,7 +140,7 @@ def test_future_diff_shifts_metrics_by_anchor(tmp_path: Path) -> None:
 def test_future_logdiff_changes_error_scale(tmp_path: Path) -> None:
     """log-growth construction genuinely changes the error scale
     (unlike diff, where anchor cancels)."""
-    level = _predictions(_run("future_level_y_t_plus_h", tmp_path))
+    level = _predictions(_run("future_target_level_t_plus_h", tmp_path))
     logdiff = _predictions(_run("future_logdiff", tmp_path / "logdiff"))
     assert not logdiff.empty
     # Level-scale values are preserved
@@ -151,4 +151,11 @@ def test_future_logdiff_changes_error_scale(tmp_path: Path) -> None:
     assert np.allclose(logdiff["error"], expected, atol=1e-9, equal_nan=True)
     assert (logdiff["horizon_target_construction"] == "future_logdiff").all()
 
+
+def test_legacy_future_level_y_alias_canonicalizes(tmp_path: Path) -> None:
+    execution = _run("future_level_y_t_plus_h", tmp_path)
+    manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
+    assert manifest["data_task_spec"]["horizon_target_construction"] == "future_target_level_t_plus_h"
+    predictions = _predictions(execution)
+    assert (predictions["horizon_target_construction"] == "future_target_level_t_plus_h").all()
 

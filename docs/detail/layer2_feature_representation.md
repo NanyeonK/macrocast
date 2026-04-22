@@ -16,7 +16,8 @@ Layer 1 provides:
   transforms;
 - `X`: the official transformed predictor frame when dataset/FRED-MD/QD
   transformation codes are applied;
-- `Y`: the target series and horizon-aligned target construction inputs;
+- `target`: the target series and horizon-aligned target construction inputs
+  (papers may write this as `Y_t` or `y_{t+h}`);
 - provenance for availability, official transforms, and raw-source repair.
 
 Layer 2 must produce, for each training window and forecast origin:
@@ -40,7 +41,8 @@ Layer 2 owns four types of decisions.
 | Group | Canonical questions | Existing bridge axes |
 |---|---|---|
 | Frame conditioning | How are post-official-frame missing values, outliers, scaling, filters, and target transforms handled? | `x_missing_policy`, `x_outlier_policy`, `scaling_policy`, `additional_preprocessing`, `target_transform`, `target_transformer` |
-| Feature-block construction | Which blocks are built from `H`, `X`, and `Y` before forecasting? | `feature_builder`, `x_lag_creation`, `dimensionality_reduction_policy`, `feature_selection_policy` |
+| Target representation | Which target scale or horizon target is handed to the forecast generator? | `horizon_target_construction`, `target_transform`, `target_normalization`, `target_transformer` |
+| Feature-block construction | Which blocks are built from `H`, `X`, and target history before forecasting? | `feature_builder`, `x_lag_creation`, `dimensionality_reduction_policy`, `feature_selection_policy` |
 | Block composition | Which blocks are included in `Z`, and how are they concatenated or substituted? | `predictor_family`, `data_richness_mode`, `feature_grouping` |
 | Representation dimensions and leakage discipline | How many factors/lags/features are used, and where are transforms fit? | `factor_count`, `preprocess_fit_scope`, `separation_rule` |
 
@@ -68,6 +70,26 @@ recipes can name research intentions before runtime support is widened.
 All axes in this section are `registry_only` as of this definition pass. The
 operational bridge remains `feature_builder` plus the existing preprocessing
 contract.
+
+## Target Representation Grammar
+
+Coulombe et al. (2021) explicitly compare target construction choices in
+addition to predictor transformations. In their notation, the direct approach
+fits the average growth or difference target over steps 1 through `h`, while the
+path-average approach fits each stepwise target separately and averages the
+forecasts.
+
+Layer 2 therefore owns the target representation choice:
+
+| Axis | Values | Runtime status |
+|---|---|---|
+| `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff` | operational |
+| `horizon_target_construction` | `average_growth_1_to_h`, `path_average_growth_1_to_h`, `average_difference_1_to_h`, `path_average_difference_1_to_h`, `average_log_growth_1_to_h`, `path_average_log_growth_1_to_h` | registry-only |
+
+Path-average target construction also requires Layer 3 support because the
+forecast generator must fit multiple stepwise models and aggregate their
+predictions. The target formula remains Layer 2; the multi-model forecast
+execution protocol remains Layer 3.
 
 ## Mapping From Existing Bridge Names
 

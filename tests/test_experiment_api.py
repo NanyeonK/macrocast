@@ -502,45 +502,45 @@ def test_custom_preprocessor_alias_lowers_to_axis() -> None:
 def test_target_transformer_runs_autoreg_path_on_raw_forecast_scale(tmp_path: Path) -> None:
     clear_custom_extensions()
 
-    @target_transformer("standardize_y")
-    class StandardizeY:
-        def fit(self, y_train, context):
-            self.mean_ = float(y_train.mean())
-            self.scale_ = float(y_train.std(ddof=0)) or 1.0
+    @target_transformer("standardize_target")
+    class StandardizeTarget:
+        def fit(self, target_train, context):
+            self.mean_ = float(target_train.mean())
+            self.scale_ = float(target_train.std(ddof=0)) or 1.0
             return self
 
-        def transform(self, y, context):
-            return (y - self.mean_) / self.scale_
+        def transform(self, target, context):
+            return (target - self.mean_) / self.scale_
 
-        def inverse_transform_prediction(self, y_pred, context):
-            return float(y_pred) * self.scale_ + self.mean_
+        def inverse_transform_prediction(self, target_pred, context):
+            return float(target_pred) * self.scale_ + self.mean_
 
-    assert list_custom_target_transformers() == ("standardize_y",)
-    assert get_custom_target_transformer("standardize_y").evaluation_scale == "raw"
+    assert list_custom_target_transformers() == ("standardize_target",)
+    assert get_custom_target_transformer("standardize_target").evaluation_scale == "raw"
 
     recipe = (
         Experiment(dataset="fred_md", target="INDPRO", start=FIXTURE_START, end=FIXTURE_END, horizons=[1])
-        .use_target_transformer("standardize_y")
+        .use_target_transformer("standardize_target")
         .to_recipe_dict()
     )
-    assert recipe["path"]["2_preprocessing"]["fixed_axes"]["target_transformer"] == "standardize_y"
+    assert recipe["path"]["2_preprocessing"]["fixed_axes"]["target_transformer"] == "standardize_target"
 
     compiled = compile_recipe_dict(recipe).compiled
     assert compiled.execution_status == "executable"
 
     result = (
         Experiment(dataset="fred_md", target="INDPRO", start=FIXTURE_START, end=FIXTURE_END, horizons=[1], model_family="ridge")
-        .use_target_transformer("standardize_y")
+        .use_target_transformer("standardize_target")
         .run(output_root=tmp_path, local_raw_source=FIXTURE_RAW)
     )
     manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
-    assert manifest["training_spec"]["target_transformer"] == "standardize_y"
-    assert manifest["target_transformer"]["name"] == "standardize_y"
+    assert manifest["training_spec"]["target_transformer"] == "standardize_target"
+    assert manifest["target_transformer"]["name"] == "standardize_target"
     assert manifest["target_transformer"]["forecast_scale"] == "raw"
     assert manifest["target_transformer"]["evaluation_scale"] == "raw"
 
     predictions = pd.read_csv(Path(result.artifact_dir) / "predictions.csv")
-    assert set(predictions["target_transformer"]) == {"standardize_y"}
+    assert set(predictions["target_transformer"]) == {"standardize_target"}
     assert set(predictions["model_target_scale"]) == {"transformed"}
     assert set(predictions["forecast_scale"]) == {"raw"}
     assert "y_pred_model_scale" in predictions
@@ -549,16 +549,16 @@ def test_target_transformer_runs_autoreg_path_on_raw_forecast_scale(tmp_path: Pa
 def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path) -> None:
     clear_custom_extensions()
 
-    @target_transformer("identity_y")
-    class IdentityY:
-        def fit(self, y_train, context):
+    @target_transformer("identity_target")
+    class IdentityTarget:
+        def fit(self, target_train, context):
             return self
 
-        def transform(self, y, context):
-            return y
+        def transform(self, target, context):
+            return target
 
-        def inverse_transform_prediction(self, y_pred, context):
-            return y_pred
+        def inverse_transform_prediction(self, target_pred, context):
+            return target_pred
 
     recipe = (
         Experiment(
@@ -570,7 +570,7 @@ def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path)
             model_family="ridge",
             feature_builder="raw_feature_panel",
         )
-        .use_target_transformer("identity_y")
+        .use_target_transformer("identity_target")
         .to_recipe_dict()
     )
     compiled = compile_recipe_dict(recipe).compiled
@@ -586,14 +586,14 @@ def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path)
             model_family="ridge",
             feature_builder="raw_feature_panel",
         )
-        .use_target_transformer("identity_y")
+        .use_target_transformer("identity_target")
         .run(output_root=tmp_path, local_raw_source=FIXTURE_RAW)
     )
     manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
-    assert manifest["training_spec"]["target_transformer"] == "identity_y"
+    assert manifest["training_spec"]["target_transformer"] == "identity_target"
     assert manifest["target_transformer"]["runtime"] == "raw_panel_v1"
     predictions = pd.read_csv(Path(result.artifact_dir) / "predictions.csv")
-    assert set(predictions["target_transformer"]) == {"identity_y"}
+    assert set(predictions["target_transformer"]) == {"identity_target"}
     assert set(predictions["model_target_scale"]) == {"transformed"}
     assert set(predictions["forecast_scale"]) == {"raw"}
 
@@ -601,16 +601,16 @@ def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path)
 def test_target_transformer_blocks_unsupported_raw_panel_model() -> None:
     clear_custom_extensions()
 
-    @target_transformer("identity_y")
-    class IdentityY:
-        def fit(self, y_train, context):
+    @target_transformer("identity_target")
+    class IdentityTarget:
+        def fit(self, target_train, context):
             return self
 
-        def transform(self, y, context):
-            return y
+        def transform(self, target, context):
+            return target
 
-        def inverse_transform_prediction(self, y_pred, context):
-            return y_pred
+        def inverse_transform_prediction(self, target_pred, context):
+            return target_pred
 
     recipe = (
         Experiment(
@@ -622,7 +622,7 @@ def test_target_transformer_blocks_unsupported_raw_panel_model() -> None:
             model_family="randomforest",
             feature_builder="raw_feature_panel",
         )
-        .use_target_transformer("identity_y")
+        .use_target_transformer("identity_target")
         .to_recipe_dict()
     )
     compiled = compile_recipe_dict(recipe).compiled

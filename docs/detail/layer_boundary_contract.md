@@ -120,7 +120,7 @@ Owns scoring and reporting of forecasts:
 - ranking and report style
 - regime-specific evaluation subsets
 
-Layer 4 should not fit models, transform X/y, or run statistical tests.
+Layer 4 should not fit models, transform predictors/target, or run statistical tests.
 
 ## Layer 5: Artifacts
 

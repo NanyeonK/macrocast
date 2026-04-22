@@ -74,7 +74,6 @@ DROPPED: tuple[tuple[str, str], ...] = (
     ("forecast_object", "regime_probability"),
     ("forecast_object", "event_probability"),
     ("horizon_target_construction", "annualized_growth_to_h"),
-    ("horizon_target_construction", "average_growth_1_to_h"),
     ("horizon_target_construction", "realized_future_average"),
     ("horizon_target_construction", "future_sum"),
     ("horizon_target_construction", "future_indicator"),
@@ -88,7 +87,14 @@ def test_dropped_value_is_rejected(axis: str, value: str) -> None:
 
 
 # Values demoted to registry_only — compile succeeds but execution is gated.
-DEMOTED: tuple[tuple[str, str], ...] = ()
+DEMOTED: tuple[tuple[str, str], ...] = (
+    ("horizon_target_construction", "average_growth_1_to_h"),
+    ("horizon_target_construction", "path_average_growth_1_to_h"),
+    ("horizon_target_construction", "average_difference_1_to_h"),
+    ("horizon_target_construction", "path_average_difference_1_to_h"),
+    ("horizon_target_construction", "average_log_growth_1_to_h"),
+    ("horizon_target_construction", "path_average_log_growth_1_to_h"),
+)
 
 
 @pytest.mark.parametrize("axis,value", DEMOTED)

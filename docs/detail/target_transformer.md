@@ -1,31 +1,31 @@
 # Target Transformer Contract
 
-`target_transformer` is the y-side extension point. It is intentionally separate from `custom_preprocessor`, which is X-only.
+`target_transformer` is the target-side extension point. It is intentionally separate from `custom_preprocessor`, which is predictor-only.
 
 Status: executable for `feature_builder="autoreg_lagged_target"`. Raw-panel and exogenous feature builders remain blocked until their horizon-aligned supervised target contract is implemented.
 
 ## Why This Is Separate
 
-Transforming `y_train` changes the scale of the fitted model and the scale of predictions. That affects model recursion, benchmark comparison, metrics, artifacts, and reproducibility. It should not be hidden inside an X preprocessor.
+Transforming the training target changes the scale of the fitted model and the scale of predictions. That affects model recursion, benchmark comparison, metrics, artifacts, and reproducibility. It should not be hidden inside a predictor preprocessor.
 
 ## MVP Contract
 
 The intended user protocol is:
 
 ```python
-@mc.target_transformer("standardize_y")
-class StandardizeY:
-    def fit(self, y_train, context):
+@mc.target_transformer("standardize_target")
+class StandardizeTarget:
+    def fit(self, target_train, context):
         ...
         return self
 
-    def transform(self, y, context):
+    def transform(self, target, context):
         ...
-        return y_transformed
+        return target_transformed
 
-    def inverse_transform_prediction(self, y_pred, context):
+    def inverse_transform_prediction(self, target_pred, context):
         ...
-        return y_pred_raw
+        return target_pred_raw
 ```
 
 Required scale contract:
@@ -64,7 +64,7 @@ Existing built-in axes still describe dataset or built-in target handling:
 - `inverse_transform_policy`: built-in inverse-transform policy axis
 - `evaluation_scale`: metric scale policy
 
-`target_transformer` is the runtime plugin name for a custom y-side protocol. It should eventually coordinate with those axes, but it should not replace them silently.
+`target_transformer` is the runtime plugin name for a custom target-side protocol. It should eventually coordinate with those axes, but it should not replace them silently.
 
 ## Current Behavior
 
@@ -74,4 +74,4 @@ Existing built-in axes still describe dataset or built-in target handling:
 
 Compilation accepts registered names. Non-`none` values are executable only for `feature_builder="autoreg_lagged_target"` and raw-scale evaluation.
 
-Execution records the transformer in the manifest and adds prediction columns for `target_transformer`, `model_target_scale`, `forecast_scale`, and `y_pred_model_scale`.
+Execution records the transformer in the manifest and adds prediction columns for `target_transformer`, `model_target_scale`, `forecast_scale`, and the legacy `y_pred_model_scale` column.

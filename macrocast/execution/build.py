@@ -35,7 +35,10 @@ from .seed_policy import (
     resolve_seed,
     set_context,
 )
-from .horizon_target import forward_scalar as _horizon_forward_scalar
+from .horizon_target import (
+    canonicalize_horizon_target_construction as _canonicalize_horizon_target_construction,
+    forward_scalar as _horizon_forward_scalar,
+)
 from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as _resolve_min_train_obs
 from .nber import filter_origins_by_regime as _filter_origins_by_regime
 from .deterministic import augment_array as _augment_deterministic_array
@@ -420,7 +423,7 @@ def _apply_missing_availability(raw_result, rule: str, *, target: str | None = N
       later by the evaluator); X columns are also required complete per row.
     - ``x_impute_only``: impute predictor columns (non-target, non-date) using the
       strategy declared in ``spec['x_imputation']`` (one of 'mean', 'median', 'ffill', 'bfill').
-      Target column is left untouched so NaNs in y remain visible to the OOS loop.
+      Target column is left untouched so target NaNs remain visible to the OOS loop.
     """
     if rule in {'complete_case_only', 'zero_fill_before_start', None} or not rule:
         return raw_result
@@ -1145,7 +1148,7 @@ def _get_benchmark_executor(recipe: RecipeSpec):
 
 
 def _apply_target_transform_and_normalization(series: pd.Series, contract: PreprocessContract | None) -> pd.Series:
-    """Forward-only y-side transform + normalization.
+    """Forward-only target-side transform + normalization.
 
     Applied immediately after _get_target_series returns. Metrics are computed
     on the transformed scale — inverse-transform back to raw units is a v1.0+
@@ -1329,7 +1332,7 @@ def _apply_missing_policy(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     policy = contract.x_missing_policy
     if policy in {"none", "drop", "drop_rows"}:
-        # drop_rows is a no-op at this layer (X<>y coordination is upstream); kept as a pass-through alias of none/drop.
+        # drop_rows is a no-op at this layer (predictor/target coordination is upstream); kept as a pass-through alias of none/drop.
         return X_train, X_pred
     if policy == "drop_columns":
         keep = [c for c in X_train.columns if X_train[c].notna().all()]
@@ -1687,7 +1690,7 @@ def _coerce_target_transformer_series(value, *, index, name: str | None, transfo
     else:
         arr = np.asarray(value, dtype=float)
     if arr.ndim == 0:
-        raise ExecutionError(f"target transformer {transformer_name!r} returned scalar {role}; expected one value per y observation")
+        raise ExecutionError(f"target transformer {transformer_name!r} returned scalar {role}; expected one value per target observation")
     flat = arr.reshape(-1)
     if len(flat) != len(index):
         raise ExecutionError(
@@ -1752,7 +1755,7 @@ def _fit_target_transformer_for_window(
         index=train.index,
         name=train.name,
         transformer_name=spec.name,
-        role="transformed y",
+        role="transformed target",
     )
     return fitted, transformed_series, context
 
@@ -2414,7 +2417,7 @@ def _run_benchmark_executor(train: pd.Series, horizon: int, recipe: RecipeSpec) 
                 return _historical_mean_prediction(train)
             # Factor = z-scored mean of the series (trivial single-series factor)
             z = (values - values.mean()) / (values.std() or 1.0)
-            # Regress y on z one step ahead
+            # Regress the target on z one step ahead
             y = values[1:]
             x = z[:-1]
             beta = float(_np.cov(x, y, bias=True)[0, 1] / (_np.var(x) or 1.0))
@@ -3946,7 +3949,9 @@ def _build_predictions(
     refit_policy = str(recipe.training_spec.get("refit_policy", "refit_every_step"))
     anchored_max_window_size = int(recipe.training_spec.get("anchored_max_window_size", rolling_window_size))
     refit_k_steps = int(recipe.training_spec.get("refit_k_steps", 3))
-    _horizon_construction = str(recipe.data_task_spec.get("horizon_target_construction", "future_level_y_t_plus_h"))
+    _horizon_construction = _canonicalize_horizon_target_construction(
+        str(recipe.data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h"))
+    )
     _oos_period = str(recipe.data_task_spec.get("oos_period", "all_oos_data"))
 
     # 1.3 training_start_rule=fixed_start: resolve the calendar date to an index floor
@@ -4032,7 +4037,7 @@ def _build_predictions(
             y_pred_level = y_pred
             benchmark_pred_level = benchmark_pred
             y_true_level = y_true
-            if _horizon_construction != "future_level_y_t_plus_h":
+            if _horizon_construction != "future_target_level_t_plus_h":
                 y_anchor = float(target_series.iloc[effective_origin_idx])
                 y_pred = _horizon_forward_scalar(y_pred_level, y_anchor, _horizon_construction)
                 benchmark_pred = _horizon_forward_scalar(benchmark_pred_level, y_anchor, _horizon_construction)

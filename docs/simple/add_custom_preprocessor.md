@@ -59,4 +59,4 @@ result = (
 )
 ```
 
-Preprocessor sweeps are blocked in the simple runtime until the preprocessing layer audit is complete. Target transformations are a separate contract. The MVP preprocessor API is X-only by design.
+Preprocessor sweeps are blocked in the simple runtime until the preprocessing layer audit is complete. Target transformations are a separate contract. The MVP preprocessor API is predictor-only by design.

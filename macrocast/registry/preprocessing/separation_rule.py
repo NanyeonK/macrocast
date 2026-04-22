@@ -23,13 +23,13 @@ AXIS_DEFINITION = AxisDefinition(
         ),
         EnumRegistryEntry(
             id='X_only_transform',
-            description='transform X only, leave y untouched',
+            description='transform predictors only, leave target untouched',
             status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='target_only_transform',
-            description='transform y only, leave X untouched',
+            description='transform target only, leave predictors untouched',
             status='registry_only',
             priority='A',
         ),
