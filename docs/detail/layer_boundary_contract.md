@@ -54,7 +54,7 @@ Owns transformations researchers can vary within the same official data frame:
 - post-transform/model-input missing imputation algorithms
 - post-transform/model-input outlier handling
 - smoothing / filters
-- PCA, static factors, IPCA, dimensionality reduction
+- PCA, static factors, dimensionality reduction
 - feature selection
 - deterministic features, including trends, seasonals, and break dummies
 - custom preprocessors

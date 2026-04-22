@@ -242,7 +242,7 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     separation_rule = get_axis_registry_entry("separation_rule")
 
     assert target_missing.current_status["em_impute"] == "registry_only"
-    assert dimred.current_status["ipca"] == "registry_only"
+    assert set(dimred.current_status) == {"none", "pca", "static_factor", "custom"}
     assert x_lag.current_status["cv_selected_x_lags"] == "registry_only"
     assert feature_grouping.current_status["fred_category_group"] == "registry_only"
     assert feature_grouping.current_status["lag_group"] == "registry_only"

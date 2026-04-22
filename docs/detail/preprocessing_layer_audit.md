@@ -44,6 +44,12 @@ scaling, filtering, dimensionality reduction, feature selection, or custom
 preprocessing under train-only fit discipline. That profile is the target
 contract for preprocessing research support.
 
+Built-in Layer 2 choices should stay aligned with macro-forecasting designs in
+the Coulombe-style FRED-MD/FRED-QD literature: official dataset transforms,
+X-side imputation, scaling, filtering, PCA/static factor extraction,
+feature screening, fixed lag construction, and custom hooks for researcher
+extensions. Asset-pricing-specific reductions are outside scope.
+
 ## Current Implementation Surface
 
 The table below is the implementation status, not the boundary definition. It
@@ -106,8 +112,8 @@ Layer 2 is closed for fixed full recipes under the current runtime scope:
 
 The closed full profile is therefore a fixed single-run or fixed controlled
 recipe, not an arbitrary public sweep. Full recipes can represent broader
-research intentions, but unsupported target-side normalization/inversion,
-non-strict separation rules, feature grouping, IPCA, CV-selected X lags, and
+macro-forecasting research intentions, but unsupported target-side
+normalization/inversion, non-strict separation rules, feature grouping, CV-selected X lags, and
 dual-scale evaluation stay blocked until they receive runtime integration and
 acceptance tests.
 
@@ -275,7 +281,6 @@ The registry now marks representable-but-not-executable Layer 2 values as
 | Axis/value | Registry status | Runtime status |
 |------------|-----------------|----------------|
 | `target_missing_policy='em_impute'` | `registry_only` | not executable as a target-side preprocessing path |
-| `dimensionality_reduction_policy='ipca'` | `registry_only` | execution supports `pca` and `static_factor`, not `ipca` |
 | `x_lag_creation='cv_selected_x_lags'` | `registry_only` | execution supports `no_x_lags` and `fixed_x_lags` |
 | `feature_grouping='fred_category_group'` | `registry_only` | governance blocks non-`none` feature grouping |
 | `feature_grouping='lag_group'` | `registry_only` | governance blocks non-`none` feature grouping |

@@ -86,7 +86,6 @@ DimensionalityReductionPolicy = Literal[
     "none",
     "pca",
     "static_factor",
-    "ipca",
     "custom",
 ]
 

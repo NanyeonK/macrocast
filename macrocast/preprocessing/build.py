@@ -72,7 +72,6 @@ _DIMRED = {
     "none",
     "pca",
     "static_factor",
-    "ipca",
     "custom",
 }
 _FEATURE_SELECTION = {
