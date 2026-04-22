@@ -31,6 +31,7 @@ _ALLOWED_SELECTION_MODES = ("fixed_axes", "sweep_axes", "conditional_axes", "lea
 
 _AXIS_NAME_ALIASES = {
     "info_set": "information_set_type",
+    "dataset_source": "source_adapter",
 }
 
 _AXIS_VALUE_ALIASES = {
@@ -765,6 +766,7 @@ def _validate_layer1_data_task_contract(
 
 def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     dataset = _first_selected_value(selection_map, "dataset", "fred_md")
+    source_adapter = _selection_value(selection_map, "source_adapter", default=dataset)
     task = _first_selected_value(selection_map, "task", "single_target_point_forecast")
     framework = _first_selected_value(selection_map, "framework", "expanding")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
@@ -772,7 +774,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     predictor_family_default = "target_lags_only" if feature_builder == "autoreg_lagged_target" else "all_macro_vars"
     return {
         "custom_data_path": leaf_config.get("custom_data_path"),
-        "dataset_source": _selection_value(selection_map, "dataset_source", default=dataset),
+        "source_adapter": source_adapter,
         "official_transform_policy": _official_transform_policy(selection_map),
         "official_transform_scope": _official_transform_scope(selection_map),
         "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
@@ -1262,11 +1264,11 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
         if "target" not in leaf_config:
             raise CompileValidationError("recipe leaf_config missing 'target'")
 
-    # Custom data source validation: custom_csv / custom_parquet require leaf_config.custom_data_path
-    ds_source_choice = selection_map["dataset_source"].selected_values[0] if "dataset_source" in selection_map else None
-    if ds_source_choice in {"custom_csv", "custom_parquet"} and not leaf_config.get("custom_data_path"):
+    # Custom source adapter validation: custom_csv / custom_parquet require leaf_config.custom_data_path.
+    source_adapter_choice = selection_map["source_adapter"].selected_values[0] if "source_adapter" in selection_map else None
+    if source_adapter_choice in {"custom_csv", "custom_parquet"} and not leaf_config.get("custom_data_path"):
         raise CompileValidationError(
-            f"dataset_source={ds_source_choice!r} requires leaf_config.custom_data_path"
+            f"source_adapter={source_adapter_choice!r} requires leaf_config.custom_data_path"
         )
     _validate_layer1_data_task_contract(selection_map, leaf_config)
     reproducibility_mode = _selection_value(selection_map, "reproducibility_mode", default="best_effort")

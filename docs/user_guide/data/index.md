@@ -6,7 +6,7 @@ After the layer-boundary migration, Stage 1 holds **9 canonical axes** under the
 
 | Group | Axes | Focus |
 |---|---|---:|---|
-| Source & frame | 4 | `dataset`, `dataset_source`, `frequency`, `information_set_type` |
+| Source & frame | 4 | `dataset`, `source_adapter`, `frequency`, `information_set_type` |
 | Task identity | 1 | `task`; target/targets/horizons live in `leaf_config` |
 | Availability and universe | 4 | `missing_availability`, `release_lag_rule`, `contemporaneous_x_rule`, `variable_universe` |
 

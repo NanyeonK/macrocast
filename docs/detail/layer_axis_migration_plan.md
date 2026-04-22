@@ -23,6 +23,7 @@ describes the registry layer after migration.
 | `overlap_handling` | 1_data_task | 6_stat_tests | HAC/overlap handling is inference over dependent forecast errors. |
 | `official_transform_policy` | split from Layer 2 t-code axes | 1_data_task | Official dataset transformations define the official frame, before researcher preprocessing. |
 | `official_transform_scope` | split from `tcode_application_scope` | 1_data_task | Target/X official transform scope is part of official frame construction. |
+| `source_adapter` | `dataset_source` | 1_data_task | Loader dispatch is an adapter choice; `dataset` remains the schema identity. |
 
 ## Still To Migrate
 
@@ -31,7 +32,6 @@ describes the registry layer after migration.
 | legacy official t-code bridge fields | 2_preprocessing | compatibility bridge | Keep accepting `target_transform_policy`, `x_transform_policy`, `tcode_policy=tcode_only`, `tcode_application_scope`, and `preprocess_order=tcode_only` while generated recipes move to Layer 1 official-transform axes. |
 | `tcode_policy` values beyond official transform | 2_preprocessing | 2_preprocessing | Keep extra/custom transform pipelines in Layer 2. |
 | `preprocess_order=tcode_only` | 2_preprocessing | compatibility bridge | Official-only order is represented by Layer 1 `official_transform_policy=dataset_tcode`; extra orders remain Layer 2. |
-| `dataset_source` naming | 1_data_task | 1_data_task | Rename to `source_adapter` after compatibility plan. |
 
 ## Compatibility Policy
 
@@ -47,4 +47,8 @@ describes the registry layer after migration.
 - Runtime official dataset transformation now reads `data_task_spec` first.
   Legacy `PreprocessContract.tcode_*` fields remain only as fallback for older
   compiled specs.
+- `dataset_source` remains accepted as a legacy recipe alias for
+  `source_adapter`. New compiled specs and manifests write
+  `data_task_spec["source_adapter"]`; execution falls back to old
+  `data_task_spec["dataset_source"]` only for previously compiled specs.
 - Generated recipes should be updated gradually after tests lock the canonical layers.

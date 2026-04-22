@@ -103,7 +103,7 @@ A one-page map of every operational value on every axis in the two completed sta
 | Axis | Op values | Check / observe |
 |---|---|---|
 | `dataset` | `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` | schema loaded/merged → `raw_result.data.columns`; standalone FRED-SD requires explicit `frequency` |
-| `dataset_source` | `fred_md`, `fred_qd`, `fred_sd`, `custom_csv`, `custom_parquet` | which loader fires (`_get_dataset_loader`), `manifest.raw_artifact` |
+| `source_adapter` | `fred_md`, `fred_qd`, `fred_sd`, `custom_csv`, `custom_parquet` | which loader fires (`_load_raw_for_recipe`), `manifest.raw_artifact`; legacy `dataset_source` is accepted as an alias |
 | `frequency` | `monthly`, `quarterly` | conversion target; MD+SD must be monthly, QD+SD must be quarterly |
 | `information_set_type` | `revised`, `pseudo_oos_revised` | revised = post-revision truth; pseudo-oos masks to simulate real-time |
 | `task` | `single_target_point_forecast`, `multi_target_point_forecast` | triggers multi-target aggregator at line 516 in `compiler.build`; drives `experiment_unit` default |

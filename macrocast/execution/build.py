@@ -637,15 +637,15 @@ def _combine_raw_results(dataset: str, target_frequency: str, components):
 
 def _load_raw_for_recipe(recipe: RecipeSpec, local_raw_source: str | Path | Mapping[str, str | Path] | None, cache_root: Path):
     vintage = recipe.data_vintage
-    dataset_source = recipe.data_task_spec.get("dataset_source") or recipe.raw_dataset
-    if dataset_source in {"custom_csv", "custom_parquet"}:
+    source_adapter = recipe.data_task_spec.get("source_adapter") or recipe.data_task_spec.get("dataset_source") or recipe.raw_dataset
+    if source_adapter in {"custom_csv", "custom_parquet"}:
         custom_path = local_raw_source or recipe.data_task_spec.get("custom_data_path")
         if custom_path is None:
             raise ExecutionError(
-                f"dataset_source={dataset_source!r} requires leaf_config.custom_data_path "
+                f"source_adapter={source_adapter!r} requires leaf_config.custom_data_path "
                 "(or pass local_raw_source to execute_recipe)"
             )
-        if dataset_source == "custom_csv":
+        if source_adapter == "custom_csv":
             return load_custom_csv(custom_path, dataset=recipe.raw_dataset, cache_root=cache_root)
         return load_custom_parquet(custom_path, dataset=recipe.raw_dataset, cache_root=cache_root)
     parts = _dataset_parts(recipe.raw_dataset)

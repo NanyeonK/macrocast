@@ -25,7 +25,7 @@ Layer 1 now means official data frame and task identity. The canonical Layer 1
 registry axes are:
 
 - `dataset`
-- `dataset_source`
+- `source_adapter`
 - `frequency`
 - `information_set_type`
 - `official_transform_policy`
@@ -57,7 +57,7 @@ The following axes were moved out of Layer 1 ownership:
 - `fred_md+fred_sd` is fixed to monthly.
 - `fred_qd+fred_sd` is fixed to quarterly.
 - Runtime conversion is active and documented: monthly to quarterly uses 3-month average; quarterly to monthly uses linear interpolation. Both paths report provenance warnings.
-- `dataset_source=custom_csv/custom_parquet` remains operational but requires `leaf_config.custom_data_path`.
+- `source_adapter=custom_csv/custom_parquet` remains operational but requires `leaf_config.custom_data_path`.
 - Official dataset transforms now have canonical Layer 1 axes:
   `official_transform_policy` and `official_transform_scope`.
 - Old Layer 2 t-code fields remain accepted as legacy compatibility inputs.
@@ -65,6 +65,9 @@ The following axes were moved out of Layer 1 ownership:
   when old recipes omit the new axes, derives runtime `PreprocessContract`
   fallback fields from Layer 1 for new recipes, and rejects conflicting
   new/legacy choices.
+- Legacy `dataset_source` remains accepted as a compiler alias for canonical
+  `source_adapter`. New recipes, manifests, and docs should use
+  `source_adapter`.
 
 ### 1.2 Task & Target
 

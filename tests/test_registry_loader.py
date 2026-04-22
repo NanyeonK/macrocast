@@ -11,7 +11,8 @@ EXPECTED_AXIS_COUNT = 127
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
     assert len(registry) == EXPECTED_AXIS_COUNT
-    assert {"research_design", "dataset", "information_set_type", "task", "model_family", "importance_method", "dataset_source", "relative_metrics", "direction_metrics", "regime_definition", "custom_preprocessor", "target_transformer"}.issubset(registry)
+    assert {"research_design", "dataset", "information_set_type", "task", "model_family", "importance_method", "source_adapter", "relative_metrics", "direction_metrics", "regime_definition", "custom_preprocessor", "target_transformer"}.issubset(registry)
+    assert "dataset_source" not in registry
 
 
 def test_registry_loader_preserves_legacy_entry_contract() -> None:
@@ -119,7 +120,7 @@ def test_registry_loader_discovers_compute_mode_meta_axis() -> None:
 def test_registry_loader_discovers_stage1_data_task_axes() -> None:
     registry = get_axis_registry()
     expected = {
-        "dataset_source",
+        "source_adapter",
         "frequency",
         "information_set_type",
         "official_transform_policy",
