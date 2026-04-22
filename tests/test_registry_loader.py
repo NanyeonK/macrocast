@@ -228,6 +228,22 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     assert feature_selection.current_status["lasso_select"] == "operational"
 
 
+def test_registry_loader_demotes_stage2_non_executable_values() -> None:
+    target_missing = get_axis_registry_entry("target_missing_policy")
+    dimred = get_axis_registry_entry("dimensionality_reduction_policy")
+    x_lag = get_axis_registry_entry("x_lag_creation")
+    feature_grouping = get_axis_registry_entry("feature_grouping")
+    evaluation_scale = get_axis_registry_entry("evaluation_scale")
+
+    assert target_missing.current_status["em_impute"] == "registry_only"
+    assert dimred.current_status["ipca"] == "registry_only"
+    assert x_lag.current_status["cv_selected_x_lags"] == "registry_only"
+    assert feature_grouping.current_status["fred_category_group"] == "registry_only"
+    assert feature_grouping.current_status["lag_group"] == "registry_only"
+    assert evaluation_scale.current_status["transformed_scale"] == "registry_only"
+    assert evaluation_scale.current_status["both"] == "registry_only"
+
+
 
 def test_registry_loader_discovers_stage3_training_axes() -> None:
     registry = get_axis_registry()

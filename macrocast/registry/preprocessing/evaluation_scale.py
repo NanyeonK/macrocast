@@ -29,13 +29,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id='transformed_scale',
             description='evaluate metrics on the preprocess-transformed scale',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
         EnumRegistryEntry(
             id='both',
             description='report metrics on both original and transformed scales',
-            status='operational',
+            status='registry_only',
             priority='A',
         ),
     ),

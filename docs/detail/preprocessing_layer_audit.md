@@ -66,7 +66,7 @@ records what the current runtime can execute today.
 | `target_missing_policy` | `none` | Target-side missing algorithms are not supported in the operational contract. |
 | `target_outlier_policy` | `none` | Target-side outlier algorithms are not supported in the operational contract. |
 | `inverse_transform_policy` | `none` | Inverse-transform policy needs a separate target/evaluation contract. |
-| `evaluation_scale` | `raw_level`, `original_scale` | `transformed_scale` and `both` are overexposed by registry today. |
+| `evaluation_scale` | `raw_level`, `original_scale` | `transformed_scale` and `both` remain representable but are registry-only until inverse/evaluation semantics are finalized. |
 | `preprocess_order` | `none`, derived `tcode_only`, `extra_only` | `tcode_then_extra` is the desired full profile but not executable yet. |
 | `preprocess_fit_scope` | `not_applicable`, `train_only` | Extra preprocessing requires `train_only` today. |
 | `separation_rule` | helper supports several values | The helper is tested, but not wired into the main execution loop as a general dispatcher. |
@@ -229,19 +229,24 @@ Reasons:
 
 This is the main blocker for exposing built-in preprocessing sweeps in the simple API.
 
-## Registry vs Runtime Mismatches
+## Registry Status Cleanup
 
-Some registry entries are marked `operational` but are not actually executable in the current runtime slice.
+The registry now marks representable-but-not-executable Layer 2 values as
+`registry_only` instead of `operational`.
 
 | Axis/value | Registry status | Runtime status |
 |------------|-----------------|----------------|
-| `target_missing_policy='em_impute'` | `operational` | not executable as a target-side preprocessing path |
-| `dimensionality_reduction_policy='ipca'` | `operational` | execution supports `pca` and `static_factor`, not `ipca` |
-| `x_lag_creation='cv_selected_x_lags'` | `operational` | execution supports `no_x_lags` and `fixed_x_lags` |
-| `feature_grouping='fred_category_group'` | `operational` | governance blocks non-`none` feature grouping |
-| `feature_grouping='lag_group'` | `operational` | governance blocks non-`none` feature grouping |
+| `target_missing_policy='em_impute'` | `registry_only` | not executable as a target-side preprocessing path |
+| `dimensionality_reduction_policy='ipca'` | `registry_only` | execution supports `pca` and `static_factor`, not `ipca` |
+| `x_lag_creation='cv_selected_x_lags'` | `registry_only` | execution supports `no_x_lags` and `fixed_x_lags` |
+| `feature_grouping='fred_category_group'` | `registry_only` | governance blocks non-`none` feature grouping |
+| `feature_grouping='lag_group'` | `registry_only` | governance blocks non-`none` feature grouping |
+| `evaluation_scale='transformed_scale'` | `registry_only` | inverse/evaluation-scale semantics are not finalized |
+| `evaluation_scale='both'` | `registry_only` | dual-scale reporting is not implemented |
 
-These should be demoted to `registry_only` or implemented before any public docs describe them as available.
+These values stay in the grammar so full research designs remain representable,
+but public docs should not describe them as executable choices until runtime
+support exists.
 
 ## Custom Preprocessor
 
