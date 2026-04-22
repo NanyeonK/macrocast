@@ -922,6 +922,167 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
     }
 
 
+def _target_lag_block_from_legacy_y_lag_count(value: str) -> dict[str, Any]:
+    mapping = {
+        "fixed": "fixed_target_lags",
+        "IC_select": "ic_selected_target_lags",
+        "cv_select": "custom_target_lags",
+        "model_specific": "custom_target_lags",
+    }
+    block = mapping.get(value, "custom_target_lags")
+    payload: dict[str, Any] = {
+        "value": block,
+        "source_axis": "y_lag_count",
+        "source_value": value,
+    }
+    if value in {"cv_select", "model_specific"}:
+        payload["note"] = (
+            "legacy y_lag_count value has no dedicated target_lag_block value yet; "
+            "L2-B should split target-lag feature selection from Layer 3 model-order selection"
+        )
+    return payload
+
+
+def _x_lag_block_from_bridge(value: str) -> dict[str, Any]:
+    mapping = {
+        "no_x_lags": "none",
+        "fixed_x_lags": "fixed_x_lags",
+        "cv_selected_x_lags": "cv_selected_x_lags",
+        "variable_specific_lags": "variable_specific_x_lags",
+        "category_specific_lags": "category_specific_x_lags",
+    }
+    return {
+        "value": mapping.get(value, "custom_x_lags"),
+        "source_axis": "x_lag_creation",
+        "source_value": value,
+    }
+
+
+def _feature_block_set_from_bridge(feature_builder: str, data_richness_mode: str) -> dict[str, Any]:
+    if feature_builder == "autoreg_lagged_target":
+        value = "target_lags_only"
+    elif feature_builder == "factors_plus_AR":
+        value = "factors_plus_target_lags"
+    elif feature_builder in {"raw_feature_panel", "raw_X_only"}:
+        value = {
+            "target_lags_only": "target_lags_only",
+            "factor_plus_lags": "factors_plus_target_lags",
+            "full_high_dimensional_X": "high_dimensional_x",
+            "selected_sparse_X": "selected_sparse_x",
+            "mixed_mode": "mixed_blocks",
+        }.get(data_richness_mode, "transformed_x")
+    elif feature_builder == "factor_pca":
+        value = "legacy_feature_builder_bridge"
+    else:
+        value = "legacy_feature_builder_bridge"
+    return {
+        "value": value,
+        "source_axes": ["feature_builder", "data_richness_mode"],
+        "source_values": {
+            "feature_builder": feature_builder,
+            "data_richness_mode": data_richness_mode,
+        },
+    }
+
+
+def _feature_block_combination_from_bridge(feature_builder: str, x_lag_creation: str) -> dict[str, Any]:
+    if feature_builder == "factors_plus_AR":
+        value = "append_to_target_lags"
+    elif x_lag_creation != "no_x_lags":
+        value = "append_to_base_x"
+    elif feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "autoreg_lagged_target"}:
+        value = "replace_with_blocks"
+    else:
+        value = "concatenate_named_blocks"
+    return {
+        "value": value,
+        "source_axes": ["feature_builder", "x_lag_creation"],
+        "source_values": {
+            "feature_builder": feature_builder,
+            "x_lag_creation": x_lag_creation,
+        },
+    }
+
+
+def _layer2_representation_spec(
+    selection_map: dict[str, AxisSelection],
+    leaf_config: dict[str, Any],
+    preprocess_contract,
+    *,
+    data_task_spec: dict[str, Any],
+    training_spec: dict[str, Any],
+) -> dict[str, Any]:
+    feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
+    predictor_family = data_task_spec.get("predictor_family", "target_lags_only")
+    data_richness_mode = training_spec.get("data_richness_mode", "target_lags_only")
+    y_lag_count = training_spec.get("y_lag_count", "fixed")
+    x_lag_creation = getattr(preprocess_contract, "x_lag_creation", "no_x_lags")
+    dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
+    factor_feature_block = "pca_static_factors" if feature_builder in {"factor_pca", "factors_plus_AR"} or dimred in {"pca", "static_factor"} else "none"
+    target_lag_block = (
+        _target_lag_block_from_legacy_y_lag_count(str(y_lag_count))
+        if feature_builder in {"autoreg_lagged_target", "factors_plus_AR"}
+        else {"value": "none", "source_axis": "feature_builder", "source_value": feature_builder}
+    )
+    return {
+        "schema_version": "layer2_representation_v1",
+        "runtime_effect": "provenance_only",
+        "source_bridge": {
+            "feature_builder": feature_builder,
+            "predictor_family": predictor_family,
+            "data_richness_mode": data_richness_mode,
+            "factor_count": training_spec.get("factor_count", "fixed"),
+            "y_lag_count": y_lag_count,
+            "factor_ar_lags": training_spec.get("factor_ar_lags", 1),
+        },
+        "target_representation": {
+            "horizon_target_construction": data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h"),
+            "target_transform": getattr(preprocess_contract, "target_transform", "level"),
+            "target_normalization": getattr(preprocess_contract, "target_normalization", "none"),
+            "target_domain": getattr(preprocess_contract, "target_domain", "unconstrained"),
+            "target_missing_policy": getattr(preprocess_contract, "target_missing_policy", "none"),
+            "target_outlier_policy": getattr(preprocess_contract, "target_outlier_policy", "none"),
+            "target_transformer": training_spec.get("target_transformer", "none"),
+            "inverse_transform_policy": getattr(preprocess_contract, "inverse_transform_policy", "none"),
+            "evaluation_scale": getattr(preprocess_contract, "evaluation_scale", "raw_level"),
+        },
+        "feature_blocks": {
+            "feature_block_set": _feature_block_set_from_bridge(str(feature_builder), str(data_richness_mode)),
+            "target_lag_block": target_lag_block,
+            "x_lag_feature_block": _x_lag_block_from_bridge(str(x_lag_creation)),
+            "factor_feature_block": {
+                "value": factor_feature_block,
+                "source_axes": ["feature_builder", "dimensionality_reduction_policy"],
+                "source_values": {
+                    "feature_builder": feature_builder,
+                    "dimensionality_reduction_policy": dimred,
+                },
+            },
+            "level_feature_block": {"value": "none", "source": "not_wired"},
+            "rotation_feature_block": {"value": "none", "source": "not_wired"},
+            "temporal_feature_block": {"value": "none", "source": "not_wired"},
+            "feature_block_combination": _feature_block_combination_from_bridge(str(feature_builder), str(x_lag_creation)),
+        },
+        "frame_conditioning": {
+            "x_missing_policy": getattr(preprocess_contract, "x_missing_policy", "none"),
+            "x_outlier_policy": getattr(preprocess_contract, "x_outlier_policy", "none"),
+            "scaling_policy": getattr(preprocess_contract, "scaling_policy", "none"),
+            "scaling_scope": getattr(preprocess_contract, "scaling_scope", "columnwise"),
+            "additional_preprocessing": getattr(preprocess_contract, "additional_preprocessing", "none"),
+            "dimensionality_reduction_policy": dimred,
+            "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
+            "feature_grouping": getattr(preprocess_contract, "feature_grouping", "none"),
+            "preprocess_order": getattr(preprocess_contract, "preprocess_order", "none"),
+            "preprocess_fit_scope": getattr(preprocess_contract, "preprocess_fit_scope", "not_applicable"),
+            "separation_rule": _selection_value(selection_map, "separation_rule", default="strict_separation"),
+        },
+        "compatibility_notes": [
+            "This payload is provenance-only; runtime Z construction still uses the legacy bridge.",
+            "L2-B should split legacy y_lag_count and factor_ar_lags into target-language Layer 2 feature dimensions versus Layer 3 model-order settings.",
+        ],
+    }
+
+
 def _evaluation_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     return {
         "primary_metric": _selection_value(selection_map, "primary_metric", default="msfe"),
@@ -951,6 +1112,7 @@ def _build_stage0_and_recipe(
     recipe_dict: dict[str, Any],
     selection_map: dict[str, AxisSelection],
     leaf_config: dict[str, Any],
+    preprocess_contract,
 ):
     research_design = _selection_value(selection_map, "research_design")
     dataset = _selection_value(selection_map, "dataset")
@@ -1036,6 +1198,8 @@ def _build_stage0_and_recipe(
         minimum_train_size = int(benchmark_spec.get("minimum_train_size", 5))
         if rolling_window_size < minimum_train_size:
             raise CompileValidationError("rolling_window_size must be at least minimum_train_size for rolling framework")
+    data_task_spec = _data_task_spec(selection_map, leaf_config)
+    training_spec = _training_spec(selection_map, leaf_config)
     recipe_spec = build_recipe_spec(
         recipe_id=recipe_dict["recipe_id"],
         stage0=stage0,
@@ -1043,8 +1207,15 @@ def _build_stage0_and_recipe(
         horizons=horizons,
         raw_dataset=dataset,
         benchmark_config=benchmark_spec,
-        data_task_spec=_data_task_spec(selection_map, leaf_config),
-        training_spec=_training_spec(selection_map, leaf_config),
+        data_task_spec=data_task_spec,
+        training_spec=training_spec,
+        layer2_representation_spec=_layer2_representation_spec(
+            selection_map,
+            leaf_config,
+            preprocess_contract,
+            data_task_spec=data_task_spec,
+            training_spec=training_spec,
+        ),
         data_vintage=data_vintage,
         targets=targets,
     )
@@ -1318,7 +1489,12 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     compute_mode = _selection_value(selection_map, "compute_mode", default="serial")
 
     preprocess_contract = _build_preprocess_contract(selection_map)
-    stage0, recipe_spec, run_spec = _build_stage0_and_recipe(recipe_dict, selection_map, leaf_config)
+    stage0, recipe_spec, run_spec = _build_stage0_and_recipe(
+        recipe_dict,
+        selection_map,
+        leaf_config,
+        preprocess_contract,
+    )
     execution_status, warnings, blocked = _execution_status(
         selections,
         preprocess_contract,
@@ -1389,6 +1565,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
         },
         "data_task_spec": _data_task_spec(selection_map, compiled.leaf_config),
         "training_spec": _training_spec(selection_map, compiled.leaf_config),
+        "layer2_representation_spec": dict(compiled.recipe_spec.layer2_representation_spec),
         "evaluation_spec": _evaluation_spec(selection_map, compiled.leaf_config),
         "stat_test_spec": {
             "stat_test": _selection_value(selection_map, "stat_test", default="none"),

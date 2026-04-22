@@ -4486,6 +4486,7 @@ def execute_recipe(
         "benchmark_name": _benchmark_family(recipe),
         "benchmark_spec": _benchmark_spec(recipe),
         "data_task_spec": dict(recipe.data_task_spec),
+        "layer2_representation_spec": dict(getattr(recipe, "layer2_representation_spec", {}) or {}),
         "data_warnings": _data_warnings(raw_result),
         "data_reports": _data_reports(raw_result),
         "training_spec": dict(recipe.training_spec),

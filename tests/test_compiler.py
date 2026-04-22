@@ -1044,6 +1044,86 @@ def test_compiled_manifest_records_stage3_training_defaults() -> None:
     assert spec["horizon_modelization"] == "separate_model_per_h"
 
 
+def test_compiled_manifest_records_layer2_representation_provenance() -> None:
+    compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
+    spec = compile_result.manifest["layer2_representation_spec"]
+    assert spec["schema_version"] == "layer2_representation_v1"
+    assert spec["runtime_effect"] == "provenance_only"
+    assert spec["source_bridge"]["feature_builder"] == "autoreg_lagged_target"
+    assert spec["source_bridge"]["data_richness_mode"] == "target_lags_only"
+    assert spec["target_representation"]["horizon_target_construction"] == "future_target_level_t_plus_h"
+    assert spec["feature_blocks"]["feature_block_set"]["value"] == "target_lags_only"
+    assert spec["feature_blocks"]["target_lag_block"]["value"] == "ic_selected_target_lags"
+    assert spec["feature_blocks"]["x_lag_feature_block"]["value"] == "none"
+    assert compile_result.compiled.recipe_spec.layer2_representation_spec == spec
+
+
+def test_layer2_representation_provenance_maps_feature_builder_bridge_values() -> None:
+    def _recipe(feature_builder: str, model_family: str, **axes: str) -> dict:
+        preprocessing_axes = {
+            "target_transform_policy": "raw_level",
+            "x_transform_policy": "raw_level",
+            "tcode_policy": "raw_only",
+            "target_missing_policy": "none",
+            "x_missing_policy": "none",
+            "target_outlier_policy": "none",
+            "x_outlier_policy": "none",
+            "scaling_policy": "none",
+            "dimensionality_reduction_policy": "none",
+            "feature_selection_policy": "none",
+            "preprocess_order": "none",
+            "preprocess_fit_scope": "not_applicable",
+            "inverse_transform_policy": "none",
+            "evaluation_scale": "raw_level",
+        }
+        training_axes = {
+            "framework": "expanding",
+            "benchmark_family": "zero_change",
+            "feature_builder": feature_builder,
+            "model_family": model_family,
+        }
+        for key, value in axes.items():
+            if key in preprocessing_axes:
+                preprocessing_axes[key] = value
+            else:
+                training_axes[key] = value
+        return {
+            "recipe_id": f"l2-provenance-{feature_builder}",
+            "path": {
+                "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+                "1_data_task": {
+                    "fixed_axes": {
+                        "dataset": "fred_md",
+                        "information_set_type": "revised",
+                        "target_structure": "single_target_point_forecast",
+                    },
+                    "leaf_config": {"target": "INDPRO", "horizons": [1]},
+                },
+                "2_preprocessing": {"fixed_axes": preprocessing_axes},
+                "3_training": {"fixed_axes": training_axes},
+                "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+                "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+                "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+                "7_importance": {"fixed_axes": {"importance_method": "none"}},
+            },
+        }
+
+    cases = [
+        ("autoreg_lagged_target", "ar", {}, "target_lags_only", "ic_selected_target_lags", "none"),
+        ("raw_feature_panel", "ridge", {}, "high_dimensional_x", "none", "none"),
+        ("raw_X_only", "ridge", {"data_richness_mode": "selected_sparse_X"}, "selected_sparse_x", "none", "none"),
+        ("factor_pca", "pcr", {}, "legacy_feature_builder_bridge", "none", "pca_static_factors"),
+        ("factors_plus_AR", "factor_augmented_linear", {}, "factors_plus_target_lags", "fixed_target_lags", "pca_static_factors"),
+    ]
+    for feature_builder, model_family, axes, block_set, target_lag_block, factor_block in cases:
+        result = compile_recipe_dict(_recipe(feature_builder, model_family, **axes))
+        spec = result.manifest["layer2_representation_spec"]
+        assert spec["source_bridge"]["feature_builder"] == feature_builder
+        assert spec["feature_blocks"]["feature_block_set"]["value"] == block_set
+        assert spec["feature_blocks"]["target_lag_block"]["value"] == target_lag_block
+        assert spec["feature_blocks"]["factor_feature_block"]["value"] == factor_block
+
+
 def test_compile_recipe_accepts_stage3_training_axes() -> None:
     recipe = {
         "recipe_id": "stage3-training-axes",
