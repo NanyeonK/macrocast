@@ -10,6 +10,8 @@ from macrocast.execution.build import (
     _phase3_axis_consumption,
     _apply_release_lag,
     _apply_missing_availability,
+    _apply_raw_missing_policy,
+    _apply_raw_outlier_policy,
     _apply_variable_universe,
 )
 
@@ -81,6 +83,60 @@ def test_missing_availability_complete_case_is_noop():
     r = _make_raw()
     out = _apply_missing_availability(r, 'complete_case_only')
     assert out is r
+
+
+def test_raw_missing_policy_x_impute_raw_fills_predictors_only():
+    import pandas as pd
+    df = pd.DataFrame({
+        'date': pd.date_range('2000-01-01', periods=3, freq='MS'),
+        'INDPRO': [1.0, None, 3.0],
+        'RPI': [1.0, None, 3.0],
+    })
+    raw = _StubRaw(df)
+
+    out = _apply_raw_missing_policy(
+        raw,
+        'x_impute_raw',
+        target='INDPRO',
+        spec={'raw_x_imputation': 'mean'},
+    )
+
+    assert pd.isna(out.data['INDPRO'].iloc[1])
+    assert out.data['RPI'].iloc[1] == 2.0
+    assert out.data.attrs['macrocast_reports']['raw_missing']['before_official_transform'] is True
+
+
+def test_raw_missing_policy_zero_fill_leading_x_before_tcode():
+    import pandas as pd
+    df = pd.DataFrame({
+        'date': pd.date_range('2000-01-01', periods=4, freq='MS'),
+        'INDPRO': [1.0, 2.0, 3.0, 4.0],
+        'RPI': [None, None, 3.0, 4.0],
+    }).set_index('date')
+    raw = _StubRaw(df)
+
+    out = _apply_raw_missing_policy(raw, 'zero_fill_leading_x_before_tcode', target='INDPRO', spec={})
+
+    assert out.data['RPI'].iloc[0] == 0.0
+    assert out.data['RPI'].iloc[1] == 0.0
+    assert out.data.attrs['macrocast_reports']['raw_missing']['leading_zero_filled']['RPI'] == [
+        '2000-01-01',
+        '2000-02-01',
+    ]
+
+
+def test_raw_outlier_policy_iqr_clip_raw_clips_before_tcode():
+    import pandas as pd
+    df = pd.DataFrame({
+        'date': pd.date_range('2000-01-01', periods=5, freq='MS'),
+        'INDPRO': [1.0, 2.0, 3.0, 4.0, 100.0],
+    })
+    raw = _StubRaw(df)
+
+    out = _apply_raw_outlier_policy(raw, 'iqr_clip_raw')
+
+    assert out.data['INDPRO'].iloc[-1] < 100.0
+    assert out.data.attrs['macrocast_reports']['raw_outliers']['before_official_transform'] is True
 
 
 def test_variable_universe_all_is_noop():

@@ -36,16 +36,15 @@ Missing/outlier boundary after the migration pass:
 
 - Layer 1 owns raw-source missing/outlier treatment when it happens before
   official dataset transforms or T-codes. This is the "clean raw, then T-code"
-  order.
+  order, now represented by `raw_missing_policy` and `raw_outlier_policy`.
 - Layer 2 owns missing imputation and outlier handling after the official frame
   exists. This is the "T-code first, then impute/clip/select/scale" order.
 - Both orders can be reasonable for detailed empirical work. The second order
   can mix raw-source defects with transform-induced missing values and model
   input artifacts, so full-mode provenance must record whether the action
   happened before or after the official transform step.
-- Simple mode should keep the current default and avoid exposing this choice
-  until the full contract has explicit raw missing/outlier axes and runtime
-  support.
+- Simple mode should keep the current default. Full recipes may expose this
+  choice through the Layer 1 raw-source axes.
 
 Current bridge status:
 

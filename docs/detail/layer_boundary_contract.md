@@ -31,6 +31,7 @@ Owns the official data frame before researcher-specific transformations:
 - official dataset transformation policy and target/X transform scope
 - official availability handling
 - raw-source missing/outlier policy before official transforms/T-codes
+  (`raw_missing_policy`, `raw_outlier_policy`)
 - raw eligible variable universe
 - contemporaneous information-set rule
 

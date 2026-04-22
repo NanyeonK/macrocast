@@ -2,13 +2,13 @@
 
 Stage 1 answers **"what official data frame does this study start from?"** — once the design (Stage 0) has fixed the research identity and recipe shape, Stage 1 loads the dataset, fixes the information set, identifies the target/horizon/sample period, and applies only official availability rules.
 
-After the layer-boundary migration, Stage 1 holds **9 canonical axes** under the `1_data_task` layer:
+After the layer-boundary migration, Stage 1 holds **13 canonical axes** under the `1_data_task` layer:
 
 | Group | Axes | Focus |
 |---|---|---:|---|
-| Source & frame | 4 | `dataset`, `source_adapter`, `frequency`, `information_set_type` |
+| Source & frame | 6 | `dataset`, `source_adapter`, `frequency`, `information_set_type`, `official_transform_policy`, `official_transform_scope` |
 | Target structure | 1 | `target_structure`; target/targets/horizons live in `leaf_config` |
-| Availability and universe | 4 | `missing_availability`, `release_lag_rule`, `contemporaneous_x_rule`, `variable_universe` |
+| Availability and universe | 6 | `missing_availability`, `raw_missing_policy`, `raw_outlier_policy`, `release_lag_rule`, `contemporaneous_x_rule`, `variable_universe` |
 
 Stage 1 does not fix which model, benchmark, researcher preprocessing, or evaluation metric to use — those belong to Stage 2+ layers.
 
@@ -18,7 +18,7 @@ The 6 meta axes of Stage 0 ([design](../design.md)) — `research_design`, `expe
 
 ## Honest operational status
 
-Layer 1 now covers 9 canonical axes. The migration moves model, benchmark, preprocessing, and inference choices out of Layer 1:
+Layer 1 now covers 13 canonical axes. The migration moves model, benchmark, preprocessing, and inference choices out of Layer 1:
 
 - **Kept in Layer 1** — dataset/source/frequency/information set, target structure, official availability, release lag, contemporaneous information rule, raw variable universe.
 - **Moved to Layer 2** — target representation and deterministic/break features.

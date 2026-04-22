@@ -73,6 +73,8 @@ _TARGET_TRANSFORMER_RAW_PANEL_MODELS = {"ols", "ridge", "lasso", "elasticnet"}
 _PHASE3_DEFAULTS = {
     "release_lag_rule": "ignore_release_lag",
     "missing_availability": "complete_case_only",
+    "raw_missing_policy": "preserve_raw_missing",
+    "raw_outlier_policy": "preserve_raw_outliers",
     "variable_universe": "all_variables",
     "min_train_size": "fixed_n_obs",
     "structural_break_segmentation": "none",
@@ -458,6 +460,197 @@ def _apply_missing_availability(raw_result, rule: str, *, target: str | None = N
         return _replace_raw_data(raw_result, new_data)
 
     raise ExecutionError(f'unsupported missing_availability={rule!r}')
+
+
+def _raw_policy_window_index(frame: pd.DataFrame, spec: dict) -> pd.Index:
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        return frame.index
+    mask = pd.Series(True, index=frame.index)
+    start = spec.get("sample_start_date")
+    end = spec.get("sample_end_date")
+    if start is not None:
+        mask &= frame.index >= pd.Timestamp(start)
+    if end is not None:
+        mask &= frame.index <= pd.Timestamp(end)
+    return frame.index[mask.to_numpy()]
+
+
+def _raw_predictor_columns(frame: pd.DataFrame, target: str | None) -> list:
+    return [c for c in frame.columns if c != target and str(c).lower() != "date"]
+
+
+def _raw_numeric_columns(frame: pd.DataFrame, spec: dict) -> list:
+    requested = spec.get("raw_outlier_columns")
+    if requested is not None:
+        return [c for c in requested if c in frame.columns and pd.api.types.is_numeric_dtype(frame[c])]
+    return [
+        c
+        for c in frame.columns
+        if str(c).lower() != "date" and pd.api.types.is_numeric_dtype(frame[c])
+    ]
+
+
+def _format_index_values(index: pd.Index) -> list[str]:
+    return [str(value.date()) if hasattr(value, "date") else str(value) for value in index]
+
+
+def _apply_raw_missing_policy(raw_result, policy: str, *, target: str | None = None, spec: dict | None = None):
+    """Apply Layer 1 raw-source missing treatment before official transforms."""
+
+    if policy in {"preserve_raw_missing", None} or not policy:
+        return raw_result
+    data = getattr(raw_result, "data", None)
+    if data is None:
+        return raw_result
+    spec = dict(spec or {})
+    frame = data.copy()
+    frame.attrs.update(getattr(data, "attrs", {}))
+
+    if policy == "drop_rows_with_raw_missing":
+        before = len(frame)
+        frame = frame.dropna(how="any").copy()
+        frame.attrs.update(getattr(data, "attrs", {}))
+        _append_frame_report(
+            frame,
+            "raw_missing",
+            {
+                "policy": policy,
+                "before_official_transform": True,
+                "rows_dropped": before - len(frame),
+            },
+        )
+        return _replace_raw_data(raw_result, frame)
+
+    x_cols = _raw_predictor_columns(frame, target)
+    if policy == "x_impute_raw":
+        strategy = spec.get("raw_x_imputation")
+        if strategy is None:
+            raise ExecutionError(
+                "raw_missing_policy='x_impute_raw' requires leaf_config.raw_x_imputation "
+                "(one of 'mean' / 'median' / 'ffill' / 'bfill')"
+            )
+        if strategy not in {"mean", "median", "ffill", "bfill"}:
+            raise ExecutionError(
+                "raw_missing_policy='x_impute_raw': unsupported "
+                f"leaf_config.raw_x_imputation={strategy!r}; allowed: mean / median / ffill / bfill"
+            )
+        missing_before = {str(c): int(frame[c].isna().sum()) for c in x_cols if frame[c].isna().any()}
+        if strategy == "ffill":
+            frame[x_cols] = frame[x_cols].ffill().bfill()
+        elif strategy == "bfill":
+            frame[x_cols] = frame[x_cols].bfill().ffill()
+        elif strategy == "mean":
+            for col in x_cols:
+                if frame[col].isna().any():
+                    frame[col] = frame[col].fillna(frame[col].mean())
+        elif strategy == "median":
+            for col in x_cols:
+                if frame[col].isna().any():
+                    frame[col] = frame[col].fillna(frame[col].median())
+        _append_frame_report(
+            frame,
+            "raw_missing",
+            {
+                "policy": policy,
+                "before_official_transform": True,
+                "strategy": strategy,
+                "filled_missing": missing_before,
+            },
+        )
+        return _replace_raw_data(raw_result, frame)
+
+    if policy == "zero_fill_leading_x_before_tcode":
+        window_index = _raw_policy_window_index(frame, spec)
+        filled: dict[str, list[str]] = {}
+        for col in x_cols:
+            series = frame.loc[window_index, col]
+            first_valid = series.first_valid_index()
+            if first_valid is None:
+                leading_index = series.index[series.isna()]
+            else:
+                first_pos = list(series.index).index(first_valid)
+                leading = series.iloc[:first_pos]
+                leading_index = leading.index[leading.isna()]
+            if len(leading_index):
+                frame.loc[leading_index, col] = 0.0
+                filled[str(col)] = _format_index_values(leading_index)
+        _append_frame_report(
+            frame,
+            "raw_missing",
+            {
+                "policy": policy,
+                "before_official_transform": True,
+                "leading_zero_filled": filled,
+            },
+        )
+        return _replace_raw_data(raw_result, frame)
+
+    raise ExecutionError(f"unsupported raw_missing_policy={policy!r}")
+
+
+def _apply_raw_outlier_policy(raw_result, policy: str, *, spec: dict | None = None):
+    """Apply Layer 1 raw-source outlier treatment before official transforms."""
+
+    if policy in {"preserve_raw_outliers", None} or not policy:
+        return raw_result
+    data = getattr(raw_result, "data", None)
+    if data is None:
+        return raw_result
+    spec = dict(spec or {})
+    frame = data.copy()
+    frame.attrs.update(getattr(data, "attrs", {}))
+    cols = _raw_numeric_columns(frame, spec)
+    if not cols:
+        _append_frame_report(
+            frame,
+            "raw_outliers",
+            {"policy": policy, "before_official_transform": True, "columns": [], "changed": {}},
+        )
+        return _replace_raw_data(raw_result, frame)
+
+    values = frame[cols].astype(float)
+    if policy == "winsorize_raw":
+        lower = values.quantile(0.01)
+        upper = values.quantile(0.99)
+    elif policy == "iqr_clip_raw":
+        q1 = values.quantile(0.25)
+        q3 = values.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+    elif policy == "mad_clip_raw":
+        median = values.median()
+        mad = (values - median).abs().median().replace(0, 1.0)
+        lower = median - 3.0 * mad
+        upper = median + 3.0 * mad
+    elif policy == "zscore_clip_raw":
+        mean = values.mean()
+        std = values.std(ddof=0).replace(0, 1.0)
+        lower = mean - 3.0 * std
+        upper = mean + 3.0 * std
+    elif policy == "raw_outlier_to_missing":
+        lower = values.quantile(0.01)
+        upper = values.quantile(0.99)
+    else:
+        raise ExecutionError(f"unsupported raw_outlier_policy={policy!r}")
+
+    mask = (values < lower) | (values > upper)
+    changed = {str(col): int(mask[col].sum()) for col in cols if int(mask[col].sum())}
+    if policy == "raw_outlier_to_missing":
+        frame.loc[:, cols] = values.mask(mask)
+    else:
+        frame.loc[:, cols] = values.clip(lower=lower, upper=upper, axis=1)
+    _append_frame_report(
+        frame,
+        "raw_outliers",
+        {
+            "policy": policy,
+            "before_official_transform": True,
+            "columns": [str(col) for col in cols],
+            "changed": changed,
+        },
+    )
+    return _replace_raw_data(raw_result, frame)
 
 
 _VARIABLE_UNIVERSE_SUBSET_FIELD: dict[str, str] = {
@@ -4190,6 +4383,10 @@ def execute_recipe(
     raw_result = _load_raw_for_recipe(recipe, local_raw_source, effective_cache_root)
     raw_result = _apply_frequency_policy(raw_result, recipe)
     raw_result = _apply_sd_inferred_tcodes(raw_result, recipe)
+    _raw_missing_policy = _data_task_axis(recipe, "raw_missing_policy")
+    _raw_outlier_policy = _data_task_axis(recipe, "raw_outlier_policy")
+    raw_result = _apply_raw_missing_policy(raw_result, _raw_missing_policy, target=str(recipe.target) if getattr(recipe, 'target', None) else None, spec=dict(recipe.data_task_spec))
+    raw_result = _apply_raw_outlier_policy(raw_result, _raw_outlier_policy, spec=dict(recipe.data_task_spec))
     raw_result = _apply_tcode_preprocessing(raw_result, recipe, preprocess, target=str(recipe.target) if getattr(recipe, 'target', None) else None)
     raw_result = _apply_sample_period_and_availability(raw_result, recipe, target=str(recipe.target) if getattr(recipe, 'target', None) else None)
     _release_lag = _data_task_axis(recipe, "release_lag_rule")

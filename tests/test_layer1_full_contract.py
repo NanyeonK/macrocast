@@ -95,6 +95,7 @@ def test_fred_sd_composite_rejects_wrong_frequency() -> None:
         ("predictor_family", "category_based", "predictor_category_columns"),
         ("deterministic_components", "break_dummies", "break_dates"),
         ("missing_availability", "x_impute_only", "x_imputation"),
+        ("raw_missing_policy", "x_impute_raw", "raw_x_imputation"),
         ("release_lag_rule", "series_specific_lag", "release_lag_per_series"),
     ],
 )
@@ -207,3 +208,43 @@ def test_official_transform_scope_rejects_legacy_layer2_conflict() -> None:
 
     with pytest.raises(CompileValidationError, match="raw_official_frame"):
         compile_recipe_dict(recipe)
+
+
+def test_layer1_raw_missing_policy_records_before_tcode_contract() -> None:
+    recipe = _drop_legacy_tcode_bridge(_recipe())
+    recipe["path"]["1_data_task"]["fixed_axes"].update(
+        {
+            "official_transform_policy": "dataset_tcode",
+            "official_transform_scope": "apply_tcode_to_both",
+            "raw_missing_policy": "x_impute_raw",
+        }
+    )
+    recipe["path"]["1_data_task"]["leaf_config"]["raw_x_imputation"] = "median"
+
+    compiled = compile_recipe_dict(recipe)
+
+    data_task = compiled.manifest["data_task_spec"]
+    axis_layers = compiled.compiled.tree_context["axis_layers"]
+    assert data_task["raw_missing_policy"] == "x_impute_raw"
+    assert data_task["raw_x_imputation"] == "median"
+    assert axis_layers["raw_missing_policy"] == "1_data_task"
+
+
+def test_layer1_raw_outlier_policy_records_before_tcode_contract() -> None:
+    recipe = _drop_legacy_tcode_bridge(_recipe())
+    recipe["path"]["1_data_task"]["fixed_axes"].update(
+        {
+            "official_transform_policy": "dataset_tcode",
+            "official_transform_scope": "apply_tcode_to_both",
+            "raw_outlier_policy": "iqr_clip_raw",
+        }
+    )
+    recipe["path"]["1_data_task"]["leaf_config"]["raw_outlier_columns"] = ["INDPRO"]
+
+    compiled = compile_recipe_dict(recipe)
+
+    data_task = compiled.manifest["data_task_spec"]
+    axis_layers = compiled.compiled.tree_context["axis_layers"]
+    assert data_task["raw_outlier_policy"] == "iqr_clip_raw"
+    assert data_task["raw_outlier_columns"] == ["INDPRO"]
+    assert axis_layers["raw_outlier_policy"] == "1_data_task"

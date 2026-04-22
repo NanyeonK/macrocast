@@ -5,7 +5,7 @@ from macrocast.registry.base import AxisDefinition, BaseRegistryEntry, EnumRegis
 from macrocast.registry.types import AxisRegistryEntry
 
 
-EXPECTED_AXIS_COUNT = 127
+EXPECTED_AXIS_COUNT = 129
 
 
 def test_registry_loader_discovers_existing_axes() -> None:
@@ -128,6 +128,8 @@ def test_registry_loader_discovers_stage1_data_task_axes() -> None:
         "official_transform_scope",
         "contemporaneous_x_rule",
         "missing_availability",
+        "raw_missing_policy",
+        "raw_outlier_policy",
         "release_lag_rule",
         "target_structure",
         "variable_universe",

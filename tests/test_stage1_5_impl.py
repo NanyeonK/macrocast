@@ -102,6 +102,8 @@ def test_release_lag_fixed_lag_all_series_executes() -> None:
 def test_missing_availability_zero_fill_default_compiles() -> None:
     r = compile_recipe_dict(_recipe())
     assert r.manifest["data_task_spec"]["missing_availability"] == "zero_fill_before_start"
+    assert r.manifest["data_task_spec"]["raw_missing_policy"] == "preserve_raw_missing"
+    assert r.manifest["data_task_spec"]["raw_outlier_policy"] == "preserve_raw_outliers"
 
 
 def test_missing_availability_available_case_compiles() -> None:
@@ -116,6 +118,24 @@ def test_missing_availability_x_impute_only_compiles_with_strategy() -> None:
     ))
     assert r.compiled.execution_status == "executable"
     assert r.manifest["data_task_spec"]["x_imputation"] == "ffill"
+
+
+def test_raw_missing_policy_x_impute_raw_compiles_with_strategy() -> None:
+    r = compile_recipe_dict(_recipe(
+        raw_missing_policy="x_impute_raw",
+        _leaf={"raw_x_imputation": "ffill"},
+    ))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["raw_x_imputation"] == "ffill"
+
+
+def test_raw_outlier_policy_compiles_with_optional_column_subset() -> None:
+    r = compile_recipe_dict(_recipe(
+        raw_outlier_policy="winsorize_raw",
+        _leaf={"raw_outlier_columns": ["INDPRO"]},
+    ))
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["raw_outlier_columns"] == ["INDPRO"]
 
 
 # ---------- structural_break_segmentation ----------

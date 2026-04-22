@@ -32,6 +32,8 @@ registry axes are:
 - `official_transform_scope`
 - `target_structure`
 - `missing_availability`
+- `raw_missing_policy`
+- `raw_outlier_policy`
 - `release_lag_rule`
 - `contemporaneous_x_rule`
 - `variable_universe`
@@ -119,6 +121,12 @@ Kept values that require extra user inputs are now compile-time contracts:
 - `missing_availability=zero_fill_before_start` is the default policy in the compiler and public experiment defaults.
 - `zero_fill_before_start` is sample-period aware: predictor leading missing values are zero-filled, fully missing predictors are zero-filled with warnings, predictor mid-sample missing values are reported, target leading missing values are reported, and target mid-sample missing values block execution.
 - `missing_availability=x_impute_only` requires `leaf_config.x_imputation` in `{mean, median, ffill, bfill}`.
+- `raw_missing_policy=preserve_raw_missing` is the default raw-source missing policy.
+- `raw_missing_policy=zero_fill_leading_x_before_tcode` fills predictor leading missing values in the raw source panel before official transforms/T-codes.
+- `raw_missing_policy=x_impute_raw` requires `leaf_config.raw_x_imputation` in `{mean, median, ffill, bfill}` and imputes raw predictors before official transforms/T-codes.
+- `raw_missing_policy=drop_rows_with_raw_missing` drops rows with any raw-source missing value before official transforms/T-codes.
+- `raw_outlier_policy=preserve_raw_outliers` is the default raw-source outlier policy.
+- `raw_outlier_policy` values `winsorize_raw`, `iqr_clip_raw`, `mad_clip_raw`, `zscore_clip_raw`, and `raw_outlier_to_missing` operate on raw numeric columns before official transforms/T-codes. `leaf_config.raw_outlier_columns` may restrict the column set.
 - `release_lag_rule=series_specific_lag` requires non-empty `leaf_config.release_lag_per_series`.
 - `structural_break_segmentation` remains executable through fixed built-in dates; user-supplied break dates are owned by `deterministic_components=break_dummies`.
 
@@ -144,10 +152,9 @@ Full-mode interpretation:
   the phase and order.
 - `x_impute_only` remains accepted for migration compatibility. Conceptually,
   imputation applied after the official frame exists belongs to Layer 2.
-- Current implementation gap: Layer 1 has a concrete `missing_availability`
-  axis, but it does not yet expose a separate raw outlier axis. A future full
-  axis should make the raw-before-T-code outlier decision explicit instead of
-  relying on Layer 2 `x_outlier_policy`.
+- Layer 1 now exposes this raw-before-T-code decision through
+  `raw_missing_policy` and `raw_outlier_policy`. Layer 2 `x_missing_policy` and
+  `x_outlier_policy` remain post-transform/model-input preprocessing.
 
 ## Simple Contract
 
@@ -174,3 +181,5 @@ Simple docs should stay short; this audit is the detailed contract source for La
 - Layer 1 official-transform axes are recorded in `data_task_spec`, and
   conflicting Layer 1 official-transform choices vs legacy Layer 2 t-code bridge
   choices fail at compile time.
+- Layer 1 raw missing/outlier axes are recorded in `data_task_spec` and execute
+  before official transforms/T-codes.
