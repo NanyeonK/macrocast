@@ -35,7 +35,7 @@ def _fixed_to_sweep(recipe: dict, layer: str, axis: str, values: list[str]) -> N
 
 
 def _make_multi_target(recipe: dict) -> None:
-    recipe["path"]["1_data_task"]["fixed_axes"]["task"] = "multi_target_point_forecast"
+    recipe["path"]["1_data_task"]["fixed_axes"]["target_structure"] = "multi_target_point_forecast"
     leaf = recipe["path"]["1_data_task"]["leaf_config"]
     leaf.pop("target", None)
     leaf["targets"] = ["INDPRO", "RPI"]

@@ -4,7 +4,7 @@ Stage 0 decides **the shape of the study**: which runner fires, how axes sweep, 
 
 **At a glance (defaults):**
 - `research_design = single_path_benchmark` — one recipe, one forecast.
-- `experiment_unit` is derived from `task` + sweep shape (auto-picked; never needs to be set).
+- `experiment_unit` is derived from `target_structure` + sweep shape (auto-picked; never needs to be set).
 - `axis_type = fixed` per axis — set to `sweep` only on the axis you are varying.
 - `failure_policy = fail_fast` — stop on the first error.
 - `reproducibility_mode = seeded_reproducible` — Python + numpy seeded; torch optional.
@@ -31,7 +31,7 @@ Deviate when you explicitly want multiple variants, different runners, looser er
 
 ### Functions & features
 
-- Runner dispatch: `macrocast.compiler.build` resolves `research_design` + `task` → `experiment_unit` via `derive_experiment_unit_default`.
+- Runner dispatch: `macrocast.compiler.build` resolves `research_design` + `target_structure` → `experiment_unit` via `derive_experiment_unit_default`.
 - Artifacts: `single_path_benchmark` → `execute_recipe()`; `controlled_variation` → `execute_sweep()`; `replication_override` → `execute_replication()`.
 
 ### Recipe usage
@@ -53,9 +53,9 @@ path:
 
 **Selection question**: Which runner owns this recipe?
 
-**Default**: Auto-derived from `task` and sweep shape — you never need to set this explicitly.
+**Default**: Auto-derived from `target_structure` and sweep shape — you never need to set this explicitly.
 
-The compiler calls `derive_experiment_unit_default(research_design, task, model_axis_mode, feature_axis_mode, wrapper_family)` and picks one of the operational values below. Set it explicitly only when your recipe must declare a specific runner (e.g. for replication provenance).
+The compiler calls `derive_experiment_unit_default(research_design, target_structure, model_axis_mode, feature_axis_mode, wrapper_family)` and picks one of the operational values below. Set it explicitly only when your recipe must declare a specific runner (e.g. for replication provenance).
 
 ### Value catalog
 
@@ -72,8 +72,8 @@ The compiler calls `derive_experiment_unit_default(research_design, task, model_
 
 ### Compatibility guards
 
-- `experiment_unit.requires_multi_target == True` (e.g. `multi_target_separate_runs`, `multi_target_shared_design`) requires `task = multi_target_point_forecast`; else `blocked_by_incompatibility`.
-- `experiment_unit.requires_multi_target == False` with `task = multi_target_point_forecast` is also blocked.
+- `experiment_unit.requires_multi_target == True` (e.g. `multi_target_separate_runs`, `multi_target_shared_design`) requires `target_structure = multi_target_point_forecast`; else `blocked_by_incompatibility`.
+- `experiment_unit.requires_multi_target == False` with `target_structure = multi_target_point_forecast` is also blocked.
 
 ### Functions & features
 

@@ -7,7 +7,7 @@ After the layer-boundary migration, Stage 1 holds **9 canonical axes** under the
 | Group | Axes | Focus |
 |---|---|---:|---|
 | Source & frame | 4 | `dataset`, `source_adapter`, `frequency`, `information_set_type` |
-| Task identity | 1 | `task`; target/targets/horizons live in `leaf_config` |
+| Target structure | 1 | `target_structure`; target/targets/horizons live in `leaf_config` |
 | Availability and universe | 4 | `missing_availability`, `release_lag_rule`, `contemporaneous_x_rule`, `variable_universe` |
 
 Stage 1 does not fix which model, benchmark, researcher preprocessing, or evaluation metric to use — those belong to Stage 2+ layers.
@@ -20,7 +20,7 @@ The 6 meta axes of Stage 0 ([design](../design.md)) — `research_design`, `expe
 
 Layer 1 now covers 9 canonical axes. The migration moves model, benchmark, preprocessing, and inference choices out of Layer 1:
 
-- **Kept in Layer 1** — dataset/source/frequency/information set, task identity, official availability, release lag, contemporaneous information rule, raw variable universe.
+- **Kept in Layer 1** — dataset/source/frequency/information set, target structure, official availability, release lag, contemporaneous information rule, raw variable universe.
 - **Moved to Layer 2** — target representation and deterministic/break features.
 - **Moved to Layer 3** — benchmark, forecast type/object, predictor family, training-window rules.
 - **Moved to Layer 4** — OOS regime subset evaluation.
@@ -41,7 +41,7 @@ Each of the three built-in datasets (FRED-MD, FRED-QD, FRED-SD) has its own docu
 :hidden:
 
 source
-task
+target_structure
 horizon
 benchmark
 policies

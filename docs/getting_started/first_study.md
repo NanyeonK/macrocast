@@ -46,7 +46,7 @@ path:
     fixed_axes:
       dataset: fred_md
       information_set_type: revised
-      task: single_target_point_forecast
+      target_structure: single_target_point_forecast
       benchmark_family: ar_bic
       evaluation_scale: raw_level
     leaf_config:
@@ -166,5 +166,5 @@ for feat in sorted(imp["feature_importances"], key=lambda x: -abs(x["importance"
 
 - [Understanding Output](understanding_output.md) — every artifact explained
 - [User Guide: Design (Stage 0)](../user_guide/design.md) — six axes that decide study shape.
-- [User Guide: Data (Stage 1)](../user_guide/data/index.md) — twenty axes for data, task, evaluation window.
+- [User Guide: Data (Stage 1)](../user_guide/data/index.md) — twenty axes for data, target structure, evaluation window.
 - [Stages Reference](stages_reference.md) — cheat sheet with every operational value.

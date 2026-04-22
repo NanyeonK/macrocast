@@ -32,6 +32,7 @@ _ALLOWED_SELECTION_MODES = ("fixed_axes", "sweep_axes", "conditional_axes", "lea
 _AXIS_NAME_ALIASES = {
     "info_set": "information_set_type",
     "dataset_source": "source_adapter",
+    "task": "target_structure",
 }
 
 _AXIS_VALUE_ALIASES = {
@@ -139,7 +140,12 @@ def _rule_experiment_unit_default(
         return default
 
     research_design = _sv("research_design", "single_path_benchmark")
-    task = leaf_config.get("task", "single_target_point_forecast")
+    task = (
+        _sv("target_structure")
+        or leaf_config.get("target_structure")
+        or leaf_config.get("task")
+        or "single_target_point_forecast"
+    )
     model_sel = selection_map.get("model_family")
     feature_sel = selection_map.get("feature_builder")
     return derive_experiment_unit_default(
@@ -247,6 +253,10 @@ def _selection_value(selection_map: dict[str, AxisSelection], axis_name: str, de
     if len(values) != 1:
         raise CompileValidationError(f"axis {axis_name!r} must be fixed for direct single-run compilation")
     return values[0]
+
+
+def _target_structure(selection_map: dict[str, AxisSelection], default: str = "single_target_point_forecast") -> str:
+    return _selection_value(selection_map, "target_structure", default=default)
 
 
 _LEGACY_OFFICIAL_TRANSFORM_BRIDGE_AXES = {
@@ -619,8 +629,8 @@ def _require_non_empty_mapping(leaf_config: dict[str, Any], key: str, context: s
 
 
 def _targets_for_layer1_contract(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> tuple[str, ...]:
-    task = _selection_value(selection_map, "task")
-    if task == "multi_target_point_forecast":
+    target_structure = _target_structure(selection_map)
+    if target_structure == "multi_target_point_forecast":
         targets = leaf_config.get("targets")
         if not _is_non_empty_sequence(targets):
             return ()
@@ -767,7 +777,7 @@ def _validate_layer1_data_task_contract(
 def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     dataset = _first_selected_value(selection_map, "dataset", "fred_md")
     source_adapter = _selection_value(selection_map, "source_adapter", default=dataset)
-    task = _first_selected_value(selection_map, "task", "single_target_point_forecast")
+    target_structure = _first_selected_value(selection_map, "target_structure", "single_target_point_forecast")
     framework = _first_selected_value(selection_map, "framework", "expanding")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     information_set_type = _first_selected_value(selection_map, "information_set_type", "revised")
@@ -775,6 +785,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     return {
         "custom_data_path": leaf_config.get("custom_data_path"),
         "source_adapter": source_adapter,
+        "target_structure": target_structure,
         "official_transform_policy": _official_transform_policy(selection_map),
         "official_transform_scope": _official_transform_scope(selection_map),
         "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
@@ -918,7 +929,7 @@ def _build_stage0_and_recipe(
     research_design = _selection_value(selection_map, "research_design")
     dataset = _selection_value(selection_map, "dataset")
     information_set_type = _selection_value(selection_map, "information_set_type")
-    task = _selection_value(selection_map, "task")
+    target_structure = _target_structure(selection_map)
     benchmark = _selection_value(selection_map, "benchmark_family")
     framework = _selection_value(selection_map, "framework")
     target = leaf_config.get("target", "")
@@ -930,16 +941,16 @@ def _build_stage0_and_recipe(
     feature_builders = feature_axis.selected_values
     wrapper_family = leaf_config.get("wrapper_family")
 
-    if task == "multi_target_point_forecast":
+    if target_structure == "multi_target_point_forecast":
         if len(targets) < 2:
-            raise CompileValidationError("task='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
+            raise CompileValidationError("target_structure='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
     else:
         if not target:
             raise CompileValidationError("single-target recipes require leaf_config.target")
 
     derived_experiment_unit = derive_experiment_unit_default(
         research_design=research_design,
-        task=task,
+        task=target_structure,
         model_axis_mode=model_axis.selection_mode,
         feature_axis_mode=feature_axis.selection_mode,
         wrapper_family=wrapper_family,
@@ -952,13 +963,13 @@ def _build_stage0_and_recipe(
             raise CompileValidationError(
                 f"experiment_unit={experiment_unit!r} conflicts with current recipe shape; implied unit is {derived_experiment_unit!r}"
             )
-        if unit_entry.requires_multi_target and task != "multi_target_point_forecast":
+        if unit_entry.requires_multi_target and target_structure != "multi_target_point_forecast":
             raise CompileValidationError(
-                f"experiment_unit={experiment_unit!r} requires task='multi_target_point_forecast'"
+                f"experiment_unit={experiment_unit!r} requires target_structure='multi_target_point_forecast'"
             )
-        if not unit_entry.requires_multi_target and task == "multi_target_point_forecast":
+        if not unit_entry.requires_multi_target and target_structure == "multi_target_point_forecast":
             raise CompileValidationError(
-                f"experiment_unit={experiment_unit!r} is incompatible with task='multi_target_point_forecast'"
+                f"experiment_unit={experiment_unit!r} is incompatible with target_structure='multi_target_point_forecast'"
             )
 
     sample_split = {
@@ -979,7 +990,7 @@ def _build_stage0_and_recipe(
             "sample_split": sample_split,
             "benchmark": benchmark,
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": task,
+            "forecast_task": target_structure,
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -1240,7 +1251,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     selections = _build_axis_selections(recipe_dict)
     _ensure_unique_axis_selections(selections)
     selection_map = _selection_map(selections)
-    required_axes = {"research_design", "dataset", "information_set_type", "task", "framework", "benchmark_family", "model_family", "feature_builder"}
+    required_axes = {"research_design", "dataset", "information_set_type", "target_structure", "framework", "benchmark_family", "model_family", "feature_builder"}
     missing_axes = sorted(axis for axis in required_axes if axis not in selection_map)
     if missing_axes:
         raise CompileValidationError(f"recipe missing required axes: {missing_axes}")
@@ -1255,9 +1266,9 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
         selections = selections + tuple(derived_additions)
         _ensure_unique_axis_selections(selections)
         selection_map = _selection_map(selections)
-    task_value = _selection_value(selection_map, "task")
+    target_structure_value = _target_structure(selection_map)
     experiment_unit_explicit = "experiment_unit" in selection_map
-    if task_value == "multi_target_point_forecast":
+    if target_structure_value == "multi_target_point_forecast":
         if "targets" not in leaf_config:
             raise CompileValidationError("recipe leaf_config missing 'targets'")
     else:

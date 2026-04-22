@@ -1,6 +1,6 @@
 # Source & Frame (1.1)
 
-Declares **where the data comes from and which information-set regime applies**. These four axes together answer: which dataset, at what frequency, and under which real-time regime — before the task (1.2) or the evaluation window (1.3) is fixed.
+Declares **where the data comes from and which information-set regime applies**. These four axes together answer: which dataset, at what frequency, and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.
 
 | Section | axis | Role |
 |---|---|---|
@@ -220,4 +220,4 @@ path:
 - **`frequency`** is executable: it controls conversion and is compile-checked for FRED-SD composites.
 - **`data_domain`** axis dropped entirely (pure duplication of `dataset.source_family`).
 
-Next group: [1.2 Task & target](task.md) (coming) — what exactly is being forecast.
+Next group: [1.2 Target Structure](target_structure.md) (coming) — what exactly is being forecast.

@@ -43,7 +43,7 @@ recipe = {
             "fixed_axes": {
                 "dataset": "fred_md",
                 "information_set_type": "revised",
-                "task": "single_target_point_forecast",
+                "target_structure": "single_target_point_forecast",
                 "benchmark_family": "ar_bic",
                 "evaluation_scale": "raw_level",
             },

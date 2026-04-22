@@ -32,7 +32,7 @@ def test_macrocast_single_run_wrapper_route_blocks_run_manifest(tmp_path: Path) 
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "orchestrated_bundle"}, "leaf_config": {"wrapper_family": "benchmark_suite", "bundle_label": "fred-md-baselines"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "target_structure": "single_target_point_forecast"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -72,7 +72,7 @@ def test_macrocast_single_run_interactive_first_step(monkeypatch, tmp_path: Path
     assert out["yaml_path"].endswith("wizard.yaml")
     assert out["completed_choices"][0]["key"] == "research_design"
     assert out["completed_choices"][0]["value"] == "single_path_benchmark"
-    assert out["current_choice"]["key"] == "task"
+    assert out["current_choice"]["key"] == "target_structure"
     assert out["route_preview"]["route_owner"] == "single_run"
 
 
@@ -88,7 +88,7 @@ def test_macrocast_single_run_interactive_task_switches_next_choice(monkeypatch,
     answers = iter([str(tmp_path / "multi.yaml"), "", "2"])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=2)
-    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "task"]
+    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "target_structure"]
     assert out["completed_choices"][1]["value"] == "multi_target_point_forecast"
     assert out["current_choice"]["key"] == "experiment_unit"
 
@@ -98,7 +98,7 @@ def test_macrocast_single_run_interactive_framework_follows_target(monkeypatch, 
     answers = iter([str(tmp_path / "framework.yaml"), "", "", "", ""])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=4)
-    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "task", "experiment_unit", "target"]
+    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "target_structure", "experiment_unit", "target"]
     assert out["current_choice"]["key"] == "framework"
 
 
@@ -106,7 +106,7 @@ def test_macrocast_single_run_interactive_custom_benchmark_requests_plugin_field
     answers = iter([str(tmp_path / "custom.yaml"), "", "", "", "", "", "4"])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=6)
-    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "task", "experiment_unit", "target", "framework", "benchmark_family"]
+    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "target_structure", "experiment_unit", "target", "framework", "benchmark_family"]
     assert out["completed_choices"][-1]["value"] == "custom_benchmark"
     assert out["current_choice"]["key"] == "benchmark_plugin_path"
 
@@ -115,7 +115,7 @@ def test_macrocast_single_run_interactive_tcode_switch_normalizes_preprocess(mon
     answers = iter([
         str(tmp_path / "preprocess.yaml"),
         "",  # research_design
-        "",  # task
+        "",  # target_structure
         "",  # experiment_unit
         "",  # target
         "",  # framework
@@ -234,5 +234,5 @@ def test_macrocast_single_run_interactive_experiment_unit_follows_task(monkeypat
     answers = iter([str(tmp_path / "experiment-unit.yaml"), "", ""])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=2)
-    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "task"]
+    assert [item["key"] for item in out["completed_choices"]] == ["research_design", "target_structure"]
     assert out["current_choice"]["key"] == "experiment_unit"

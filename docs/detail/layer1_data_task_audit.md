@@ -21,7 +21,7 @@ Layer 1.
 
 ## Canonical Layer 1 After Migration
 
-Layer 1 now means official data frame and task identity. The canonical Layer 1
+Layer 1 now means official data frame and target identity. The canonical Layer 1
 registry axes are:
 
 - `dataset`
@@ -30,7 +30,7 @@ registry axes are:
 - `information_set_type`
 - `official_transform_policy`
 - `official_transform_scope`
-- `task`
+- `target_structure`
 - `missing_availability`
 - `release_lag_rule`
 - `contemporaneous_x_rule`
@@ -68,9 +68,18 @@ The following axes were moved out of Layer 1 ownership:
 - Legacy `dataset_source` remains accepted as a compiler alias for canonical
   `source_adapter`. New recipes, manifests, and docs should use
   `source_adapter`.
+- Legacy `task` remains accepted as a compiler alias for canonical
+  `target_structure`. New recipes, manifests, and docs should use
+  `target_structure`.
 
-### 1.2 Task & Target
+### 1.2 Target Structure
 
+- Layer 1 `target_structure` only records whether the official frame has one
+  target or multiple targets.
+- `single_target_point_forecast` requires `leaf_config.target`.
+- `multi_target_point_forecast` requires `leaf_config.targets`.
+- Layer 0 owns the execution shape derived from target cardinality through
+  `experiment_unit`.
 - `forecast_type` remains dynamic by `feature_builder`: autoreg paths default to `iterated`, raw/factor panel paths default to `direct`.
 - Crossed `forecast_type`/`feature_builder` pairs are `blocked_by_incompatibility`.
 - `forecast_object=point_median` and `forecast_object=quantile` now require `model_family=quantile_linear`.

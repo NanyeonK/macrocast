@@ -15,7 +15,7 @@ Declares **which benchmark to compare against, which predictors the model sees, 
 - `variable_universe.feature_selection_dynamic_subset` — CV-in-training feature selection loop; deferred to v1.1 tuning-engine extension.
 - `deterministic_components.trend_and_quadratic` — redundant with `linear_trend` + a future `leaf_config.trend_order` channel.
 
-`target_family` (the old 1.4.1 axis) was dropped in PR #32 — subsumed by `task`.
+`target_family` (the old 1.4.1 axis) was dropped in PR #32 — subsumed by `target_structure`.
 **At a glance (defaults):**
 - `benchmark_family` — no default; you always pick one (most studies start with `historical_mean` or `ar_bic`).
 - `predictor_family` — feature-builder dynamic default. autoreg_lagged_target → `target_lags_only`; raw_feature_panel → `all_macro_vars`. You rarely set it.

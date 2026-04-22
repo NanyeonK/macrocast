@@ -9,7 +9,7 @@ A one-page map of every operational value on every axis in the two completed sta
 | Stage | Axes | Allowed values | What it governs |
 |---|---|---|---|
 | 0 — Design  | 6 | 38 | Recipe grammar: runner, sweep shape, reproducibility, compute |
-| 1 — Data    | 9 | 30 | Official data frame: dataset, source, frequency, information set, task identity, availability |
+| 1 — Data    | 9 | 30 | Official data frame: dataset, source, frequency, information set, target structure, availability |
 
 ---
 
@@ -106,7 +106,7 @@ A one-page map of every operational value on every axis in the two completed sta
 | `source_adapter` | `fred_md`, `fred_qd`, `fred_sd`, `custom_csv`, `custom_parquet` | which loader fires (`_load_raw_for_recipe`), `manifest.raw_artifact`; legacy `dataset_source` is accepted as an alias |
 | `frequency` | `monthly`, `quarterly` | conversion target; MD+SD must be monthly, QD+SD must be quarterly |
 | `information_set_type` | `revised`, `pseudo_oos_revised` | revised = post-revision truth; pseudo-oos masks to simulate real-time |
-| `task` | `single_target_point_forecast`, `multi_target_point_forecast` | triggers multi-target aggregator at line 516 in `compiler.build`; drives `experiment_unit` default |
+| `target_structure` | `single_target_point_forecast`, `multi_target_point_forecast` | target cardinality; legacy `task` is accepted as an alias; Layer 0 derives `experiment_unit` from this plus sweep shape |
 | `variable_universe` | `all_variables`, `preselected_core`, `category_subset`, `target_specific_subset`, `handpicked_set` | `_apply_variable_universe`; `handpicked_set` reads `leaf_config.variable_universe_columns`; target + date columns always preserved |
 | `missing_availability` | `zero_fill_before_start`, `complete_case_only`, `available_case`, `x_impute_only` | default `zero_fill_before_start` reports/fills predictor leading gaps; `x_impute_only` requires `leaf_config.x_imputation` ∈ {mean, median, ffill, bfill} |
 | `release_lag_rule` | `ignore_release_lag`, `fixed_lag_all_series`, `series_specific_lag` | `_apply_release_lag`; `series_specific_lag` requires `leaf_config.release_lag_per_series: dict[str, int]` |

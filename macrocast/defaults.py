@@ -23,7 +23,7 @@ DEFAULT_PROFILE: dict[str, Any] = {
     "name": DEFAULT_PROFILE_NAME,
     "research_design": "single_path_benchmark",
     "information_set_type": "revised",
-    "task": "single_target_point_forecast",
+    "target_structure": "single_target_point_forecast",
     "framework": "expanding",
     "benchmark_family": "zero_change",
     "feature_builder": "autoreg_lagged_target",
@@ -211,7 +211,7 @@ def build_default_recipe_dict(
                     "official_transform_scope": "apply_tcode_to_both",
                     "frequency": resolved_frequency,
                     "information_set_type": information_set_type,
-                    "task": "single_target_point_forecast",
+                    "target_structure": "single_target_point_forecast",
                     "missing_availability": "zero_fill_before_start",
                 },
                 "leaf_config": {
