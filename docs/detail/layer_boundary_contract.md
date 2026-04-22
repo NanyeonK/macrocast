@@ -124,5 +124,7 @@ should move toward canonical ownership.
 
 For official dataset transformations, canonical Layer 1 axes are
 `official_transform_policy` and `official_transform_scope`. The older Layer 2
-t-code fields remain a compatibility bridge because the current runtime
-`PreprocessContract` still consumes them.
+t-code fields remain compatibility inputs for legacy recipes. New generated
+recipes should use the Layer 1 axes; the compiler derives any runtime
+`PreprocessContract` fallback fields from those Layer 1 choices, and execution
+reads `data_task_spec` first.

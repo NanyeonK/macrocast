@@ -60,9 +60,11 @@ The following axes were moved out of Layer 1 ownership:
 - `dataset_source=custom_csv/custom_parquet` remains operational but requires `leaf_config.custom_data_path`.
 - Official dataset transforms now have canonical Layer 1 axes:
   `official_transform_policy` and `official_transform_scope`.
-- Old Layer 2 t-code fields remain accepted as runtime bridge fields. The
-  compiler derives the Layer 1 official-transform spec from those fields when
-  old recipes omit the new axes, and rejects conflicting new/legacy choices.
+- Old Layer 2 t-code fields remain accepted as legacy compatibility inputs.
+  The compiler derives the Layer 1 official-transform spec from those fields
+  when old recipes omit the new axes, derives runtime `PreprocessContract`
+  fallback fields from Layer 1 for new recipes, and rejects conflicting
+  new/legacy choices.
 
 ### 1.2 Task & Target
 

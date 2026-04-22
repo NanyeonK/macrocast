@@ -6,7 +6,7 @@ A one-page map of every operational value on every axis in the two completed sta
 
 **At a glance.**
 
-| Stage | Axes | Operational values | What it governs |
+| Stage | Axes | Allowed values | What it governs |
 |---|---|---|---|
 | 0 — Design  | 6 | 38 | Recipe grammar: runner, sweep shape, reproducibility, compute |
 | 1 — Data    | 9 | 30 | Official data frame: dataset, source, frequency, information set, task identity, availability |
@@ -75,8 +75,8 @@ A one-page map of every operational value on every axis in the two completed sta
 
 | Value | Check / observe |
 |---|---|
-| `best_effort` (default) | Python/numpy seeded, torch optional |
-| `seeded_reproducible` | + torch seed + cudnn.deterministic |
+| `seeded_reproducible` (default) | Python/numpy/torch seeded; no strict deterministic-library flags |
+| `best_effort` | Same seed application, labeled non-strict for CI/regression interpretation |
 | `strict_reproducible` | + `torch.use_deterministic_algorithms(True)` + `CUBLAS_WORKSPACE_CONFIG=:4096:8` |
 | `exploratory` | no seed discipline (research drafting) |
 

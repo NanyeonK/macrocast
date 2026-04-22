@@ -1,13 +1,13 @@
 # Design (Stage 0)
 
-Stage 0 decides **the shape of the study**: which runner fires, how axes sweep, how failures are handled, how deterministic the run is, and how work is parallelised. Six axes, 31 operational values. Every axis ships a default that matches the most common research flow — most researchers leave all six alone and never read this page.
+Stage 0 decides **the shape of the study**: which runner fires, how axes sweep, how failures are handled, how deterministic the run is, and how work is parallelised. Six axes cover 38 allowed values; the simple default path uses only the small operational subset needed for a single run or model comparison. Every axis ships a default that matches the most common research flow — most researchers leave all six alone and never read this page.
 
 **At a glance (defaults):**
 - `research_design = single_path_benchmark` — one recipe, one forecast.
 - `experiment_unit` is derived from `task` + sweep shape (auto-picked; never needs to be set).
 - `axis_type = fixed` per axis — set to `sweep` only on the axis you are varying.
 - `failure_policy = fail_fast` — stop on the first error.
-- `reproducibility_mode = best_effort` — Python + numpy seeded; torch optional.
+- `reproducibility_mode = seeded_reproducible` — Python + numpy seeded; torch optional.
 - `compute_mode = serial` — no parallelism.
 
 Deviate when you explicitly want multiple variants, different runners, looser error handling, stricter determinism, or compute speedups.
@@ -175,7 +175,7 @@ path:
 
 **Selection question**: How hard do you want to pin the stochastic components?
 
-**Default**: `best_effort` — Python `random`, numpy, and torch (if available) are seeded; no cudnn / BLAS determinism.
+**Default**: `seeded_reproducible` — Python `random`, numpy, and torch (if available) are seeded; no cudnn / BLAS determinism.
 
 Escalate when you need bit-identical reruns (paper replication) or when you don't care at all (exploratory drafting).
 
@@ -183,8 +183,8 @@ Escalate when you need bit-identical reruns (paper replication) or when you don'
 
 | Value | Status | When to use | Verify |
 |---|---|---|---|
-| `best_effort` | operational (default) | Default. Day-to-day work where minor numerical drift is tolerable. | `manifest["reproducibility_applied"]["mode"] == "best_effort"`. |
-| `seeded_reproducible` | operational | You want the same result across reruns on the same machine. | `torch.backends.cudnn.deterministic == True`; manifest records the applied config. |
+| `seeded_reproducible` | operational (default) | You want the same result across reruns on the same machine without strict deterministic-library flags. | `manifest["reproducibility_applied"]["mode"] == "seeded_reproducible"`. |
+| `best_effort` | operational | Same seed application as `seeded_reproducible`, but labeled as non-strict for CI/regression interpretation. | `manifest["reproducibility_applied"]["mode"] == "best_effort"`. |
 | `strict_reproducible` | operational | Paper replication — bit-identical across machines. | `torch.use_deterministic_algorithms(True)`; `CUBLAS_WORKSPACE_CONFIG=:4096:8`; `RuntimeWarning` if `PYTHONHASHSEED` is unset. |
 | `exploratory` | operational | Research drafting — don't seed at all. | manifest records `exploratory`; no seeds applied. |
 
@@ -250,7 +250,7 @@ path:
 
 ## Design (Stage 0) takeaways
 
-- Six axes, 31 operational values, every axis defaults to "don't think about it." Researchers who don't need sweeps, parallelism, or strict reproducibility write Stage 0 by omission.
+- Six axes, 38 allowed values, and the simple default path keeps the operational surface narrow. Researchers who don't need sweeps, parallelism, or strict reproducibility write Stage 0 by omission.
 - Runner dispatch flows `research_design` → `experiment_unit`. The second is auto-derived; the first is the user-facing lever for "what kind of study is this?"
 - `failure_policy` + `reproducibility_mode` + `compute_mode` are three independent dials. Pick per-run, don't carry them over from copy-pasted templates.
 - Every resolved value lands in `manifest.json` — when a run does something unexpected, read the manifest before anything else.
