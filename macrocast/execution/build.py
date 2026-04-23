@@ -1907,7 +1907,21 @@ def _apply_feature_selection(
     X_pred: pd.DataFrame,
     contract: PreprocessContract,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    policy = contract.feature_selection_policy
+    return _apply_feature_selection_policy(
+        X_train,
+        y_train,
+        X_pred,
+        policy=str(contract.feature_selection_policy),
+    )
+
+
+def _apply_feature_selection_policy(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+    X_pred: pd.DataFrame,
+    *,
+    policy: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     if policy == "none":
         return X_train, X_pred
     if policy == "correlation_filter":
@@ -1926,12 +1940,17 @@ def _apply_feature_selection(
     raise ExecutionError(f"feature_selection_policy {policy!r} is not executable in current runtime slice")
 
 
+def _feature_selection_semantics(contract: PreprocessContract) -> str:
+    return str(getattr(contract, "feature_selection_semantics", "select_before_factor"))
+
+
 def _apply_dimensionality_reduction(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
     contract: PreprocessContract,
     *,
     feature_selection_policy: str = "none",
+    feature_selection_semantics: str = "select_before_factor",
     fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     policy = contract.dimensionality_reduction_policy
@@ -1949,6 +1968,7 @@ def _apply_dimensionality_reduction(
                     X_train,
                     reducer,
                     feature_selection_policy=feature_selection_policy,
+                    feature_selection_semantics=feature_selection_semantics,
                 )
             )
         return train_scores, pred_scores
@@ -1970,6 +1990,7 @@ def _apply_dimensionality_reduction(
                     mean.reshape(-1),
                     s,
                     feature_selection_policy=feature_selection_policy,
+                    feature_selection_semantics=feature_selection_semantics,
                 )
             )
         return train_scores, pred_scores
@@ -1984,6 +2005,7 @@ def _factor_fit_state_from_components(
     singular_values: np.ndarray | None = None,
     *,
     feature_selection_policy: str = "none",
+    feature_selection_semantics: str = "select_before_factor",
 ) -> dict[str, object]:
     source_names = [str(col) for col in X_train.columns]
     feature_names = [f"factor_{idx}" for idx in range(1, int(components.shape[0]) + 1)]
@@ -2003,11 +2025,14 @@ def _factor_fit_state_from_components(
         "loadings": loadings,
         "feature_selection_policy": str(feature_selection_policy),
         "feature_selection_semantics": (
-            "select_before_factor" if str(feature_selection_policy) != "none" else "none"
+            str(feature_selection_semantics)
+            if str(feature_selection_policy) != "none"
+            else "none"
         ),
-        "selected_source_feature_names": source_names,
-        "selected_source_feature_count": int(len(source_names)),
     }
+    if str(feature_selection_policy) != "none" and str(feature_selection_semantics) == "select_before_factor":
+        payload["selected_source_feature_names"] = source_names
+        payload["selected_source_feature_count"] = int(len(source_names))
     if singular_values is not None:
         payload["singular_values"] = [float(x) for x in np.asarray(singular_values, dtype=float)[: int(components.shape[0])]]
     return payload
@@ -2019,6 +2044,7 @@ def _factor_fit_state_from_pca(
     reducer: PCA,
     *,
     feature_selection_policy: str = "none",
+    feature_selection_semantics: str = "select_before_factor",
 ) -> dict[str, object]:
     payload = _factor_fit_state_from_components(
         policy,
@@ -2027,9 +2053,54 @@ def _factor_fit_state_from_pca(
         np.asarray(reducer.mean_, dtype=float),
         np.asarray(getattr(reducer, "singular_values_", []), dtype=float),
         feature_selection_policy=feature_selection_policy,
+        feature_selection_semantics=feature_selection_semantics,
     )
     payload["explained_variance_ratio"] = [float(x) for x in np.asarray(reducer.explained_variance_ratio_, dtype=float)]
     return payload
+
+
+def _apply_post_factor_feature_selection(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_pred: np.ndarray,
+    feature_names: Sequence[str],
+    *,
+    policy: str,
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    train_df = pd.DataFrame(np.asarray(X_train, dtype=float), columns=list(feature_names))
+    pred_df = pd.DataFrame(np.asarray(X_pred, dtype=float), columns=list(feature_names))
+    selected_train, selected_pred = _apply_feature_selection_policy(
+        train_df,
+        y_train,
+        pred_df,
+        policy=policy,
+    )
+    selected_names = [str(name) for name in selected_train.columns]
+    return (
+        selected_train.to_numpy(dtype=float),
+        selected_pred.to_numpy(dtype=float),
+        selected_names,
+    )
+
+
+def _record_post_factor_selection(
+    fit_state_sink: list[dict[str, object]] | None,
+    *,
+    candidate_feature_names: Sequence[str],
+    selected_feature_names: Sequence[str],
+    policy: str,
+) -> None:
+    if fit_state_sink is None:
+        return
+    for payload in reversed(fit_state_sink):
+        if str(payload.get("block", "")) != "pca_static_factors":
+            continue
+        payload["feature_selection_policy"] = str(policy)
+        payload["feature_selection_semantics"] = "select_after_factor"
+        payload["post_factor_candidate_feature_names"] = [str(name) for name in candidate_feature_names]
+        payload["selected_final_feature_names"] = [str(name) for name in selected_feature_names]
+        payload["selected_final_feature_count"] = int(len(selected_feature_names))
+        return
 
 
 def _apply_raw_panel_preprocessing(
@@ -2040,17 +2111,30 @@ def _apply_raw_panel_preprocessing(
     *,
     fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
+    feature_selection_policy = str(contract.feature_selection_policy)
+    feature_selection_semantics = _feature_selection_semantics(contract)
     X_train, X_pred = _apply_missing_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_outlier_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_additional_preprocessing(X_train, X_pred, contract)
     X_train, X_pred = _apply_scaling_policy(X_train, X_pred, contract)
-    X_train, X_pred = _apply_feature_selection(X_train, y_train, X_pred, contract)
+    if not (
+        contract.dimensionality_reduction_policy != "none"
+        and feature_selection_policy != "none"
+        and feature_selection_semantics == "select_after_factor"
+    ):
+        X_train, X_pred = _apply_feature_selection_policy(
+            X_train,
+            y_train,
+            X_pred,
+            policy=feature_selection_policy,
+        )
     X_train, X_pred = _apply_x_lag_creation(X_train, X_pred, contract)
     return _apply_dimensionality_reduction(
         X_train,
         X_pred,
         contract,
-        feature_selection_policy=str(contract.feature_selection_policy),
+        feature_selection_policy=feature_selection_policy,
+        feature_selection_semantics=feature_selection_semantics,
         fit_state_sink=fit_state_sink,
     )
 
@@ -2335,12 +2419,39 @@ def _factor_feature_names_from_fit_state(fit_state: Sequence[Mapping[str, object
     return None
 
 
+def _selected_final_feature_names_from_fit_state(
+    fit_state: Sequence[Mapping[str, object]],
+) -> list[str] | None:
+    for payload in reversed(tuple(fit_state)):
+        if str(payload.get("block", "")) != "pca_static_factors":
+            continue
+        names = payload.get("selected_final_feature_names")
+        if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
+            return [str(name) for name in names]
+    return None
+
+
+def _block_order_from_feature_names(feature_names: Sequence[str]) -> tuple[str, ...]:
+    order: list[str] = []
+    seen: set[str] = set()
+    for name in feature_names:
+        role = _raw_panel_feature_role(str(name))
+        if role in seen:
+            continue
+        seen.add(role)
+        order.append(role)
+    return tuple(order)
+
+
 def _raw_panel_representation_feature_names(
     frame: pd.DataFrame,
     target: str,
     recipe: RecipeSpec,
     fit_state: Sequence[Mapping[str, object]],
 ) -> list[str]:
+    selected_names = _selected_final_feature_names_from_fit_state(fit_state)
+    if selected_names is not None:
+        return selected_names
     factor_names = _factor_feature_names_from_fit_state(fit_state)
     if factor_names is None:
         return _raw_panel_feature_names(frame, target, recipe)
@@ -2377,6 +2488,9 @@ def _raw_panel_block_order(
     recipe: RecipeSpec,
     fit_state: Sequence[Mapping[str, object]],
 ) -> tuple[str, ...]:
+    selected_names = _selected_final_feature_names_from_fit_state(fit_state)
+    if selected_names is not None:
+        return _block_order_from_feature_names(selected_names)
     order: list[str] = []
     if _factor_feature_names_from_fit_state(fit_state) is not None:
         order.append("factor")
@@ -2428,6 +2542,8 @@ def _raw_panel_alignment(
                 continue
             if str(payload.get("feature_selection_semantics", "none")) != "none":
                 alignment["factor_selection_semantics"] = str(payload["feature_selection_semantics"])
+            if "selected_final_feature_names" in payload:
+                alignment["factor_selection_stage"] = "post_factor_final_Z"
             break
     return alignment
 
@@ -2469,6 +2585,15 @@ def _build_raw_panel_representation(
         factor_feature_block=_factor_feature_block(recipe),
         target_lag_block=_target_lag_feature_block(recipe),
         target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
+        target_lag_feature_names=(
+            _target_lag_feature_names(
+                recipe,
+                _target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
+                default_prefix="target_lag",
+            )
+            if _target_lag_feature_block(recipe) == "fixed_target_lags"
+            else None
+        ),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     feature_names = tuple(_raw_panel_representation_feature_names(frame, recipe.target, recipe, fit_state))
@@ -2507,6 +2632,7 @@ def _build_raw_panel_training_data(
     factor_feature_block: str | None = None,
     target_lag_block: str = "none",
     target_lag_order: int | None = None,
+    target_lag_feature_names: Sequence[str] | None = None,
     marx_max_lag: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
@@ -2634,6 +2760,48 @@ def _build_raw_panel_training_data(
     if spec is not None:
         det_component = spec.get("deterministic_components", "none")
         break_dates = spec.get("break_dates")
+    sb_dates = _resolve_structural_break_dates(spec)
+    feature_selection_policy = str(preprocessing_contract.feature_selection_policy)
+    feature_selection_semantics = _feature_selection_semantics(preprocessing_contract)
+    if feature_selection_policy != "none" and feature_selection_semantics == "select_after_factor":
+        if det_component and det_component != "none":
+            raise ExecutionError(
+                "feature_selection_semantics='select_after_factor' cannot yet be combined "
+                "with deterministic_components"
+            )
+        if sb_dates:
+            raise ExecutionError(
+                "feature_selection_semantics='select_after_factor' cannot yet be combined "
+                "with structural_break_segmentation"
+            )
+        candidate_feature_names = _factor_feature_names_from_fit_state(tuple(fit_state_sink or ()))
+        if candidate_feature_names is None:
+            raise ExecutionError(
+                "feature_selection_semantics='select_after_factor' requires "
+                "factor_feature_block='pca_static_factors' or an equivalent pca/static_factor bridge"
+            )
+        candidate_feature_names = list(candidate_feature_names)
+        if target_lag_train is not None and target_lag_pred is not None:
+            if target_lag_feature_names is not None:
+                candidate_feature_names.extend(str(name) for name in target_lag_feature_names)
+            else:
+                candidate_feature_names.extend(
+                    str(name).replace("__target_lag", "target_lag_")
+                    for name in target_lag_train.columns
+                )
+        X_train_arr, X_pred_arr, selected_feature_names = _apply_post_factor_feature_selection(
+            X_train_arr,
+            y_train,
+            X_pred_arr,
+            candidate_feature_names,
+            policy=feature_selection_policy,
+        )
+        _record_post_factor_selection(
+            fit_state_sink,
+            candidate_feature_names=candidate_feature_names,
+            selected_feature_names=selected_feature_names,
+            policy=feature_selection_policy,
+        )
     if det_component and det_component != "none":
         try:
             X_train_arr = _augment_deterministic_array(
@@ -2650,7 +2818,6 @@ def _build_raw_panel_training_data(
     # 1.5 structural_break_segmentation augmentation — reuses the break_dummies
     # path from 1.4 deterministic_components with dates resolved from the axis
     # value (pre_post_crisis / pre_post_covid presets or user_break_dates).
-    sb_dates = _resolve_structural_break_dates(spec)
     if sb_dates:
         try:
             X_train_arr = _augment_deterministic_array(

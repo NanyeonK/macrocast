@@ -82,8 +82,8 @@ that request `feature_builder` are normalized to `feature_representation`.
 | `scaling_scope` | `columnwise`, `global_train_only` | Other scopes are blocked by governance. |
 | `additional_preprocessing` | `none`, `hp_filter` | Moving average, EMA, and bandpass are registry-only. |
 | `x_lag_creation` | `no_x_lags`, `fixed_x_lags` | CV-selected and variable/category-specific lags are not wired. |
-| `dimensionality_reduction_policy` | `none`, `pca`, `static_factor` | Compatibility bridge for `factor_feature_block=pca_static_factors`; cannot be combined with feature selection. |
-| `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Applies to raw predictor blocks directly, and can also feed `factor_feature_block=pca_static_factors` through the explicit `select_before_factor` semantic. `select_after_factor` remains gated. |
+| `dimensionality_reduction_policy` | `none`, `pca`, `static_factor` | Compatibility bridge for `factor_feature_block=pca_static_factors`; the static-PCA slice supports explicit `select_before_factor` and `select_after_factor` semantics when feature selection is active. |
+| `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Applies to raw predictor blocks directly, and can also feed `factor_feature_block=pca_static_factors` through the explicit `select_before_factor` or `select_after_factor` semantics. |
 | `feature_grouping` | `none` | Non-`none` grouping is blocked in governance. |
 | `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff`, `average_growth_1_to_h`, `average_difference_1_to_h`, `average_log_growth_1_to_h` | Path-average target constructions have Layer 2 protocol metadata but remain registry-only until multi-step target execution is wired in Layer 3. |
 | `target_transform` | `level`, `difference`, `log`, `log_difference`, `growth_rate` | Applied to the target series before model execution, with limited inverse/evaluation semantics. |
@@ -412,8 +412,8 @@ t-code fields remain accepted for compatibility, and supported Layer 2 runtime
 paths now expose explicit block/runtime provenance.
 
 Next implementation targets should be semantic feature-composer tasks rather
-than bridge cleanup: `select_after_factor` and broader factor/selection
-composition, MARX composition beyond basis replacement, MAF/custom rotations,
-custom callable contracts, target-side normalization/evaluation-scale
-expansion, and public sweep governance. The detailed Layer 2 x Layer 3
-free-sweep contract is in `layer2_layer3_sweep_contract.md`.
+than bridge cleanup: broader factor/selection composition beyond static PCA,
+MARX composition beyond basis replacement, MAF/custom rotations, custom
+callable contracts, target-side normalization/evaluation-scale expansion, and
+public sweep governance. The detailed Layer 2 x Layer 3 free-sweep contract is
+in `layer2_layer3_sweep_contract.md`.

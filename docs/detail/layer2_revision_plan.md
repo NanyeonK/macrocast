@@ -446,7 +446,7 @@ For feature-block patches, also test:
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
 | Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; fixed target-plus-X composition is executable in raw-panel direct runtimes. |
-| Factor/selection blocks | done for static PCA + select-before-factor | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; `feature_selection_policy` can compose as `select_before_factor`, while `select_after_factor` remains gated. |
+| Factor/selection blocks | done for static PCA + explicit before/after semantics | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; `feature_selection_policy` can compose as `select_before_factor` or `select_after_factor` in the supported static-PCA slice. |
 | Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
 | Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
 | Representation handoff unification | done for supported runtime slices | Supported raw-panel and autoregressive target-lag runtimes now emit a canonical `Layer2Representation` bundle with `Z_train`, `y_train`, `Z_pred`, feature names, block roles, alignment, fit-state provenance, and leakage metadata before Layer 3 fit/predict. |
@@ -461,7 +461,7 @@ aliases remain intentionally accepted for old recipes and old manifests.
 
 The remaining items in this file are not cleanup blockers:
 
-- `select_after_factor` and broader factor/selection composition;
+- broader factor/selection composition beyond static PCA;
 - MARX with additional X-lag/temporal/factor composition;
 - MAF/custom rotations;
 - custom temporal/feature-block callable contracts;

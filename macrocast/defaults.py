@@ -14,6 +14,7 @@ DEFAULT_PREPROCESSING_AXES: dict[str, str] = {
     "scaling_policy": "none",
     "dimensionality_reduction_policy": "none",
     "feature_selection_policy": "none",
+    "feature_selection_semantics": "select_before_factor",
     "preprocess_fit_scope": "not_applicable",
     "inverse_transform_policy": "none",
     "evaluation_scale": "raw_level",

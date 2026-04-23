@@ -447,6 +447,7 @@ def _extra_preprocessing_requested(selection_map: dict[str, AxisSelection]) -> b
         "scaling_policy": "none",
         "dimensionality_reduction_policy": "none",
         "feature_selection_policy": "none",
+        "feature_selection_semantics": "select_before_factor",
         "additional_preprocessing": "none",
         "x_lag_creation": "no_x_lags",
         "x_lag_feature_block": "none",
@@ -535,6 +536,7 @@ def _build_preprocess_contract(selection_map: dict[str, AxisSelection]) -> Any:
         "additional_preprocessing": "none",
         "x_lag_creation": _x_lag_creation_value(selection_map),
         "feature_grouping": "none",
+        "feature_selection_semantics": "select_before_factor",
     }
     missing = sorted(axis for axis in required if axis not in selection_map)
     if missing:
@@ -1530,16 +1532,16 @@ def _factor_block_from_bridge(
         ),
         "feature_selection_interaction": {
             "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
-            "supported_semantics": ["select_before_factor"],
+            "supported_semantics": ["select_before_factor", "select_after_factor"],
             "active_semantic": (
-                "select_before_factor"
+                getattr(preprocess_contract, "feature_selection_semantics", "select_before_factor")
                 if block == "pca_static_factors" and getattr(preprocess_contract, "feature_selection_policy", "none") != "none"
                 else "none"
             ),
             "rule": (
-                "when feature_selection_policy is active with pca_static_factors, the runtime first selects raw predictor X "
-                "within each train window and then fits the factor block on the selected panel; "
-                "select_after_factor remains gated"
+                "when feature_selection_policy is active with pca_static_factors, the runtime supports "
+                "select_before_factor (select raw predictor X, then fit factors) and "
+                "select_after_factor (fit factors, then select among final Z columns)"
             ),
         },
     }
@@ -2123,9 +2125,16 @@ def _execution_status(
             )
         dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
         feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")
+        feature_selection_semantics = getattr(
+            preprocess_contract,
+            "feature_selection_semantics",
+            "select_before_factor",
+        )
         explicit_factor_block = _factor_feature_block_value(selection_map)
         factor_bridge_active = feature_builder in _FACTOR_BRIDGE_BUILDERS or dimred in _FACTOR_DIMRED_BRIDGES
         factor_block_active = explicit_factor_block == "pca_static_factors" or (explicit_factor_block is None and factor_bridge_active)
+        deterministic_components = _selection_value(selection_map, "deterministic_components", default="none")
+        structural_break_segmentation = _selection_value(selection_map, "structural_break_segmentation", default="none")
         if temporal_block_active and (factor_block_active or dimred != "none"):
             not_supported.append(
                 f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
@@ -2143,8 +2152,31 @@ def _execution_status(
             )
         if feature_selection != "none" and explicit_factor_block not in {None, "none", "pca_static_factors"}:
             not_supported.append(
-                "feature_selection_policy is operational only for select_before_factor composition "
-                "with factor_feature_block='pca_static_factors'; other factor composers remain gated"
+                "feature_selection_policy is operational with factor blocks only for "
+                "factor_feature_block='pca_static_factors'; other factor composers remain gated"
+            )
+        if feature_selection != "none" and feature_selection_semantics == "select_after_factor" and not factor_block_active:
+            not_supported.append(
+                "feature_selection_semantics='select_after_factor' requires "
+                "factor_feature_block='pca_static_factors' or an equivalent pca/static_factor bridge"
+            )
+        if (
+            feature_selection != "none"
+            and feature_selection_semantics == "select_after_factor"
+            and deterministic_components != "none"
+        ):
+            not_supported.append(
+                "feature_selection_semantics='select_after_factor' cannot yet be combined with "
+                "deterministic_components because those columns are appended after post-factor selection"
+            )
+        if (
+            feature_selection != "none"
+            and feature_selection_semantics == "select_after_factor"
+            and structural_break_segmentation != "none"
+        ):
+            not_supported.append(
+                "feature_selection_semantics='select_after_factor' cannot yet be combined with "
+                "structural_break_segmentation because break dummies are appended after post-factor selection"
             )
 
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")

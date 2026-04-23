@@ -280,7 +280,7 @@ def test_build_preprocess_contract_pca_path_is_operational() -> None:
     check_preprocess_governance(contract)
 
 
-def test_build_preprocess_contract_rejects_combined_dimred_and_feature_selection() -> None:
+def test_build_preprocess_contract_accepts_combined_dimred_and_feature_selection() -> None:
     contract = build_preprocess_contract(
         target_transform_policy="raw_level",
         x_transform_policy="raw_level",
@@ -297,4 +297,26 @@ def test_build_preprocess_contract_rejects_combined_dimred_and_feature_selection
         inverse_transform_policy="none",
         evaluation_scale="raw_level",
     )
+    assert is_operational_preprocess_contract(contract) is True
+
+
+def test_build_preprocess_contract_accepts_select_after_factor_semantics() -> None:
+    contract = build_preprocess_contract(
+        target_transform_policy="raw_level",
+        x_transform_policy="raw_level",
+        tcode_policy="extra_preprocess_without_tcode",
+        target_missing_policy="none",
+        x_missing_policy="mean_impute",
+        target_outlier_policy="none",
+        x_outlier_policy="none",
+        scaling_policy="standard",
+        dimensionality_reduction_policy="pca",
+        feature_selection_policy="lasso_select",
+        preprocess_order="extra_only",
+        preprocess_fit_scope="train_only",
+        inverse_transform_policy="none",
+        evaluation_scale="raw_level",
+        feature_selection_semantics="select_after_factor",
+    )
+    assert contract.feature_selection_semantics == "select_after_factor"
     assert is_operational_preprocess_contract(contract) is True

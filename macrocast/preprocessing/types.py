@@ -183,6 +183,11 @@ FeatureGrouping = Literal[
     "factor_group",
 ]
 
+FeatureSelectionSemantics = Literal[
+    "select_before_factor",
+    "select_after_factor",
+]
+
 RecipeMode = Literal[
     "fixed_recipe",
     "recipe_grid",
@@ -208,6 +213,7 @@ class PreprocessContract:
     preprocess_fit_scope: str
     inverse_transform_policy: str
     evaluation_scale: str
+    feature_selection_semantics: str = "select_before_factor"
     representation_policy: str = "raw_only"
     tcode_application_scope: str = "apply_tcode_to_none"
     target_transform: str = "level"

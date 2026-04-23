@@ -81,6 +81,10 @@ _FEATURE_SELECTION = {
     "mutual_information_screen",
     "custom",
 }
+_FEATURE_SELECTION_SEMANTICS = {
+    "select_before_factor",
+    "select_after_factor",
+}
 _ORDER = {
     "none",
     "tcode_only",
@@ -174,6 +178,7 @@ def build_preprocess_contract(
     preprocess_fit_scope: str,
     inverse_transform_policy: str,
     evaluation_scale: str,
+    feature_selection_semantics: str = "select_before_factor",
     representation_policy: str = "raw_only",
     tcode_application_scope: str = "apply_tcode_to_none",
     target_transform: str = "level",
@@ -195,6 +200,7 @@ def build_preprocess_contract(
         "scaling_policy": _SCALING,
         "dimensionality_reduction_policy": _DIMRED,
         "feature_selection_policy": _FEATURE_SELECTION,
+        "feature_selection_semantics": _FEATURE_SELECTION_SEMANTICS,
         "preprocess_order": _ORDER,
         "preprocess_fit_scope": _FIT_SCOPE,
         "inverse_transform_policy": _INVERSE,
@@ -220,6 +226,7 @@ def build_preprocess_contract(
         "scaling_policy": scaling_policy,
         "dimensionality_reduction_policy": dimensionality_reduction_policy,
         "feature_selection_policy": feature_selection_policy,
+        "feature_selection_semantics": feature_selection_semantics,
         "preprocess_order": preprocess_order,
         "preprocess_fit_scope": preprocess_fit_scope,
         "inverse_transform_policy": inverse_transform_policy,
@@ -333,6 +340,8 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
     if contract.dimensionality_reduction_policy not in allowed_dimred:
         return False
     if contract.feature_selection_policy not in allowed_feature_selection:
+        return False
+    if getattr(contract, "feature_selection_semantics", "select_before_factor") not in _FEATURE_SELECTION_SEMANTICS:
         return False
     return True
 
@@ -494,6 +503,7 @@ def preprocess_to_dict(contract: PreprocessContract) -> dict[str, str]:
         "scaling_policy": contract.scaling_policy,
         "dimensionality_reduction_policy": contract.dimensionality_reduction_policy,
         "feature_selection_policy": contract.feature_selection_policy,
+        "feature_selection_semantics": contract.feature_selection_semantics,
         "preprocess_order": contract.preprocess_order,
         "preprocess_fit_scope": contract.preprocess_fit_scope,
         "inverse_transform_policy": contract.inverse_transform_policy,

@@ -171,13 +171,15 @@ Operational support is currently narrow:
   start. Source lag columns must not be appended a second time when the MARX
   basis is active. MARX currently cannot compose with external X-lag, temporal,
   or factor blocks until the explicit block composer exists.
-- Feature selection is now operational for one explicit factor-composer
-  semantic: `select_before_factor`. When `feature_selection_policy != none`
-  and `factor_feature_block=pca_static_factors` (or the equivalent
-  `dimensionality_reduction_policy` bridge) the runtime first selects raw
-  predictor columns within each train window and then estimates the static
-  factor block on the selected panel. `select_after_factor` remains gated until
-  the package exposes a distinct composer contract.
+- Feature selection is now operational for two explicit static-factor composer
+  semantics when `factor_feature_block=pca_static_factors` (or the equivalent
+  `dimensionality_reduction_policy` bridge) is active:
+  `select_before_factor` first selects raw predictor columns within each train
+  window and then estimates the static factor block on the selected panel;
+  `select_after_factor` first estimates the static factor block, optionally
+  appends target lags in the final `Z`, and then selects among the composed
+  final columns. Broader factor/selection composition beyond static PCA still
+  needs an explicit composer contract.
 
 ## Target Representation Grammar
 
@@ -269,11 +271,11 @@ slices:
    contexts, and decomposition metadata now use block-derived feature runtime
    provenance for supported slices.
 
-Remaining work is semantic feature-composer work, not bridge cleanup:
-`select_after_factor` and broader factor/selection composition, MARX with
-additional X-lag/temporal/factor composition, MAF/custom rotations, custom
-callable contracts, target-side normalization/evaluation-scale expansion, and
-public sweep governance.
+Remaining work is semantic feature-composer work, not bridge cleanup: broader
+factor/selection composition beyond static PCA, MARX with additional
+X-lag/temporal/factor composition, MAF/custom rotations, custom callable
+contracts, target-side normalization/evaluation-scale expansion, and public
+sweep governance.
 
 The detailed target contract for freely sweeping Layer 2 representations with
 Layer 3 forecast generators is documented in

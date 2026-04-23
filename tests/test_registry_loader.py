@@ -5,13 +5,27 @@ from macrocast.registry.base import AxisDefinition, BaseRegistryEntry, EnumRegis
 from macrocast.registry.types import AxisRegistryEntry
 
 
-EXPECTED_AXIS_COUNT = 138
+EXPECTED_AXIS_COUNT = 139
 
 
 def test_registry_loader_discovers_existing_axes() -> None:
     registry = get_axis_registry()
     assert len(registry) == EXPECTED_AXIS_COUNT
-    assert {"research_design", "dataset", "information_set_type", "target_structure", "model_family", "importance_method", "source_adapter", "relative_metrics", "direction_metrics", "regime_definition", "custom_preprocessor", "target_transformer"}.issubset(registry)
+    assert {
+        "research_design",
+        "dataset",
+        "information_set_type",
+        "target_structure",
+        "model_family",
+        "importance_method",
+        "source_adapter",
+        "relative_metrics",
+        "direction_metrics",
+        "regime_definition",
+        "custom_preprocessor",
+        "target_transformer",
+        "feature_selection_semantics",
+    }.issubset(registry)
     assert "task" not in registry
     assert "dataset_source" not in registry
 
@@ -210,6 +224,7 @@ def test_registry_loader_discovers_stage2_governance_axes() -> None:
         "additional_preprocessing",
         "x_lag_creation",
         "feature_grouping",
+        "feature_selection_semantics",
         "feature_builder",
         "predictor_family",
         "data_richness_mode",
@@ -269,6 +284,7 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     scaling = get_axis_registry_entry("scaling_policy")
     dimred = get_axis_registry_entry("dimensionality_reduction_policy")
     feature_selection = get_axis_registry_entry("feature_selection_policy")
+    feature_selection_semantics = get_axis_registry_entry("feature_selection_semantics")
     tcode_policy = get_axis_registry_entry("tcode_policy")
     preprocess_order = get_axis_registry_entry("preprocess_order")
     assert x_missing.current_status["mean_impute"] == "operational"
@@ -280,6 +296,8 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     assert dimred.current_status["static_factor"] == "operational"
     assert feature_selection.current_status["correlation_filter"] == "operational"
     assert feature_selection.current_status["lasso_select"] == "operational"
+    assert feature_selection_semantics.current_status["select_before_factor"] == "operational"
+    assert feature_selection_semantics.current_status["select_after_factor"] == "operational"
     assert tcode_policy.current_status["tcode_then_extra_preprocess"] == "operational"
     assert preprocess_order.current_status["tcode_then_extra"] == "operational"
     target_construction = get_axis_registry_entry("horizon_target_construction")

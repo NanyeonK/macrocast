@@ -195,10 +195,13 @@ reserves the second:
 - `select_after_factor`: estimate factor block, then select among final `Z`
   columns.
 
-The current runtime opens only `select_before_factor` for
+The current runtime opens both semantics for
 `factor_feature_block=pca_static_factors` and the equivalent
-`dimensionality_reduction_policy` bridge. `select_after_factor` remains gated
-until Layer 2 exposes a distinct composer contract.
+`dimensionality_reduction_policy` bridge. `select_before_factor` performs
+selection on the raw X-side panel before PCA. `select_after_factor` performs
+selection on the final composed `Z` after PCA and any appended target-lag
+block, but it currently excludes post-composer deterministic augmentations such
+as deterministic components and structural-break segmentation.
 
 ### Level Blocks
 
@@ -295,7 +298,7 @@ These are the next semantic composer tasks:
 
 | Area | Why gated |
 |---|---|
-| Factor plus feature selection | `select_before_factor` is operational for `pca_static_factors`; `select_after_factor` still needs a distinct composer contract. |
+| Broader factor plus feature selection | Static PCA supports `select_before_factor` and `select_after_factor`. Non-PCA factor composers and richer factor/selection algebra still need explicit contracts. |
 | MARX plus X-lag/temporal/factor blocks | Need append versus replacement semantics and stable feature naming. |
 | MAF rotation | Need factor-to-rotation composer and leakage metadata. |
 | Custom temporal/rotation blocks | Need block-local callable contract. |
@@ -325,7 +328,7 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
    models. This is the current patch.
 4. Add feature-name and block-role artifacts for every `Z` column.
 5. Add full recipe examples for Layer 2 x Layer 3 grids.
-6. Add `select_after_factor` and broader factor/selection composition semantics.
+6. Add broader factor/selection composition semantics beyond static PCA.
 7. Add MARX composition modes beyond basis replacement.
 8. Add custom block callable contracts.
 9. Expose a safe simple-API representation sweep after the full-route contract
