@@ -75,6 +75,67 @@ def _layer2_level_block_recipe(
     }
 
 
+def _layer2_temporal_block_recipe(
+    *,
+    feature_builder: str = "raw_feature_panel",
+    model_family: str = "ridge",
+    temporal_feature_block: str = "moving_average_features",
+    x_lag_feature_block: str | None = None,
+) -> dict:
+    preprocessing_axes = {
+        "target_transform_policy": "raw_level",
+        "x_transform_policy": "raw_level",
+        "tcode_policy": "raw_only",
+        "target_missing_policy": "none",
+        "x_missing_policy": "none",
+        "target_outlier_policy": "none",
+        "x_outlier_policy": "none",
+        "scaling_policy": "none",
+        "dimensionality_reduction_policy": "none",
+        "feature_selection_policy": "none",
+        "preprocess_order": "none",
+        "preprocess_fit_scope": "not_applicable",
+        "inverse_transform_policy": "none",
+        "evaluation_scale": "raw_level",
+        "temporal_feature_block": temporal_feature_block,
+    }
+    if x_lag_feature_block is not None:
+        preprocessing_axes["tcode_policy"] = "extra_preprocess_without_tcode"
+        preprocessing_axes["preprocess_order"] = "extra_only"
+        preprocessing_axes["preprocess_fit_scope"] = "train_only"
+        preprocessing_axes["x_lag_feature_block"] = x_lag_feature_block
+    return {
+        "recipe_id": f"l2-temporal-block-{feature_builder}",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                },
+            },
+            "2_preprocessing": {"fixed_axes": preprocessing_axes},
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": feature_builder,
+                    "model_family": model_family,
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+
+
 def test_compile_minimal_importance_recipe_is_executable_for_ridge(tmp_path: Path) -> None:
     recipe = {
         "recipe_id": "importance-ridge-rolling",
@@ -1467,6 +1528,40 @@ def test_layer2_explicit_level_block_rejects_contemporaneous_oracle_alignment() 
     )
     assert result.compiled.execution_status == "not_supported"
     assert any("requires contemporaneous_x_rule='forbid_contemporaneous'" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_explicit_temporal_block_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(_layer2_temporal_block_recipe())
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["temporal_feature_block"]
+    assert block["value"] == "moving_average_features"
+    assert block["source_axis"] == "temporal_feature_block"
+    assert block["window"] == 3
+    assert block["feature_name_pattern"] == "{predictor}_ma3"
+    assert block["runtime_feature_name_pattern"] == "{predictor}__ma3"
+    assert block["runtime_bridge"] == {"raw_panel_temporal_features": "moving_average_features"}
+    assert block["alignment"] == {
+        "train_row_t_uses": "X_{t}, X_{t-1}, X_{t-2}",
+        "prediction_origin_uses": "X_{origin}, X_{origin-1}, X_{origin-2}",
+        "lookahead": "forbidden",
+    }
+
+
+def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("temporal_feature_block='moving_average_features' currently lowers only" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_explicit_temporal_block_rejects_x_lag_composition() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(x_lag_feature_block="fixed_x_lags")
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("cannot yet be combined with x_lag_feature_block" in warning for warning in result.compiled.warnings)
 
 
 def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -> None:

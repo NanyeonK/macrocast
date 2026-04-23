@@ -1206,6 +1206,41 @@ def _level_block_from_selection(selection_map: dict[str, AxisSelection]) -> dict
     return {"value": "none", "source": "not_wired"}
 
 
+def _temporal_feature_block_value(selection_map: dict[str, AxisSelection]) -> str | None:
+    return (
+        _selection_value(selection_map, "temporal_feature_block")
+        if "temporal_feature_block" in selection_map
+        else None
+    )
+
+
+def _temporal_block_from_selection(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
+    explicit_block = _temporal_feature_block_value(selection_map)
+    block = explicit_block or "none"
+    if block == "moving_average_features":
+        return {
+            "value": "moving_average_features",
+            "source_axis": "temporal_feature_block",
+            "source_value": "moving_average_features",
+            "window": 3,
+            "feature_name_pattern": "{predictor}_ma3",
+            "runtime_feature_name_pattern": "{predictor}__ma3",
+            "alignment": {
+                "train_row_t_uses": "X_{t}, X_{t-1}, X_{t-2}",
+                "prediction_origin_uses": "X_{origin}, X_{origin-1}, X_{origin-2}",
+                "lookahead": "forbidden",
+            },
+            "runtime_bridge": {"raw_panel_temporal_features": "moving_average_features"},
+        }
+    if explicit_block is not None:
+        return {
+            "value": block,
+            "source_axis": "temporal_feature_block",
+            "source_value": explicit_block,
+        }
+    return {"value": "none", "source": "not_wired"}
+
+
 def _factor_block_from_bridge(
     *,
     feature_builder: str,
@@ -1409,7 +1444,7 @@ def _layer2_representation_spec(
             ),
             "level_feature_block": _level_block_from_selection(selection_map),
             "rotation_feature_block": {"value": "none", "source": "not_wired"},
-            "temporal_feature_block": {"value": "none", "source": "not_wired"},
+            "temporal_feature_block": _temporal_block_from_selection(selection_map),
             "feature_block_combination": _feature_block_combination_from_bridge(str(feature_builder), str(x_lag_creation)),
         },
         "frame_conditioning": {
@@ -1694,11 +1729,28 @@ def _execution_status(
                 "level_feature_block='target_level_addback' requires "
                 "contemporaneous_x_rule='forbid_contemporaneous' so the added target level is observed at the forecast origin"
             )
+        temporal_feature_block = _selection_value(selection_map, "temporal_feature_block", default="none")
+        temporal_block_active = temporal_feature_block == "moving_average_features"
+        if temporal_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
+            not_supported.append(
+                "temporal_feature_block='moving_average_features' currently lowers only through "
+                "feature_builder in {'raw_feature_panel', 'raw_X_only'}"
+            )
+        if temporal_block_active and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags":
+            not_supported.append(
+                "temporal_feature_block='moving_average_features' cannot yet be combined with "
+                "x_lag_feature_block or x_lag_creation; explicit block composition is not implemented"
+            )
         dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
         feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")
         explicit_factor_block = _factor_feature_block_value(selection_map)
         factor_bridge_active = feature_builder in _FACTOR_BRIDGE_BUILDERS or dimred in _FACTOR_DIMRED_BRIDGES
         factor_block_active = explicit_factor_block == "pca_static_factors" or (explicit_factor_block is None and factor_bridge_active)
+        if temporal_block_active and (factor_block_active or dimred != "none"):
+            not_supported.append(
+                "temporal_feature_block='moving_average_features' cannot yet be combined with "
+                "factor_feature_block or dimensionality_reduction_policy; temporal-to-factor composition requires a block composer"
+            )
         if explicit_factor_block == "none" and factor_bridge_active:
             not_supported.append(
                 "factor_feature_block='none' conflicts with an active factor runtime bridge "

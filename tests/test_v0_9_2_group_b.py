@@ -100,6 +100,31 @@ def test_raw_panel_target_level_addback_uses_origin_target_history():
     assert X_pred.tolist() == [[4.0, 13.0]]
 
 
+def test_raw_panel_moving_average_features_use_trailing_origin_history():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        }
+    )
+    c = _contract()
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=c,
+        predictor_family="all_macro_vars",
+        temporal_feature_block="moving_average_features",
+    )
+
+    assert X_train.tolist() == [[1.0, 1.0], [2.0, 1.5], [3.0, 2.0], [4.0, 3.0]]
+    assert y_train.tolist() == [11.0, 12.0, 13.0, 14.0]
+    assert X_pred.tolist() == [[5.0, 4.0]]
+
+
 def test_no_x_lags_is_identity():
     X = pd.DataFrame({"a": [1.0, 2.0]})
     Xp = pd.DataFrame({"a": [3.0]})

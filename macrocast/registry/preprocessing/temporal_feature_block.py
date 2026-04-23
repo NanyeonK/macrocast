@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="none",
             description="no temporal feature block",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
             id="moving_average_features",
             description="moving average features",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

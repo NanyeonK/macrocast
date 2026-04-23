@@ -301,9 +301,13 @@ Current lowered slice:
   feature builders. It appends the observed target level at the feature row date
   and at the prediction origin, and rejects contemporaneous-oracle X alignment
   because that would require target-date information at prediction time.
+- `temporal_feature_block=moving_average_features` is executable for raw-panel
+  feature builders. It appends trailing 3-period moving averages of the base
+  predictor columns using only information available through each row date /
+  prediction origin, and rejects X-lag/factor bridge composition for now.
 - `level_feature_block=selected_level_addbacks`, `level_growth_pairs`,
-  `rotation_feature_block=*`, and `temporal_feature_block=*` remain future
-  block-composition work.
+  `rotation_feature_block=*`, and the remaining `temporal_feature_block=*`
+  values remain future block-composition work.
 
 Acceptance:
 

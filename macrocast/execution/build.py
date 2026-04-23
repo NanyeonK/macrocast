@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextvars
 import hashlib
 import importlib.util
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 import json
 import math
@@ -992,6 +992,17 @@ def _level_feature_block(recipe: RecipeSpec | None) -> str:
     return "none"
 
 
+def _temporal_feature_block(recipe: RecipeSpec | None) -> str:
+    if recipe is None:
+        return "none"
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    blocks = dict(spec.get("feature_blocks", {}) or {})
+    block = blocks.get("temporal_feature_block", {})
+    if isinstance(block, dict):
+        return str(block.get("value", "none"))
+    return "none"
+
+
 def _recipe_targets(recipe: RecipeSpec) -> tuple[str, ...]:
     return recipe.targets if recipe.targets else (recipe.target,)
 
@@ -1618,6 +1629,7 @@ def _apply_raw_panel_preprocessing(
 
 _TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
 _TARGET_LEVEL_ADD_BACK_FEATURE_NAME = "target_level_origin"
+_MOVING_AVERAGE_FEATURE_WINDOW = 3
 
 
 def _apply_level_feature_block(
@@ -1639,6 +1651,39 @@ def _apply_level_feature_block(
     return X_train, X_pred
 
 
+def _moving_average_feature_name(column: str) -> str:
+    return f"{column}__ma{_MOVING_AVERAGE_FEATURE_WINDOW}"
+
+
+def _moving_average_public_feature_name(column: str) -> str:
+    return f"{column}_ma{_MOVING_AVERAGE_FEATURE_WINDOW}"
+
+
+def _apply_temporal_feature_block(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    frame: pd.DataFrame,
+    predictors: Sequence[str],
+    *,
+    start_idx: int,
+    pred_idx: int,
+    temporal_feature_block: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if temporal_feature_block == "none":
+        return X_train, X_pred
+    if temporal_feature_block != "moving_average_features":
+        raise ExecutionError(f"unsupported temporal_feature_block={temporal_feature_block!r}")
+    source = frame[list(predictors)].iloc[start_idx : pred_idx + 1].astype(float).copy()
+    rolling = source.rolling(window=_MOVING_AVERAGE_FEATURE_WINDOW, min_periods=1).mean()
+    X_train = X_train.copy()
+    X_pred = X_pred.copy()
+    for column in predictors:
+        feature_name = _moving_average_feature_name(str(column))
+        X_train[feature_name] = rolling.loc[X_train.index, column].to_numpy(dtype=float)
+        X_pred[feature_name] = rolling.loc[X_pred.index, column].to_numpy(dtype=float)
+    return X_train, X_pred
+
+
 def _raw_panel_feature_names(
     frame: pd.DataFrame,
     target: str,
@@ -1650,6 +1695,8 @@ def _raw_panel_feature_names(
         predictor_family=_predictor_family(recipe),
         spec=dict(recipe.data_task_spec),
     )
+    if _temporal_feature_block(recipe) == "moving_average_features":
+        names.extend(_moving_average_public_feature_name(str(column)) for column in tuple(names))
     if _level_feature_block(recipe) == "target_level_addback":
         names.append(_TARGET_LEVEL_ADD_BACK_FEATURE_NAME)
     return names
@@ -1668,6 +1715,7 @@ def _build_raw_panel_training_data(
     target_window: pd.Series | None = None,
     fit_state_sink: list[dict[str, object]] | None = None,
     level_feature_block: str = "none",
+    temporal_feature_block: str = "none",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
@@ -1711,6 +1759,15 @@ def _build_raw_panel_training_data(
         X_train = lagged_source.loc[X_train.index].copy()
         X_pred = lagged_source.loc[X_pred.index].copy()
         preprocessing_contract = replace(contract, x_lag_creation="no_x_lags")
+    X_train, X_pred = _apply_temporal_feature_block(
+        X_train,
+        X_pred,
+        frame,
+        predictors,
+        start_idx=start_idx,
+        pred_idx=pred_idx,
+        temporal_feature_block=temporal_feature_block,
+    )
     X_train, X_pred = _apply_level_feature_block(
         X_train,
         X_pred,
@@ -2210,6 +2267,7 @@ def _fit_raw_panel_model(
         raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=target_window,
         fit_state_sink=fit_state, level_feature_block=_level_feature_block(recipe),
+        temporal_feature_block=_temporal_feature_block(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -2238,6 +2296,7 @@ def _run_custom_raw_panel_executor(
         raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=train,
         level_feature_block=_level_feature_block(recipe),
+        temporal_feature_block=_temporal_feature_block(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -3721,6 +3780,7 @@ def _compute_minimal_importance(
         predictor_family=_predictor_family(recipe),
         spec=dict(recipe.data_task_spec),
         level_feature_block=_level_feature_block(recipe),
+        temporal_feature_block=_temporal_feature_block(recipe),
     )
 
     if model_family == "ridge":
@@ -3770,6 +3830,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             predictor_family=_predictor_family(recipe),
             spec=dict(recipe.data_task_spec),
             level_feature_block=_level_feature_block(recipe),
+            temporal_feature_block=_temporal_feature_block(recipe),
         )
         return feature_names, X_train, y_train, X_pred
     if feature_builder == "autoreg_lagged_target":
