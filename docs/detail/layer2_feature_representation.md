@@ -106,8 +106,10 @@ Operational support is currently narrow:
   trailing 3-period moving-average `{predictor}_ma3`, moment
   `{predictor}_mean3` / `{predictor}_var3`, local temporal factor
   `local_temporal_factor_mean3` / `local_temporal_factor_dispersion3`, or
-  volatility `{predictor}_vol3` features and forbid composition with X-lag or
-  factor bridges until the explicit block composer exists. Local temporal
+  volatility `{predictor}_vol3` features. These deterministic append blocks can
+  compose with fixed predictor lags and `moving_average_rotation` in raw-panel
+  builders; factor bridges remain gated until the explicit block composer
+  defines append-to-factors vs factor-of-augmented-panel semantics. Local temporal
   factors are deterministic row-wise cross-sectional summaries of the active
   predictor panel, smoothed over the trailing 3 feature rows; they are not
   learned PCA/static factors.
@@ -122,7 +124,8 @@ Operational support is currently narrow:
   no-rotation provenance. `moving_average_rotation` appends deterministic
   trailing 3- and 6-period moving-average rotations of each active predictor as
   `{predictor}_rotma3` and `{predictor}_rotma6`, using only row-date /
-  prediction-origin history. `marx_rotation` requires
+  prediction-origin history, and can compose with fixed predictor lags and
+  deterministic temporal append blocks. `marx_rotation` requires
   `leaf_config.marx_max_lag`, builds the cumulative lower-triangular
   lag-polynomial rotation, and replaces the source lag-polynomial basis in
   final `Z`.

@@ -1553,6 +1553,26 @@ def _fixed_x_lag_frame(X: pd.DataFrame, *, lag_orders: tuple[int, ...] = (1,)) -
     return pd.concat([X] + lag_cols, axis=1).fillna(0.0)
 
 
+def _fixed_x_lag_public_feature_names(columns: Sequence[str], *, lag_orders: tuple[int, ...] = (1,)) -> list[str]:
+    return [f"{column}_lag_{lag}" for column in columns for lag in lag_orders]
+
+
+def _x_lag_creation_for_feature_names(recipe: RecipeSpec) -> str:
+    contract = getattr(recipe, "preprocess_contract", None)
+    if contract is not None:
+        return str(getattr(contract, "x_lag_creation", "no_x_lags"))
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    blocks = dict(spec.get("feature_blocks", {}) or {})
+    block = blocks.get("x_lag_feature_block", {})
+    if isinstance(block, dict):
+        runtime_bridge = block.get("runtime_bridge", {})
+        if isinstance(runtime_bridge, dict) and runtime_bridge.get("x_lag_creation") is not None:
+            return str(runtime_bridge["x_lag_creation"])
+        if block.get("value") == "fixed_x_lags":
+            return "fixed_x_lags"
+    return "no_x_lags"
+
+
 def _apply_scaling_policy(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
@@ -1921,6 +1941,8 @@ def _raw_panel_feature_names(
         spec=dict(recipe.data_task_spec),
     )
     base_names = tuple(names)
+    if _x_lag_creation_for_feature_names(recipe) == "fixed_x_lags":
+        names.extend(_fixed_x_lag_public_feature_names(base_names))
     temporal_feature_block = _temporal_feature_block(recipe)
     if temporal_feature_block == "moving_average_features":
         names.extend(_moving_average_public_feature_name(str(column)) for column in base_names)

@@ -1859,12 +1859,20 @@ def test_layer2_explicit_rotation_block_requires_raw_panel_bridge() -> None:
     assert any("rotation_feature_block='moving_average_rotation' currently lowers only" in warning for warning in result.compiled.warnings)
 
 
-def test_layer2_explicit_rotation_block_rejects_temporal_composition() -> None:
+def test_layer2_explicit_moving_average_rotation_allows_temporal_composition() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(rotation_feature_block="moving_average_rotation")
     )
-    assert result.compiled.execution_status == "not_supported"
-    assert any("cannot yet be combined with temporal_feature_block" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["temporal_feature_block"]["value"] == "moving_average_features"
+    assert blocks["rotation_feature_block"]["value"] == "moving_average_rotation"
+    assert blocks["temporal_feature_block"]["runtime_bridge"] == {
+        "raw_panel_temporal_features": "moving_average_features"
+    }
+    assert blocks["rotation_feature_block"]["runtime_bridge"] == {
+        "raw_panel_rotation_features": "moving_average_rotation"
+    }
 
 
 def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
@@ -1875,12 +1883,18 @@ def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
     assert any("temporal_feature_block='moving_average_features' currently lowers only" in warning for warning in result.compiled.warnings)
 
 
-def test_layer2_explicit_temporal_block_rejects_x_lag_composition() -> None:
+def test_layer2_explicit_temporal_block_allows_fixed_x_lag_composition() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(x_lag_feature_block="fixed_x_lags")
     )
-    assert result.compiled.execution_status == "not_supported"
-    assert any("cannot yet be combined with x_lag_feature_block" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["x_lag_feature_block"]["value"] == "fixed_x_lags"
+    assert blocks["x_lag_feature_block"]["runtime_bridge"] == {"x_lag_creation": "fixed_x_lags"}
+    assert blocks["temporal_feature_block"]["value"] == "moving_average_features"
+    assert blocks["temporal_feature_block"]["runtime_bridge"] == {
+        "raw_panel_temporal_features": "moving_average_features"
+    }
 
 
 def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -> None:

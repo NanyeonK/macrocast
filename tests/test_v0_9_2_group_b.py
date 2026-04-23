@@ -16,6 +16,7 @@ from macrocast.execution.build import (
     _apply_tcode_preprocessing,
     _apply_x_lag_creation,
     _build_raw_panel_training_data,
+    _raw_panel_feature_names,
 )
 from macrocast.preprocessing.build import PreprocessContract
 
@@ -284,6 +285,68 @@ def test_raw_panel_moving_average_rotation_uses_trailing_origin_history():
     )
     assert y_train.tolist() == [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]
     assert np.allclose(X_pred, [[7.0, 14.0, 6.0, 12.0, 4.5, 9.0]])
+
+
+def test_raw_panel_append_blocks_compose_with_fixed_x_lags():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        }
+    )
+    c = _contract(x_lag_creation="fixed_x_lags")
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=c,
+        predictor_family="all_macro_vars",
+        temporal_feature_block="moving_average_features",
+        rotation_feature_block="moving_average_rotation",
+    )
+
+    assert np.allclose(
+        X_train,
+        [
+            [1.0, 0.0, 1.0, 1.0, 1.0],
+            [2.0, 1.0, 1.5, 1.5, 1.5],
+            [3.0, 2.0, 2.0, 2.0, 2.0],
+            [4.0, 3.0, 3.0, 3.0, 2.5],
+        ],
+    )
+    assert y_train.tolist() == [11.0, 12.0, 13.0, 14.0]
+    assert np.allclose(X_pred, [[5.0, 4.0, 4.0, 4.0, 3.0]])
+
+
+def test_raw_panel_feature_names_order_fixed_x_lags_before_append_blocks():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0],
+            "a": [1.0, 2.0, 3.0],
+        }
+    )
+    recipe = SimpleNamespace(
+        data_task_spec={"predictor_family": "all_macro_vars"},
+        preprocess_contract=_contract(x_lag_creation="fixed_x_lags"),
+        layer2_representation_spec={
+            "feature_blocks": {
+                "temporal_feature_block": {"value": "moving_average_features"},
+                "rotation_feature_block": {"value": "moving_average_rotation"},
+                "level_feature_block": {"value": "none"},
+            }
+        },
+    )
+
+    assert _raw_panel_feature_names(frame, "target", recipe) == [
+        "a",
+        "a_lag_1",
+        "a_ma3",
+        "a_rotma3",
+        "a_rotma6",
+    ]
 
 
 def test_raw_panel_marx_rotation_replaces_lag_polynomial_basis_with_origin_history():

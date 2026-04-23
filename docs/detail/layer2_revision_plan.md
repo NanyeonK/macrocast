@@ -323,13 +323,19 @@ Current lowered slice:
   operational custom temporal blocks need a block-local callable contract that
   returns train/pred feature frames, stable feature names, fit-state
   provenance, and leakage metadata.
+- Deterministic raw-panel append blocks now compose without an additional
+  block-composer gate. Fixed X lags are constructed first, temporal append
+  blocks are added next, `moving_average_rotation` append blocks are added
+  after that, and level add-backs keep their existing final append position.
+  The feature-name order mirrors this runtime order.
 - `rotation_feature_block=none`, `moving_average_rotation`, and
   `marx_rotation` are executable for raw-panel feature builders. `none` records
   explicit no-rotation provenance when selected. `moving_average_rotation`
   appends deterministic trailing 3- and 6-period moving-average rotations of
   each active predictor column with `{predictor}_rotma3` /
   `{predictor}_rotma6` public names, using only information available through
-  each row date / prediction origin. `marx_rotation` requires
+  each row date / prediction origin. It can compose with fixed X lags and
+  deterministic temporal append blocks. `marx_rotation` requires
   `leaf_config.marx_max_lag`, builds the cumulative moving-average
   lag-polynomial basis, and replaces the source X lag-polynomial basis in final
   `Z`.
@@ -345,8 +351,9 @@ Current lowered slice:
   feature order (predictor-major, then rotation order), alignment
   (`Z_{i,p,t} = p^{-1} * sum_{j=1}^{p} X_{i,t-j}`), and basis composition
   (`replace_lag_polynomial_basis`). External X-lag, temporal, and factor
-  composition remains gated until the explicit block composer can combine named
-  blocks without duplicate columns or leakage ambiguity.
+  composition remains gated for MARX because it replaces the raw-panel feature
+  basis. Factor/rotation composition also remains gated until the package
+  defines factor-of-augmented-panel vs append-to-factors semantics.
 
 Acceptance:
 

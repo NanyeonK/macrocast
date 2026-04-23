@@ -1974,20 +1974,18 @@ def _execution_status(
                 f"temporal_feature_block={temporal_feature_block!r} currently lowers only through "
                 "feature_builder in {'raw_feature_panel', 'raw_X_only'}"
             )
-        if temporal_block_active and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags":
-            not_supported.append(
-                f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
-                "x_lag_feature_block or x_lag_creation; explicit block composition is not implemented"
-            )
         if rotation_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} currently lowers only through "
                 "feature_builder in {'raw_feature_panel', 'raw_X_only'}"
             )
-        if rotation_block_active and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags":
+        if (
+            rotation_feature_block == "marx_rotation"
+            and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags"
+        ):
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
-                "x_lag_feature_block or x_lag_creation; explicit block composition is not implemented"
+                "x_lag_feature_block or x_lag_creation because MARX replaces the X lag-polynomial basis"
             )
         if (
             rotation_block_active
@@ -1998,10 +1996,10 @@ def _execution_status(
                 f"rotation_feature_block={rotation_feature_block!r} requires "
                 "contemporaneous_x_rule='forbid_contemporaneous' so rotation features use forecast-origin history"
             )
-        if rotation_block_active and temporal_block_active:
+        if rotation_feature_block == "marx_rotation" and temporal_block_active:
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
-                "temporal_feature_block; temporal and rotation block composition requires a block composer"
+                "temporal_feature_block because MARX currently replaces the raw-panel feature basis"
             )
         dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
         feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")
