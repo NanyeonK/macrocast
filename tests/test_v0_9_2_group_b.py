@@ -17,7 +17,9 @@ from macrocast.execution.build import (
     _apply_x_lag_creation,
     _build_lagged_supervised_matrix,
     _build_raw_panel_training_data,
+    _compute_minimal_importance,
     _feature_runtime_builder,
+    _importance_feature_names,
     _lag_order,
     _model_spec,
     _raw_panel_feature_names,
@@ -129,6 +131,61 @@ def test_target_lag_block_lag_order_matches_legacy_max_ar_lag():
     assert explicit_lag_order == 2
     assert np.allclose(legacy_X, explicit_X)
     assert np.allclose(legacy_y, explicit_y)
+
+
+def test_importance_feature_names_follow_runtime_feature_blocks():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        feature_recipes=("autoreg_lagged_target",),
+        blocks={
+            "feature_block_set": {"value": "high_dimensional_x"},
+            "x_lag_feature_block": {"value": "fixed_x_lags"},
+        },
+    )
+    recipe.benchmark_config = {"minimum_train_size": 5, "rolling_window_size": 5}
+
+    feature_names, X_train, y_train, X_pred = _importance_feature_names(
+        recipe,
+        frame,
+        frame["target"],
+        _contract(),
+    )
+
+    assert feature_names == ["a", "a_lag_1"]
+    assert X_train.shape[1] == 2
+    assert len(y_train) == X_train.shape[0]
+    assert X_pred.shape == (1, 2)
+
+
+def test_minimal_importance_uses_runtime_feature_builder_metadata():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        feature_recipes=("autoreg_lagged_target",),
+        blocks={
+            "feature_block_set": {"value": "high_dimensional_x"},
+            "x_lag_feature_block": {"value": "fixed_x_lags"},
+        },
+    )
+    recipe.benchmark_config = {"minimum_train_size": 5, "rolling_window_size": 5}
+
+    payload = _compute_minimal_importance(recipe=recipe, raw_frame=frame, target_series=frame["target"], contract=_contract())
+
+    assert payload["feature_builder"] == "raw_feature_panel"
+    assert payload["feature_runtime_builder"] == "raw_feature_panel"
+    assert payload["legacy_feature_builder"] == "autoreg_lagged_target"
+    assert {item["feature"] for item in payload["feature_importance"]} == {"a", "a_lag_1"}
 
 
 def test_fixed_x_lags_adds_lag1_columns():

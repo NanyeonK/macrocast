@@ -1089,6 +1089,17 @@ def _feature_runtime_name(recipe: RecipeSpec) -> str:
     return f"{runtime_builder}_v1"
 
 
+def _feature_runtime_context(recipe: RecipeSpec, *, mode: str) -> dict[str, object]:
+    runtime_builder = _feature_runtime_builder(recipe)
+    return {
+        "feature_builder": runtime_builder,
+        "feature_runtime_builder": runtime_builder,
+        "legacy_feature_builder": _feature_builder(recipe),
+        "feature_dispatch_source": "layer2_feature_blocks",
+        "mode": mode,
+    }
+
+
 def _level_feature_block(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
@@ -1502,7 +1513,7 @@ def _recursive_predict_sklearn(model, train: pd.Series, horizon: int, lag_order:
         if custom_recipe is not None:
             _, _, features = _apply_custom_preprocessor_arrays(
                 custom_X_train, custom_y_train, features, custom_recipe,
-                context_extra={"feature_builder": "autoreg_lagged_target", "mode": "predict"},
+                context_extra=_feature_runtime_context(custom_recipe, mode="predict"),
             )
         pred = float(model.predict(features)[0])
         history.append(pred)
@@ -2522,7 +2533,7 @@ def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model_family: str
     X, y = _build_lagged_supervised_matrix(train, lag_order)
     X_fit, y_fit, _ = _apply_custom_preprocessor_arrays(
         X, y, X[-1:].copy(), recipe,
-        context_extra={"feature_builder": "autoreg_lagged_target", "mode": "fit"},
+        context_extra=_feature_runtime_context(recipe, mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
     if _custom_preprocessor_spec(recipe) is not None:
@@ -2565,7 +2576,6 @@ def _run_custom_autoreg_executor(
         X_test = np.asarray(history[-lag_order:][::-1], dtype=float).reshape(1, -1)
         context = {
             "model_name": model_name,
-            "feature_builder": "autoreg_lagged_target",
             "target": recipe.target,
             "horizon": int(horizon),
             "recursive_step": step,
@@ -2573,10 +2583,11 @@ def _run_custom_autoreg_executor(
             "train_index": list(train.index),
             "contract_version": "custom_model_v1",
         }
+        context.update(_feature_runtime_context(recipe, mode="custom_model"))
         if _custom_preprocessor_spec(recipe) is not None:
             X_train_for_custom, y_train_for_custom, X_test = _apply_custom_preprocessor_arrays(
                 X_train, y_train, X_test, recipe,
-                context_extra={"feature_builder": "autoreg_lagged_target", "mode": "custom_model"},
+                context_extra=_feature_runtime_context(recipe, mode="custom_model"),
             )
         pred = _as_scalar_prediction(
             spec.function(X_train_for_custom, y_train_for_custom, X_test, context),
@@ -2761,7 +2772,7 @@ def _fit_raw_panel_model(
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
-        context_extra={"feature_builder": _feature_builder(recipe), "mode": "fit"},
+        context_extra=_feature_runtime_context(recipe, mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
     tuning_payload = dict(tuning_payload or {})
@@ -2794,16 +2805,16 @@ def _run_custom_raw_panel_executor(
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
-        context_extra={"feature_builder": _feature_builder(recipe), "mode": "custom_model"},
+        context_extra=_feature_runtime_context(recipe, mode="custom_model"),
     )
     context = {
         "model_name": model_name,
-        "feature_builder": _feature_builder(recipe),
         "target": recipe.target,
         "horizon": int(horizon),
         "feature_names": _raw_panel_feature_names(raw_frame, recipe.target, recipe),
         "contract_version": "custom_model_v1",
     }
+    context.update(_feature_runtime_context(recipe, mode="custom_model"))
     pred = _as_scalar_prediction(spec.function(X_train, y_train, X_pred, context), model_name=model_name)
     return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": {}}
 
@@ -4249,11 +4260,12 @@ def _compute_minimal_importance(
     contract: PreprocessContract,
 ) -> dict[str, object]:
     model_family = _model_family(recipe)
-    feature_builder = _feature_builder(recipe)
+    legacy_feature_builder = _feature_builder(recipe)
+    feature_builder = _feature_runtime_builder(recipe)
     if model_family not in {"ridge", "lasso", "randomforest"}:
         raise ExecutionError(f"minimal_importance not implemented for model_family {model_family!r}")
     if feature_builder != "raw_feature_panel":
-        raise ExecutionError(f"minimal_importance currently requires feature_builder='raw_feature_panel', got {feature_builder!r}")
+        raise ExecutionError(f"minimal_importance currently requires feature runtime 'raw_feature_panel', got {feature_builder!r}")
 
     last_tuning_payload: dict[str, object] = {}
     aligned_frame = raw_frame.loc[target_series.index]
@@ -4302,13 +4314,15 @@ def _compute_minimal_importance(
         "importance_method": "minimal_importance",
         "model_family": model_family,
         "feature_builder": feature_builder,
+        "feature_runtime_builder": feature_builder,
+        "legacy_feature_builder": legacy_feature_builder,
         "n_train": int(len(y_train)),
         "feature_importance": feature_importance,
     }
 
 
 def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, target_series: pd.Series, contract: PreprocessContract) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray]:
-    feature_builder = _feature_builder(recipe)
+    feature_builder = _feature_runtime_builder(recipe)
     horizon = min(recipe.horizons)
     rolling = recipe.stage0.fixed_design.sample_split == "rolling_window_oos"
     origin_idx = len(target_series) - max(recipe.horizons) - 1
@@ -4342,7 +4356,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
         X_pred = np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1], dtype=float).reshape(1, -1)
         feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="lag")
         return feature_names, X_train, y_train, X_pred
-    raise ExecutionError(f"importance not implemented for feature_builder {feature_builder!r}")
+    raise ExecutionError(f"importance not implemented for feature runtime {feature_builder!r}")
 
 
 def _fit_importance_model(recipe: RecipeSpec, X_train: np.ndarray, y_train: np.ndarray):
@@ -4365,7 +4379,9 @@ def _importance_training_bundle(raw_frame: pd.DataFrame, target_series: pd.Serie
         "X_pred": X_pred,
         "model": model,
         "model_family": _model_family(recipe),
-        "feature_builder": _feature_builder(recipe),
+        "feature_builder": _feature_runtime_builder(recipe),
+        "feature_runtime_builder": _feature_runtime_builder(recipe),
+        "legacy_feature_builder": _feature_builder(recipe),
     }
 
 
