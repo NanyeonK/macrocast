@@ -1,6 +1,6 @@
 # Layer 3 Training Audit
 
-Date: 2026-04-22
+Date: 2026-04-24
 
 Layer 3 is the forecast-generator layer. It consumes the feature matrix created
 by Layer 2 and produces forecasts.
@@ -20,7 +20,7 @@ Layer 3 owns estimator and training protocol choices:
   execution backend.
 
 Layer 3 does not own the research feature representation grammar. It should
-receive `Z_train` and `Z_pred` from Layer 2, then fit and predict.
+receive the Layer 2 representation payload, then fit and predict.
 
 ## Boundary With Layer 2
 
@@ -44,24 +44,27 @@ model estimator choices.
 
 Legacy runtime code still uses these names for executor dispatch. That is a
 compatibility shape, not the canonical boundary. Future implementation should
-split the current coarse names into explicit Layer 2 feature blocks and leave
-Layer 3 with only model/training execution.
+split the current coarse names into explicit Layer 2 feature blocks, lower
+generic `Z` unification into Layer 2, and leave Layer 3 with only
+model/training execution.
 
 The detailed Layer 2 x Layer 3 sweep contract is in
 `layer2_layer3_sweep_contract.md`. That document is the operational reference
 for freely sweeping research representations with forecast generators.
 
-## Generic Z Contract
+## Consumption Contract
 
-Layer 3 should consume the output of Layer 2 through a generic `Z` interface:
+Layer 3 should consume the output of Layer 2 through the unified Layer 2
+representation interface:
 
 ```text
 fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
 ```
 
-Layer 3 may validate that the selected forecast type and model family can
-consume the shape of `Z`, but it must not decide how `Z` was built. The
-following are Layer 2 facts, not Layer 3 facts:
+The unification itself is not a Layer 3 ownership item. Layer 3 may validate
+that the selected forecast type and model family can consume the shape of `Z`,
+but it must not decide how `Z` was built. The following are Layer 2 facts, not
+Layer 3 facts:
 
 - whether target lags are included;
 - whether X lags are included;
@@ -105,8 +108,8 @@ Layer 3 must therefore provide clear cell-level outcomes:
 The current important operational path is direct raw-panel forecasting over a
 generic 2-D `Z`. This now includes fixed target lags concatenated with raw X,
 fixed X lags, and static PCA factor scores. Autoregressive target-lag-only
-forecasting remains a separate iterated path until the runtime is fully unified
-around the generic `Z` contract.
+forecasting remains a separate iterated path until Layer 2 finishes unifying
+the representation handoff contract.
 
 ## Current Layer 3 Axes
 

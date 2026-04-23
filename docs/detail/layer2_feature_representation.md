@@ -1,6 +1,6 @@
 # Layer 2 Feature Representation
 
-Date: 2026-04-22
+Date: 2026-04-24
 
 Layer 2 is the research preprocessing and feature-representation layer. Its job
 is to turn the Layer 1 official data frame into the model input matrices used by
@@ -32,6 +32,10 @@ Layer 2 must produce, for each training window and forecast origin:
 - fit state for any imputer, scaler, selector, factor extractor, rotation, or
   custom preprocessor that was fit on the training window.
 
+This is also where generic `Z` unification belongs. Raw-panel, factor-panel,
+and target-lag-only builders should all lower into one Layer 2 representation
+payload before Layer 3 sees the data.
+
 Any operation that estimates parameters from data must be recursive or
 train-only for the relevant forecast origin. Full-sample transformations are
 allowed only when a recipe is explicitly a fixed replication profile and the
@@ -52,6 +56,21 @@ Layer 2 owns four types of decisions.
 Layer 2 does not own model family, benchmark family, direct/iterated forecast
 generation, validation split, hyperparameter search, scoring metrics,
 statistical tests, or feature-importance interpretation.
+
+## Representation Handoff
+
+The canonical Layer 2 output is not just a numeric matrix. It is one
+representation handoff contract with:
+
+- `Z_train`, `y_train`, `Z_pred`;
+- stable `feature_names`;
+- block provenance and block roles;
+- train-window fit state;
+- alignment and leakage metadata.
+
+If runtime code still branches on legacy `feature_builder` families after this
+handoff point, that is compatibility debt. The ownership is still Layer 2: the
+builder path must be normalized before Layer 3 estimator code runs.
 
 ## Feature-Block Grammar
 
@@ -247,9 +266,10 @@ slices:
    provenance for supported slices.
 
 Remaining work is semantic feature-composer work, not bridge cleanup:
-factor/selection composition, MARX with additional X-lag/temporal/factor
-composition, MAF/custom rotations, custom callable contracts, target-side
-normalization/evaluation-scale expansion, and public sweep governance.
+Layer 2 representation handoff unification, factor/selection composition, MARX
+with additional X-lag/temporal/factor composition, MAF/custom rotations,
+custom callable contracts, target-side normalization/evaluation-scale
+expansion, and public sweep governance.
 
 The detailed target contract for freely sweeping Layer 2 representations with
 Layer 3 forecast generators is documented in

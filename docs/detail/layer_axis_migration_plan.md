@@ -1,6 +1,6 @@
 # Layer Axis Migration Plan
 
-Date: 2026-04-22
+Date: 2026-04-24
 
 This ledger records the Layer 1/2/3/4/6 boundary cleanup. `current path`
 describes where many old recipes may still place the axis. `canonical owner`
@@ -88,5 +88,7 @@ tests.
   registry layer records their canonical ownership as Layer 2.
 - Layer 2 cleanup is closed for supported fixed full/runtime slices. The next
   frontier is free Layer 2 x Layer 3 representation sweep support under
-  `layer2_layer3_sweep_contract.md`; remaining custom/sweep items are semantic
-  feature-composer or API-governance tasks, not bridge migration blockers.
+  `layer2_layer3_sweep_contract.md`. Generic `Z` unification is treated as a
+  Layer 2 representation-handoff task, while Layer 3 stays a thin consumer;
+  remaining custom/sweep items are semantic feature-composer or API-governance
+  tasks, not bridge migration blockers.

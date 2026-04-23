@@ -1,11 +1,11 @@
 # Layer 2 And Layer 3 Sweep Contract
 
-Date: 2026-04-23
+Date: 2026-04-24
 
 This document defines the target contract for freely sweeping research feature
 representations together with forecast generators. It is the bridge between
 Layer 2, which constructs the research representation `Z`, and Layer 3, which
-fits forecast generators on `Z`.
+fits forecast generators on the Layer 2 handoff.
 
 ## Core Goal
 
@@ -41,6 +41,7 @@ Layer 2 owns the transformation from Layer 1 outputs to model inputs:
 - rotation blocks;
 - feature-selection blocks;
 - feature-block combination into `Z_train` and `Z_pred`;
+- the unified representation payload handed to forecast generators;
 - block-local leakage and fit-state provenance.
 
 Layer 3 owns forecast generation:
@@ -54,8 +55,8 @@ Layer 3 owns forecast generation:
 - model-order selection when the order is estimator behavior;
 - convergence, seed, cache, checkpointing, and execution backend.
 
-Layer 3 must not decide which feature blocks exist. It consumes `Z_train`,
-`y_train`, and `Z_pred` plus feature names and fit-state provenance.
+Layer 3 must not decide which feature blocks exist. It consumes the Layer 2
+representation payload plus training settings.
 
 ## Terms
 
@@ -123,9 +124,10 @@ The compiler should not treat this as a special "preprocessing sweep" route.
 It should treat this as a set of concrete `Z` construction recipes crossed with
 forecast-generator choices.
 
-## Composer Contract
+## Layer 2 Representation Contract
 
-Every operational composer must produce a payload with these fields:
+Every operational Layer 2 composer must produce one unified handoff payload
+with these fields:
 
 | Field | Meaning |
 |---|---|
@@ -140,8 +142,10 @@ Every operational composer must produce a payload with these fields:
 | `leakage_contract` | Whether the block uses only forecast-origin information. |
 
 The initial runtime still uses functions rather than a dedicated dataclass, but
-new implementation should move toward this payload shape. It is the minimum
-surface Layer 3 needs to become representation-agnostic.
+new implementation should move toward this payload shape. This unification is a
+Layer 2 ownership item: Layer 2 must resolve raw-panel, factor-panel, and
+target-lag-only construction into the same public handoff before Layer 3 sees
+the data.
 
 ## Block Semantics
 
@@ -236,7 +240,7 @@ Layer 3 should see one of two input types:
 1. target-lag-only `Z` for autoregressive/iterated forecast generators;
 2. generic 2-D `Z` for direct forecast generators.
 
-The long-run target is one generic `Z` interface for all direct models:
+The long-run target is one Layer 2 handoff shape for all direct models:
 
 ```text
 fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
@@ -244,7 +248,7 @@ fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
 
 Layer 3 should not branch on `feature_builder`, `x_lag_feature_block`,
 `factor_feature_block`, or any other Layer 2 representation axis. Those choices
-must be resolved before Layer 3 receives the matrix.
+must be resolved inside Layer 2 before Layer 3 receives the matrix.
 
 Layer 3 still owns forecast-type constraints. A raw-panel `Z` does not
 automatically make iterated exogenous-X forecasting possible. Direct raw-panel
@@ -303,13 +307,16 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
 
 ## Implementation Roadmap
 
-1. Unify the runtime matrix path around a Layer 2 composer payload.
-2. Open fixed target-lag composition with raw-panel and factor-panel direct
+1. Lower generic `Z` unification into Layer 2 by introducing one representation
+   payload contract for raw-panel, factor-panel, and target-lag-only builders.
+2. Keep Layer 3 as a thin consumer of that Layer 2 payload, with compatibility
+   checks limited to model family and forecast type.
+3. Open fixed target-lag composition with raw-panel and factor-panel direct
    models. This is the current patch.
-3. Add feature-name and block-role artifacts for every `Z` column.
-4. Add full recipe examples for Layer 2 x Layer 3 grids.
-5. Add factor/selection composition with explicit semantics.
-6. Add MARX composition modes beyond basis replacement.
-7. Add custom block callable contracts.
-8. Expose a safe simple-API representation sweep after the full-route contract
+4. Add feature-name and block-role artifacts for every `Z` column.
+5. Add full recipe examples for Layer 2 x Layer 3 grids.
+6. Add factor/selection composition with explicit semantics.
+7. Add MARX composition modes beyond basis replacement.
+8. Add custom block callable contracts.
+9. Expose a safe simple-API representation sweep after the full-route contract
    is stable.
