@@ -48,5 +48,5 @@ AXIS_DEFINITION = AxisDefinition(
     ),
     compatible_with={},
     incompatible_with={},
-    component="preprocessing",
+    component="feature_representation",
 )

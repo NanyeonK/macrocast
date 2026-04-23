@@ -94,6 +94,10 @@ legacy manifest alias. Downstream importance artifacts should likewise prefer
 `feature_runtime_builder` plus `legacy_feature_builder`; `feature_builder`
 remains a compatibility alias for existing readers.
 
+Evaluation decomposition uses `feature_representation` as the canonical
+component name for these axes. The old component name `feature_builder` remains
+accepted as a decomposition-plan alias.
+
 ## Layer 3: Forecast Generator
 
 Owns all choices that generate forecasts:

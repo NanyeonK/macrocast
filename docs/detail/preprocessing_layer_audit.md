@@ -71,6 +71,11 @@ records what the current runtime can execute today.
 | `predictor_family` | `target_lags_only`, `all_macro_vars`, `category_based`, `factor_only`, `handpicked_set` | Canonical Layer 2 owner; runtime support is constrained by the selected feature runtime and explicit block composer coverage. |
 | `data_richness_mode` | `target_lags_only`, `factor_plus_lags`, `full_high_dimensional_X`, `selected_sparse_X` | Canonical Layer 2 owner; `mixed_mode` remains registry-only. |
 | `factor_count` | `fixed`, `cv_select`, `BaiNg_rule` | Canonical Layer 2 owner for factor representation dimensions. `variance_explained_rule` and `model_specific` remain registry-only. |
+
+For decomposition/attribution, these feature-representation axes use the
+canonical component name `feature_representation`. Legacy decomposition plans
+that request `feature_builder` are normalized to `feature_representation`.
+
 | `x_missing_policy` | `none`, `drop`, `drop_rows`, `drop_columns`, `drop_if_above_threshold`, `missing_indicator`, `em_impute`, `mean_impute`, `median_impute`, `ffill`, `interpolate_linear` | Executes in the raw-panel extra-preprocess path. `drop` and `drop_rows` are pass-through aliases because predictor/target row coordination happens upstream. |
 | `x_outlier_policy` | `none`, `winsorize`, `trim`, `iqr_clip`, `mad_clip`, `zscore_clip`, `outlier_to_missing` | Operates on post-frame X_train/X_pred. Raw-source outlier handling belongs to Layer 1. |
 | `scaling_policy` | `none`, `standard`, `robust`, `minmax`, `demean_only`, `unit_variance_only` | Fitted on X_train and applied to X_pred. |

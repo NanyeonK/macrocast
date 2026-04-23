@@ -18,5 +18,5 @@ AXIS_DEFINITION = AxisDefinition(
     ),
     compatible_with={},
     incompatible_with={},
-    component="feature_builder",
+    component="feature_representation",
 )
