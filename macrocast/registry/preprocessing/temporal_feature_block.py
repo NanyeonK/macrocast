@@ -36,7 +36,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="volatility_features",
             description="rolling volatility and instability features",
-            status="registry_only",
+            status="operational",
             priority="B",
         ),
         EnumRegistryEntry(

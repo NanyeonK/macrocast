@@ -51,7 +51,7 @@ until each block has train-window fit/apply tests and provenance.
 | `target_lag_block`, `target_lag_selection`, `x_lag_feature_block` | 2_preprocessing | `none` and fixed-lag values operational through separate bridge lowering; target-plus-X block composition remains gated |
 | `factor_feature_block` | 2_preprocessing | `none` and `pca_static_factors` operational through factor bridge lowering; factor/selection composition remains gated |
 | `level_feature_block` | 2_preprocessing | `none` and `target_level_addback` operational through raw-panel bridge lowering; selected level add-backs and level-growth pairs remain gated |
-| `temporal_feature_block` | 2_preprocessing | `none` and `moving_average_features` operational through raw-panel bridge lowering; X-lag/factor composition and other temporal blocks remain gated |
+| `temporal_feature_block` | 2_preprocessing | `none`, `moving_average_features`, and `volatility_features` operational through raw-panel bridge lowering; X-lag/factor composition and other temporal blocks remain gated |
 | `feature_block_set` | 2_preprocessing | registry-only |
 | `rotation_feature_block` | 2_preprocessing | registry-only |
 | `feature_block_combination` | 2_preprocessing | registry-only |

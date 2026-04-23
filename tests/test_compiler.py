@@ -1548,6 +1548,22 @@ def test_layer2_explicit_temporal_block_lowers_to_raw_panel_bridge() -> None:
     }
 
 
+def test_layer2_explicit_volatility_block_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(temporal_feature_block="volatility_features")
+    )
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["temporal_feature_block"]
+    assert block["value"] == "volatility_features"
+    assert block["source_axis"] == "temporal_feature_block"
+    assert block["window"] == 3
+    assert block["feature_name_pattern"] == "{predictor}_vol3"
+    assert block["runtime_feature_name_pattern"] == "{predictor}__vol3"
+    assert block["runtime_bridge"] == {"raw_panel_temporal_features": "volatility_features"}
+    assert block["alignment"]["lookahead"] == "forbidden"
+
+
 def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")

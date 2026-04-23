@@ -94,11 +94,12 @@ Operational support is currently narrow:
   target level at the feature row date (`target_t`) and at the prediction
   origin (`target_origin`); selected X-level add-backs and level-growth pairs
   remain registry-only.
-- `temporal_feature_block=none` and `moving_average_features` are operational
-  for raw-panel feature builders. The current lowered slice appends trailing
-  3-period moving-average features with stable `{predictor}_ma3` names and
-  forbids composition with X-lag or factor bridges until the explicit block
-  composer exists.
+- `temporal_feature_block=none`, `moving_average_features`, and
+  `volatility_features` are operational for raw-panel feature builders. The
+  current lowered slices append trailing 3-period moving-average
+  `{predictor}_ma3` or volatility `{predictor}_vol3` features and forbid
+  composition with X-lag or factor bridges until the explicit block composer
+  exists.
 - Feature selection currently applies only to raw predictor blocks. It cannot
   be combined with factor blocks or dimensionality reduction until the package
   defines selection-before-factor vs selection-after-factor semantics.
