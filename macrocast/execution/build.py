@@ -95,10 +95,33 @@ def _phase3_axis_consumption() -> dict:
 
 
 _PRESELECTED_CORE = {"INDPRO", "PAYEMS", "CPIAUCSL", "FEDFUNDS", "GS10", "M2SL", "UNRATE"}
+_LEVEL_SOURCE_FRAME_ATTR = "macrocast_level_source_frame"
+
+
+def _level_source_snapshot(frame: pd.DataFrame) -> pd.DataFrame:
+    source = frame.copy()
+    source.attrs.update({k: v for k, v in getattr(frame, "attrs", {}).items() if k != _LEVEL_SOURCE_FRAME_ATTR})
+    return source
+
+
+def _level_source_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    source = getattr(frame, "attrs", {}).get(_LEVEL_SOURCE_FRAME_ATTR)
+    if isinstance(source, pd.DataFrame):
+        return source
+    return frame
+
+
+def _attach_level_source(frame: pd.DataFrame, source: pd.DataFrame) -> pd.DataFrame:
+    frame.attrs[_LEVEL_SOURCE_FRAME_ATTR] = source
+    return frame
 
 
 def _replace_raw_data(raw_result, new_data):
     from dataclasses import replace as _replace, is_dataclass
+    old_data = getattr(raw_result, "data", None)
+    if old_data is not None and hasattr(old_data, "attrs") and hasattr(new_data, "attrs"):
+        for key, value in getattr(old_data, "attrs", {}).items():
+            new_data.attrs.setdefault(key, value)
     if is_dataclass(raw_result):
         return _replace(raw_result, data=new_data)
     if hasattr(raw_result, '__dict__'):
@@ -194,8 +217,10 @@ def _apply_tcode_preprocessing(raw_result, recipe: RecipeSpec, contract: Preproc
     if data is None:
         return raw_result
     tcodes = dict(getattr(raw_result, "transform_codes", {}) or {})
+    level_source = _level_source_snapshot(data)
     frame = data.copy()
     frame.attrs.update(getattr(data, "attrs", {}))
+    _attach_level_source(frame, level_source)
     if not tcodes:
         _append_frame_warning(frame, "official_transform_policy='dataset_tcode' requested but no dataset transform codes were available; data left unchanged")
         _append_frame_report(frame, "tcode", {"applied": False, "policy": policy, "reason": "missing_transform_codes"})
@@ -396,6 +421,13 @@ def _apply_release_lag(raw_result, rule: str, *, spec: dict | None = None):
             cols = [c for c in new_data.columns if str(c).lower() != 'date']
             for c in cols:
                 new_data[c] = new_data[c].shift(1)
+            source = getattr(data, "attrs", {}).get(_LEVEL_SOURCE_FRAME_ATTR)
+            if isinstance(source, pd.DataFrame):
+                shifted_source = source.copy()
+                for c in cols:
+                    if c in shifted_source.columns:
+                        shifted_source[c] = shifted_source[c].shift(1)
+                _attach_level_source(new_data, shifted_source)
         except Exception:
             return raw_result
         return _replace_raw_data(raw_result, new_data)
@@ -405,9 +437,15 @@ def _apply_release_lag(raw_result, rule: str, *, spec: dict | None = None):
             raise ExecutionError("release_lag_rule='series_specific_lag' requires leaf_config.release_lag_per_series (dict[str, int])")
         try:
             new_data = data.copy()
+            source = getattr(data, "attrs", {}).get(_LEVEL_SOURCE_FRAME_ATTR)
+            shifted_source = source.copy() if isinstance(source, pd.DataFrame) else None
             for col, lag in lag_map.items():
                 if col in new_data.columns:
                     new_data[col] = new_data[col].shift(int(lag))
+                if shifted_source is not None and col in shifted_source.columns:
+                    shifted_source[col] = shifted_source[col].shift(int(lag))
+            if shifted_source is not None:
+                _attach_level_source(new_data, shifted_source)
         except Exception as exc:
             raise ExecutionError(f"series_specific_lag failed: {exc}") from exc
         return _replace_raw_data(raw_result, new_data)
@@ -1629,9 +1667,18 @@ def _apply_raw_panel_preprocessing(
 
 _TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
 _TARGET_LEVEL_ADD_BACK_FEATURE_NAME = "target_level_origin"
+_X_LEVEL_ADD_BACK_SUFFIX = "level"
 _MOVING_AVERAGE_FEATURE_WINDOW = 3
 _VOLATILITY_FEATURE_WINDOW = 3
 _ROLLING_MOMENTS_FEATURE_WINDOW = 3
+
+
+def _x_level_feature_name(column: str) -> str:
+    return f"{column}__{_X_LEVEL_ADD_BACK_SUFFIX}"
+
+
+def _x_level_public_feature_name(column: str) -> str:
+    return f"{column}_{_X_LEVEL_ADD_BACK_SUFFIX}"
 
 
 def _apply_level_feature_block(
@@ -1640,16 +1687,31 @@ def _apply_level_feature_block(
     frame: pd.DataFrame,
     target: str,
     level_feature_block: str,
+    predictors: Sequence[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     if level_feature_block == "none":
         return X_train, X_pred
-    if level_feature_block != "target_level_addback":
+    if level_feature_block not in {"target_level_addback", "x_level_addback"}:
         raise ExecutionError(f"unsupported level_feature_block={level_feature_block!r}")
-    target_series = frame[target].astype(float)
     X_train = X_train.copy()
     X_pred = X_pred.copy()
-    X_train[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_train.index].to_numpy(dtype=float)
-    X_pred[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_pred.index].to_numpy(dtype=float)
+    if level_feature_block == "target_level_addback":
+        target_series = frame[target].astype(float)
+        X_train[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_train.index].to_numpy(dtype=float)
+        X_pred[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_pred.index].to_numpy(dtype=float)
+        return X_train, X_pred
+    level_source = _level_source_frame(frame)
+    source_columns = tuple(predictors or ())
+    if not source_columns:
+        source_columns = tuple(c for c in X_train.columns if c in level_source.columns)
+    missing = [str(c) for c in source_columns if c not in level_source.columns]
+    if missing:
+        raise ExecutionError(f"level_feature_block='x_level_addback' missing level-source columns: {missing}")
+    for column in source_columns:
+        name = _x_level_feature_name(str(column))
+        series = level_source[column].astype(float)
+        X_train[name] = series.loc[X_train.index].to_numpy(dtype=float)
+        X_pred[name] = series.loc[X_pred.index].to_numpy(dtype=float)
     return X_train, X_pred
 
 
@@ -1731,17 +1793,20 @@ def _raw_panel_feature_names(
         predictor_family=_predictor_family(recipe),
         spec=dict(recipe.data_task_spec),
     )
+    base_names = tuple(names)
     temporal_feature_block = _temporal_feature_block(recipe)
     if temporal_feature_block == "moving_average_features":
-        names.extend(_moving_average_public_feature_name(str(column)) for column in tuple(names))
+        names.extend(_moving_average_public_feature_name(str(column)) for column in base_names)
     elif temporal_feature_block == "rolling_moments":
-        base_names = tuple(names)
         names.extend(_rolling_mean_public_feature_name(str(column)) for column in base_names)
         names.extend(_rolling_variance_public_feature_name(str(column)) for column in base_names)
     elif temporal_feature_block == "volatility_features":
-        names.extend(_volatility_public_feature_name(str(column)) for column in tuple(names))
-    if _level_feature_block(recipe) == "target_level_addback":
+        names.extend(_volatility_public_feature_name(str(column)) for column in base_names)
+    level_feature_block = _level_feature_block(recipe)
+    if level_feature_block == "target_level_addback":
         names.append(_TARGET_LEVEL_ADD_BACK_FEATURE_NAME)
+    elif level_feature_block == "x_level_addback":
+        names.extend(_x_level_public_feature_name(str(column)) for column in base_names)
     return names
 
 
@@ -1817,6 +1882,7 @@ def _build_raw_panel_training_data(
         frame,
         target,
         level_feature_block,
+        predictors,
     )
     X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
         X_train,

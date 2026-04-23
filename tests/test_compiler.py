@@ -1514,6 +1514,23 @@ def test_layer2_explicit_level_block_lowers_to_raw_panel_bridge() -> None:
     }
 
 
+def test_layer2_explicit_x_level_block_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(_layer2_level_block_recipe(level_feature_block="x_level_addback"))
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["level_feature_block"]
+    assert block["value"] == "x_level_addback"
+    assert block["source_axis"] == "level_feature_block"
+    assert block["feature_name_pattern"] == "{predictor}_level"
+    assert block["runtime_feature_name_pattern"] == "{predictor}__level"
+    assert block["runtime_bridge"] == {"raw_panel_level_addback": "x_level_addback"}
+    assert block["alignment"] == {
+        "train_row_t_uses": "H_{t}",
+        "prediction_origin_uses": "H_{origin}",
+        "lookahead": "forbidden",
+    }
+
+
 def test_layer2_explicit_level_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_level_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")

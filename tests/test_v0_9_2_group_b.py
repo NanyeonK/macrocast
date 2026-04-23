@@ -6,12 +6,14 @@ require deeper infrastructure and land in a follow-up batch.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
-import pytest
 
 from macrocast.execution.build import (
     _apply_additional_preprocessing,
+    _apply_tcode_preprocessing,
     _apply_x_lag_creation,
     _build_raw_panel_training_data,
 )
@@ -98,6 +100,61 @@ def test_raw_panel_target_level_addback_uses_origin_target_history():
     assert X_train.tolist() == [[1.0, 10.0], [2.0, 11.0], [3.0, 12.0]]
     assert y_train.tolist() == [11.0, 12.0, 13.0]
     assert X_pred.tolist() == [[4.0, 13.0]]
+
+
+def test_raw_panel_x_level_addback_uses_preserved_level_source():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+    frame.attrs["macrocast_level_source_frame"] = pd.DataFrame(
+        {
+            "target": [100.0, 110.0, 120.0, 130.0, 140.0],
+            "a": [101.0, 102.0, 103.0, 104.0, 105.0],
+        }
+    )
+    c = _contract()
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=3,
+        contract=c,
+        predictor_family="all_macro_vars",
+        level_feature_block="x_level_addback",
+    )
+
+    assert X_train.tolist() == [[1.0, 101.0], [2.0, 102.0], [3.0, 103.0]]
+    assert y_train.tolist() == [11.0, 12.0, 13.0]
+    assert X_pred.tolist() == [[4.0, 104.0]]
+
+
+def test_tcode_preprocessing_preserves_pre_tcode_level_source():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0],
+            "a": [1.0, 2.0, 4.0],
+        }
+    )
+    raw_result = SimpleNamespace(data=frame, transform_codes={"target": 1, "a": 2})
+    recipe = SimpleNamespace(
+        data_task_spec={
+            "official_transform_policy": "dataset_tcode",
+            "official_transform_scope": "apply_tcode_to_X",
+        }
+    )
+
+    transformed = _apply_tcode_preprocessing(raw_result, recipe, _contract(), target="target")
+
+    values = transformed.data["a"].tolist()
+    assert np.isnan(values[0])
+    assert values[1:] == [1.0, 2.0]
+    source = transformed.data.attrs["macrocast_level_source_frame"]
+    assert source["a"].tolist() == [1.0, 2.0, 4.0]
 
 
 def test_raw_panel_moving_average_features_use_trailing_origin_history():

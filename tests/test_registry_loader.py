@@ -246,6 +246,7 @@ def test_registry_loader_defines_layer2_feature_block_grammar() -> None:
     assert registry["factor_feature_block"].current_status["pca_static_factors"] == "operational"
     assert registry["level_feature_block"].current_status["none"] == "operational"
     assert registry["level_feature_block"].current_status["target_level_addback"] == "operational"
+    assert registry["level_feature_block"].current_status["x_level_addback"] == "operational"
     assert registry["level_feature_block"].current_status["selected_level_addbacks"] == "registry_only"
     assert registry["temporal_feature_block"].current_status["none"] == "operational"
     assert registry["temporal_feature_block"].current_status["moving_average_features"] == "operational"

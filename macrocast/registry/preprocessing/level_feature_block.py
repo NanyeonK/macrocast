@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="x_level_addback",
             description="level version of the predictor panel added as features",
-            status="registry_only",
+            status="operational",
             priority="B",
         ),
         EnumRegistryEntry(

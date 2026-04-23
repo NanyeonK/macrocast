@@ -297,10 +297,13 @@ Changes:
 
 Current lowered slice:
 
-- `level_feature_block=target_level_addback` is executable for raw-panel
-  feature builders. It appends the observed target level at the feature row date
-  and at the prediction origin, and rejects contemporaneous-oracle X alignment
-  because that would require target-date information at prediction time.
+- `level_feature_block=target_level_addback` and `x_level_addback` are
+  executable for raw-panel feature builders. Target add-back appends the
+  observed target level at the feature row date and at the prediction origin.
+  X-level add-back appends raw-level `H` predictor values preserved after
+  Layer 1 raw missing/outlier handling and before official transforms/T-codes.
+  Both reject contemporaneous-oracle X alignment because that would require
+  target-date information at prediction time.
 - `temporal_feature_block=moving_average_features`, `rolling_moments`, and
   `volatility_features` are executable for raw-panel feature builders. They
   append trailing 3-period moving averages, mean/variance moments, or rolling

@@ -1197,6 +1197,21 @@ def _level_block_from_selection(selection_map: dict[str, AxisSelection]) -> dict
             },
             "runtime_bridge": {"raw_panel_level_addback": "target_level_addback"},
         }
+    if block == "x_level_addback":
+        return {
+            "value": "x_level_addback",
+            "source_axis": "level_feature_block",
+            "source_value": "x_level_addback",
+            "feature_name_pattern": "{predictor}_level",
+            "runtime_feature_name_pattern": "{predictor}__level",
+            "level_source": "Layer 1 H after raw missing/outlier policy and before official transforms/T-codes",
+            "alignment": {
+                "train_row_t_uses": "H_{t}",
+                "prediction_origin_uses": "H_{origin}",
+                "lookahead": "forbidden",
+            },
+            "runtime_bridge": {"raw_panel_level_addback": "x_level_addback"},
+        }
     if explicit_block is not None:
         return {
             "value": block,
@@ -1732,20 +1747,21 @@ def _execution_status(
                 "{'raw_feature_panel', 'raw_X_only', 'factor_pca', 'factors_plus_AR'}"
             )
         level_feature_block = _selection_value(selection_map, "level_feature_block", default="none")
-        if level_feature_block == "target_level_addback" and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
+        level_block_active = level_feature_block in {"target_level_addback", "x_level_addback"}
+        if level_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
             not_supported.append(
-                "level_feature_block='target_level_addback' currently lowers only through "
+                f"level_feature_block={level_feature_block!r} currently lowers only through "
                 "feature_builder in {'raw_feature_panel', 'raw_X_only'}; factor and target-lag "
                 "composition requires a dedicated block composer"
             )
         if (
-            level_feature_block == "target_level_addback"
+            level_block_active
             and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
             != "forbid_contemporaneous"
         ):
             not_supported.append(
-                "level_feature_block='target_level_addback' requires "
-                "contemporaneous_x_rule='forbid_contemporaneous' so the added target level is observed at the forecast origin"
+                f"level_feature_block={level_feature_block!r} requires "
+                "contemporaneous_x_rule='forbid_contemporaneous' so level features are observed at the forecast origin"
             )
         temporal_feature_block = _selection_value(selection_map, "temporal_feature_block", default="none")
         temporal_block_active = temporal_feature_block in {"moving_average_features", "rolling_moments", "volatility_features"}
