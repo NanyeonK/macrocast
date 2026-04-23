@@ -59,14 +59,12 @@ The canonical Layer 3 registry surface is:
 | Validation/search | `validation_size_rule`, `validation_location`, `embargo_gap`, `split_family`, `shuffle_rule`, `alignment_fairness`, `search_algorithm`, `tuning_objective`, `tuning_budget`, `hp_space_style` |
 | Runtime discipline | `seed_policy`, `early_stopping`, `convergence_handling`, `logging_level`, `checkpointing`, `cache_policy`, `execution_backend` |
 
-## Compatibility Items To Clean Later
+## Compatibility Items
 
-- `feature_builder`: keep accepted for runtime dispatch, but split into Layer 2
-  feature-block grammar.
-- `predictor_family`: keep accepted for existing guards, but express as Layer 2
-  block/input selection.
-- `data_richness_mode`: keep accepted while runtime migrates to `feature_block_set`.
-- `factor_count`: keep accepted while runtime migrates to explicit factor block dimensions.
+- `feature_builder`, `predictor_family`, `data_richness_mode`, and
+  `factor_count`: canonical Layer 2 feature-representation axes. Legacy paths
+  remain accepted as recipe/manifest compatibility and provenance, while
+  runtime dispatch uses Layer 2 block-derived feature runtime where supported.
 - `factor_ar_lags`: legacy runtime key remains accepted; target-lag feature
   count next to factor blocks is recorded as Layer 2 `target_lag_count`
   provenance, while model-specific lag-order selection remains Layer 3.

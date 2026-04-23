@@ -29,6 +29,11 @@ Current MVP profile:
 | `compute_mode` | `serial` |
 | `random_seed` | `42` |
 
+This default still writes legacy-compatible
+`feature_builder=autoreg_lagged_target`; the compiler also records canonical
+Layer 2 block/runtime provenance. New full recipes may use explicit feature
+blocks directly.
+
 Frequency resolution:
 
 - `fred_md` means monthly.

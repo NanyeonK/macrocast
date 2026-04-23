@@ -447,6 +447,26 @@ For feature-block patches, also test:
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
 | Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; joint target-plus-X composition remains gated. |
 | Factor/selection blocks | done for static PCA | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; feature-selection/factor composition remains gated. |
-| Level/rotation/temporal blocks | in progress | Level blocks, temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and cross-block composition remain gated. |
-| Bridge dispatch retirement | in progress | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, and importance hook contexts now route through explicit Layer 2 blocks; compiler gates and docs are being moved from bridge wording to runtime/block wording. |
-| Simple/public sweeps | blocked | Wait for fixed full support and compiler guards. |
+| Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
+| Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
+| Simple/public sweeps | out of L2 cleanup scope | Fixed full recipes are closed under the supported runtime surface. Public sweep exposure is a separate API/governance step, not a Layer 2 boundary blocker. |
+
+## Layer 2 Closure
+
+Layer 2 is complete for the current migration target: fixed full recipes and
+existing simple defaults compile and execute through canonical Layer 2
+feature-representation contracts where runtime support exists. Compatibility
+aliases remain intentionally accepted for old recipes and old manifests.
+
+The remaining items in this file are not cleanup blockers:
+
+- joint target-lag plus X/factor composition;
+- factor/selection composition;
+- MARX with additional X-lag/temporal/factor composition;
+- MAF/custom rotations;
+- custom temporal/feature-block callable contracts;
+- target-side normalization/inverse/evaluation-scale expansion;
+- public Layer 2 sweep exposure.
+
+Those are semantic feature-composer or API-governance tasks. They should start
+from explicit contracts and acceptance tests rather than from bridge cleanup.

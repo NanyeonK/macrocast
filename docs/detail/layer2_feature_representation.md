@@ -226,22 +226,26 @@ with target lags, level add-backs, rotations, and custom blocks.
 
 ## Implementation Order
 
-A safe implementation order is:
+The Layer 2 cleanup migration is complete for supported fixed full/runtime
+slices:
 
-1. Keep current `feature_builder` bridge operational.
-2. Add feature-block provenance to compiled specs without changing runtime
-   matrices.
-3. Implement fixed `target_lag_block` and fixed `x_lag_feature_block` with
-   train-window alignment tests.
-4. Implement `factor_feature_block=pca_static_factors` with recursive factor
-   fit/apply tests and loadings provenance.
-5. Extend `level_feature_block` beyond whole-panel add-backs, then implement
-   deterministic non-none `rotation_feature_block` primitives such as
-   `moving_average_rotation` before learned or custom rotations.
-6. Retire runtime dispatch from coarse `feature_builder` names in slices:
-   first route the raw-panel/autoregressive executor choice from explicit
-   blocks, then move fixed X-lag matrix composition to `x_lag_feature_block`,
-   then move fixed target-lag composition to `target_lag_block`, then move PCA
-   static-factor matrix composition to `factor_feature_block`, then move
-   importance/custom hook contexts to the block-derived runtime name. Remaining
-   work is compiler gate wording, docs, and true joint-block composers.
+1. The legacy `feature_builder` bridge remains operational as input
+   compatibility and provenance.
+2. Compiled specs record feature-block provenance without changing unsupported
+   runtime matrices.
+3. Fixed `target_lag_block` and fixed `x_lag_feature_block` execute through
+   explicit block paths with train-window alignment tests.
+4. `factor_feature_block=pca_static_factors` executes through the static-factor
+   path with recursive fit/apply tests and loadings provenance.
+5. Built-in level add-backs, deterministic temporal append blocks,
+   `moving_average_rotation`, and MARX lag-polynomial rotation execute for
+   raw-panel feature runtimes where their composition contracts are supported.
+6. Runtime dispatch, target-transformer gates, importance/custom hook
+   contexts, and decomposition metadata now use block-derived feature runtime
+   provenance for supported slices.
+
+Remaining work is semantic feature-composer work, not bridge cleanup: joint
+target-lag plus X/factor composition, factor/selection composition, MARX with
+additional X-lag/temporal/factor composition, MAF/custom rotations, custom
+callable contracts, target-side normalization/evaluation-scale expansion, and
+public sweep governance.

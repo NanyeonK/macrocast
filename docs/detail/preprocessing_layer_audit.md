@@ -405,7 +405,13 @@ The blocked MVP surface is:
 
 Do not expose built-in preprocessing sweeps in the simple docs yet.
 
-Next implementation target should be compiler/docs bridge cleanup: keep Layer 1
-official-transform axes as the public source of truth, keep legacy Layer 2
-t-code fields accepted for compatibility, and keep moving warning text and
-manifests from old bridge names to explicit runtime/block names.
+Layer 2 cleanup is closed for supported fixed full/runtime slices. Layer 1
+official-transform axes remain the public source of truth, legacy Layer 2
+t-code fields remain accepted for compatibility, and supported Layer 2 runtime
+paths now expose explicit block/runtime provenance.
+
+Next implementation targets should be semantic feature-composer tasks rather
+than bridge cleanup: joint target-lag plus X/factor composition, factor/selection
+composition, MARX composition beyond basis replacement, MAF/custom rotations,
+custom callable contracts, target-side normalization/evaluation-scale expansion,
+and public sweep governance.

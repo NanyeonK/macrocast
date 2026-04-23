@@ -89,8 +89,8 @@ The following axes were moved out of Layer 1 ownership:
 - `multi_target_point_forecast` requires `leaf_config.targets`.
 - Layer 0 owns the execution shape derived from target cardinality through
   `experiment_unit`.
-- `forecast_type` remains dynamic by `feature_builder`: autoreg paths default to `iterated`, raw/factor panel paths default to `direct`.
-- Crossed `forecast_type`/`feature_builder` pairs are `blocked_by_incompatibility`.
+- `forecast_type` remains dynamic by the Layer 2 feature runtime: autoregressive paths default to `iterated`, raw/factor panel paths default to `direct`.
+- Crossed `forecast_type` / feature-runtime pairs remain `blocked_by_incompatibility`; legacy `feature_builder` recipes are mapped to that runtime for compatibility.
 - `forecast_object=point_median` and `forecast_object=quantile` now require `model_family=quantile_linear`.
 - `model_family=quantile_linear` still requires `forecast_object` in `{point_median, quantile}`.
 - This closes the previous silent failure mode where a non-quantile model could compile a `quantile` manifest but emit a point-mean forecast.

@@ -53,7 +53,7 @@ tests.
 | `factor_feature_block` | 2_preprocessing | `none` and `pca_static_factors` operational from explicit blocks first; factor/selection composition remains gated |
 | `level_feature_block` | 2_preprocessing | all built-in values operational in raw-panel feature runtimes: `none`, `target_level_addback`, `x_level_addback`, `selected_level_addbacks`, and `level_growth_pairs` |
 | `temporal_feature_block` | 2_preprocessing | `none`, `moving_average_features`, `rolling_moments`, `local_temporal_factors`, and `volatility_features` operational in raw-panel feature runtimes; these deterministic append blocks can compose with fixed X lags and `moving_average_rotation`; factor composition remains gated; `custom_temporal_features` remains registry-only pending a block-local callable contract |
-| `feature_block_set` | 2_preprocessing | registry-only |
+| `feature_block_set` | 2_preprocessing | `target_lags_only`, `transformed_x`, `transformed_x_lags`, `factor_blocks_only`, `high_dimensional_x`, `selected_sparse_x`, `level_augmented_x`, and `rotation_augmented_x` are supported as provenance/runtime-dispatch inputs where their component blocks are executable; explicit joint composition remains gated. |
 | `rotation_feature_block` | 2_preprocessing | `none`, `moving_average_rotation`, and `marx_rotation` operational in raw-panel feature runtimes; `moving_average_rotation` composes with fixed X lags and deterministic temporal append blocks; MARX replaces the X lag-polynomial basis and keeps X-lag/temporal/factor composition gated; MAF/custom rotations remain registry-only |
 | `feature_block_combination` | 2_preprocessing | registry-only |
 
@@ -86,3 +86,6 @@ tests.
   `feature_builder`, `predictor_family`, `data_richness_mode`, and
   `factor_count` from compiled specs as compatibility/provenance fields. The
   registry layer records their canonical ownership as Layer 2.
+- Layer 2 cleanup is closed for supported fixed full/runtime slices. Remaining
+  joint/custom/sweep items are semantic feature-composer or API-governance tasks,
+  not bridge migration blockers.

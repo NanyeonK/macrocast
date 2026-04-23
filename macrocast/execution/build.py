@@ -1141,10 +1141,10 @@ def _feature_runtime_builder(recipe: RecipeSpec) -> str:
     if block_set == "target_lags_only" or target_lag_block != "none":
         return "autoreg_lagged_target"
 
-    feature_builder = _feature_builder(recipe)
-    if feature_builder in _RAW_PANEL_FEATURE_BUILDERS:
+    legacy_feature_builder = _feature_builder(recipe)
+    if legacy_feature_builder in _RAW_PANEL_FEATURE_BUILDERS:
         return "raw_feature_panel"
-    return feature_builder
+    return legacy_feature_builder
 
 
 def _feature_runtime_name(recipe: RecipeSpec) -> str:
@@ -1293,8 +1293,8 @@ def _recipe_for_target(recipe: RecipeSpec, target: str) -> RecipeSpec:
     return replace(recipe, target=target, targets=())
 
 
-def _model_executor_name(model_family: str, feature_builder: str) -> str:
-    if feature_builder == "autoreg_lagged_target":
+def _model_executor_name(model_family: str, feature_runtime_builder: str) -> str:
+    if feature_runtime_builder == "autoreg_lagged_target":
         if is_custom_model(model_family):
             return f"custom_model:{model_family}:autoreg_lagged_target_v0"
         return {
@@ -1323,7 +1323,7 @@ def _model_executor_name(model_family: str, feature_builder: str) -> str:
             "factor_augmented_linear": "factor_augmented_linear_autoreg_v0",
             "quantile_linear": "quantile_linear_autoreg_v0",
         }[model_family]
-    if feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
+    if feature_runtime_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
         if is_custom_model(model_family):
             return f"custom_model:{model_family}:raw_feature_panel_v0"
         return {
@@ -1351,16 +1351,18 @@ def _model_executor_name(model_family: str, feature_builder: str) -> str:
             "factor_augmented_linear": "factor_augmented_linear_raw_feature_panel_v0",
             "quantile_linear": "quantile_linear_raw_feature_panel_v0",
         }[model_family]
-    raise ExecutionError(f"feature_builder {feature_builder!r} is not executable in current runtime slice")
+    raise ExecutionError(
+        f"feature runtime {feature_runtime_builder!r} is not executable in current runtime slice"
+    )
 
 
 def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
     model_family = _model_family(recipe)
-    feature_builder = _feature_builder(recipe)
+    legacy_feature_builder = _feature_builder(recipe)
     runtime_feature_builder = _feature_runtime_builder(recipe)
     return {
         "model_family": model_family,
-        "feature_builder": feature_builder,
+        "feature_builder": legacy_feature_builder,
         "feature_runtime_builder": runtime_feature_builder,
         "feature_runtime": _feature_runtime_name(recipe),
         "feature_dispatch_source": "layer2_feature_blocks",
@@ -1374,12 +1376,12 @@ def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
 
 def _get_model_executor(recipe: RecipeSpec):
     model_family = _model_family(recipe)
-    feature_builder = _feature_runtime_builder(recipe)
-    if is_custom_model(model_family) and feature_builder == "autoreg_lagged_target":
+    feature_runtime_builder = _feature_runtime_builder(recipe)
+    if is_custom_model(model_family) and feature_runtime_builder == "autoreg_lagged_target":
         return _run_custom_autoreg_executor
-    if is_custom_model(model_family) and feature_builder == "raw_feature_panel":
+    if is_custom_model(model_family) and feature_runtime_builder == "raw_feature_panel":
         return _run_custom_raw_panel_executor
-    if feature_builder == "autoreg_lagged_target":
+    if feature_runtime_builder == "autoreg_lagged_target":
         dispatch = {
             "ar": _run_ar_model_executor,
             "ols": _run_ols_autoreg_executor,
@@ -1411,7 +1413,7 @@ def _get_model_executor(recipe: RecipeSpec):
         }
         if model_family in dispatch:
             return dispatch[model_family]
-    if feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
+    if feature_runtime_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
         dispatch = {
             "ols": _run_ols_raw_panel_executor,
             "ridge": _run_ridge_raw_panel_executor,
@@ -1440,7 +1442,7 @@ def _get_model_executor(recipe: RecipeSpec):
         if model_family in dispatch:
             return dispatch[model_family]
     raise ExecutionError(
-        f"model_family {model_family!r} with feature runtime {feature_builder!r} is not executable in current runtime slice"
+        f"model_family {model_family!r} with feature runtime {feature_runtime_builder!r} is not executable in current runtime slice"
     )
 
 
@@ -1593,7 +1595,7 @@ def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: st
     predictor_family values wired in v1.0:
 
     - ``all_macro_vars`` (default) : every column except the target.
-    - ``target_lags_only``         : empty predictor set — raw panel degrades to target-lag-only; the compiler guard already ties this value to feature_builder=autoreg_lagged_target, so this branch should not normally be reached.
+    - ``target_lags_only``         : empty predictor set — raw panel degrades to target-lag-only; compiler guards already tie this value to the autoregressive feature runtime, so this branch should not normally be reached.
     - ``category_based``           : user supplies a mapping (spec['predictor_category_columns'][spec['predictor_category']]).
     - ``factor_only``              : columns whose name starts with 'F_' (convention for factor outputs of factor_pca / factor_augmented_linear builders).
     - ``handpicked_set``           : spec['handpicked_columns'] list.
@@ -4328,11 +4330,13 @@ def _compute_minimal_importance(
 ) -> dict[str, object]:
     model_family = _model_family(recipe)
     legacy_feature_builder = _feature_builder(recipe)
-    feature_builder = _feature_runtime_builder(recipe)
+    feature_runtime_builder = _feature_runtime_builder(recipe)
     if model_family not in {"ridge", "lasso", "randomforest"}:
         raise ExecutionError(f"minimal_importance not implemented for model_family {model_family!r}")
-    if feature_builder != "raw_feature_panel":
-        raise ExecutionError(f"minimal_importance currently requires feature runtime 'raw_feature_panel', got {feature_builder!r}")
+    if feature_runtime_builder != "raw_feature_panel":
+        raise ExecutionError(
+            f"minimal_importance currently requires feature runtime 'raw_feature_panel', got {feature_runtime_builder!r}"
+        )
 
     last_tuning_payload: dict[str, object] = {}
     aligned_frame = raw_frame.loc[target_series.index]
@@ -4380,8 +4384,8 @@ def _compute_minimal_importance(
     return {
         "importance_method": "minimal_importance",
         "model_family": model_family,
-        "feature_builder": feature_builder,
-        "feature_runtime_builder": feature_builder,
+        "feature_builder": feature_runtime_builder,
+        "feature_runtime_builder": feature_runtime_builder,
         "legacy_feature_builder": legacy_feature_builder,
         "feature_dispatch_source": "layer2_feature_blocks",
         "n_train": int(len(y_train)),
@@ -4390,14 +4394,14 @@ def _compute_minimal_importance(
 
 
 def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, target_series: pd.Series, contract: PreprocessContract) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray]:
-    feature_builder = _feature_runtime_builder(recipe)
+    feature_runtime_builder = _feature_runtime_builder(recipe)
     horizon = min(recipe.horizons)
     rolling = recipe.stage0.fixed_design.sample_split == "rolling_window_oos"
     origin_idx = len(target_series) - max(recipe.horizons) - 1
     if origin_idx < _minimum_train_size(recipe) - 1:
         raise ExecutionError("importance requires at least one valid forecast origin")
     start_idx = max(0, origin_idx + 1 - _rolling_window_size(recipe)) if rolling else 0
-    if feature_builder == "raw_feature_panel":
+    if feature_runtime_builder == "raw_feature_panel":
         aligned_frame = raw_frame.loc[target_series.index]
         feature_names = _raw_panel_feature_names(aligned_frame, recipe.target, recipe)
         X_train, y_train, X_pred = _build_raw_panel_training_data(
@@ -4417,14 +4421,14 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             marx_max_lag=_marx_rotation_max_lag(recipe),
         )
         return feature_names, X_train, y_train, X_pred
-    if feature_builder == "autoreg_lagged_target":
+    if feature_runtime_builder == "autoreg_lagged_target":
         train = target_series.iloc[start_idx: origin_idx + 1]
         lag_order = _lag_order(recipe, train)
         X_train, y_train = _build_lagged_supervised_matrix(train, lag_order)
         X_pred = np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1], dtype=float).reshape(1, -1)
         feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="lag")
         return feature_names, X_train, y_train, X_pred
-    raise ExecutionError(f"importance not implemented for feature runtime {feature_builder!r}")
+    raise ExecutionError(f"importance not implemented for feature runtime {feature_runtime_builder!r}")
 
 
 def _fit_importance_model(recipe: RecipeSpec, X_train: np.ndarray, y_train: np.ndarray):
@@ -4743,11 +4747,11 @@ def _build_predictions(
     model_executor = _get_model_executor(recipe)
     benchmark_executor = _get_benchmark_executor(recipe)
     target_transformer_spec = _target_transformer_spec(recipe)
-    feature_builder = _feature_runtime_builder(recipe)
+    feature_runtime_builder = _feature_runtime_builder(recipe)
     model_family = _model_family(recipe)
     if (
         target_transformer_spec is not None
-        and feature_builder not in _TARGET_TRANSFORMER_FEATURE_RUNTIMES
+        and feature_runtime_builder not in _TARGET_TRANSFORMER_FEATURE_RUNTIMES
     ):
         raise ExecutionError(
             "target_transformer runtime currently supports feature runtime in "
@@ -4755,7 +4759,7 @@ def _build_predictions(
         )
     if (
         target_transformer_spec is not None
-        and feature_builder in {"raw_feature_panel", "raw_X_only"}
+        and feature_runtime_builder in {"raw_feature_panel", "raw_X_only"}
         and model_family not in _TARGET_TRANSFORMER_RAW_PANEL_MODELS
         and not is_custom_model(model_family)
     ):
