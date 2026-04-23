@@ -412,9 +412,8 @@ t-code fields remain accepted for compatibility, and supported Layer 2 runtime
 paths now expose explicit block/runtime provenance.
 
 Next implementation targets should be semantic feature-composer tasks rather
-than bridge cleanup: Layer 2 representation handoff unification,
-factor/selection composition, MARX composition beyond basis replacement,
-MAF/custom rotations, custom callable contracts, target-side
-normalization/evaluation-scale expansion, and public sweep governance. The
-detailed Layer 2 x Layer 3 free-sweep contract is in
+than bridge cleanup: factor/selection composition, MARX composition beyond
+basis replacement, MAF/custom rotations, custom callable contracts,
+target-side normalization/evaluation-scale expansion, and public sweep
+governance. The detailed Layer 2 x Layer 3 free-sweep contract is in
 `layer2_layer3_sweep_contract.md`.

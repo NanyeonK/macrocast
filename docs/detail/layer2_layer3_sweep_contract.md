@@ -235,15 +235,21 @@ feature block until it satisfies the block contract.
 
 ## Layer 3 Obligations
 
-Layer 3 should see one of two input types:
+Layer 3 should receive one Layer 2 handoff bundle for every supported tabular
+runtime slice. Today that bundle is `Layer2Representation`, which carries:
 
-1. target-lag-only `Z` for autoregressive/iterated forecast generators;
-2. generic 2-D `Z` for direct forecast generators.
+1. `Z_train`, `y_train`, `Z_pred`;
+2. `feature_names`, `block_order`, `block_roles`;
+3. `alignment`, `fit_state`, and leakage/runtime provenance.
 
-The long-run target is one Layer 2 handoff shape for all direct models:
+Supported direct raw-panel paths and supported autoregressive target-lag paths
+already enter Layer 3 through this same handoff shape. Sequence/tensor-style
+representations are future work and remain outside the current Layer 2 closure.
+
+The consumer contract is:
 
 ```text
-fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
+fit(model_family, representation, training_spec) -> y_pred
 ```
 
 Layer 3 should not branch on `feature_builder`, `x_lag_feature_block`,

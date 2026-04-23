@@ -1579,6 +1579,35 @@ def _build_lagged_supervised_matrix(train: pd.Series, lag_order: int) -> tuple[n
     return np.asarray(X, dtype=float), np.asarray(y, dtype=float)
 
 
+def _build_target_lag_representation(
+    train: pd.Series,
+    recipe: RecipeSpec,
+    *,
+    default_prefix: str,
+) -> Layer2Representation:
+    lag_order = _lag_order(recipe, train)
+    Z_train, y_train = _build_lagged_supervised_matrix(train, lag_order)
+    Z_pred = np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1], dtype=float).reshape(1, -1)
+    feature_names = tuple(_target_lag_feature_names(recipe, lag_order, default_prefix=default_prefix))
+    return Layer2Representation(
+        Z_train=Z_train,
+        y_train=y_train,
+        Z_pred=Z_pred,
+        feature_names=feature_names,
+        block_order=("target_lag",),
+        block_roles={name: "target_lag" for name in feature_names},
+        alignment={
+            "representation_runtime": "autoreg_lagged_target",
+            "lag_order": int(lag_order),
+            "target_lag_timing": "recursive_target_history_reversed_most_recent_first",
+        },
+        leakage_contract="forecast_origin_only",
+        feature_builder=_feature_runtime_builder(recipe),
+        feature_runtime_builder=_feature_runtime_builder(recipe),
+        legacy_feature_builder=_feature_builder(recipe),
+    )
+
+
 def _fixed_target_lag_frame(
     target_series: pd.Series,
     row_index: pd.Index,
@@ -1604,12 +1633,17 @@ def _recursive_predict_sklearn(model, train: pd.Series, horizon: int, lag_order:
     custom_recipe = getattr(model, "_macrocast_custom_preprocessor_recipe", None)
     custom_X_train = getattr(model, "_macrocast_custom_preprocessor_X_train", None)
     custom_y_train = getattr(model, "_macrocast_custom_preprocessor_y_train", None)
+    custom_representation = getattr(model, "_macrocast_layer2_representation", None)
     for _ in range(horizon):
         features = np.asarray(history[-lag_order:][::-1], dtype=float).reshape(1, -1)
         if custom_recipe is not None:
             _, _, features = _apply_custom_preprocessor_arrays(
                 custom_X_train, custom_y_train, features, custom_recipe,
-                context_extra=_feature_runtime_context(custom_recipe, mode="predict"),
+                context_extra=(
+                    custom_representation.runtime_context(mode="predict")
+                    if isinstance(custom_representation, Layer2Representation)
+                    else _feature_runtime_context(custom_recipe, mode="predict")
+                ),
             )
         pred = float(model.predict(features)[0])
         history.append(pred)
@@ -2798,19 +2832,22 @@ def _apply_custom_preprocessor_arrays(
     return X_arr, y_arr, X_test_arr
 
 
-def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model_family: str, model) -> tuple[int, np.ndarray, np.ndarray, object, dict[str, object]]:
-    lag_order = _lag_order(recipe, train)
-    X, y = _build_lagged_supervised_matrix(train, lag_order)
+def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model_family: str, model) -> tuple[Layer2Representation, np.ndarray, np.ndarray, object, dict[str, object]]:
+    representation = _build_target_lag_representation(train, recipe, default_prefix="y_lag")
     X_fit, y_fit, _ = _apply_custom_preprocessor_arrays(
-        X, y, X[-1:].copy(), recipe,
-        context_extra=_feature_runtime_context(recipe, mode="fit"),
+        representation.Z_train,
+        representation.y_train,
+        representation.Z_pred.copy(),
+        recipe,
+        context_extra=representation.runtime_context(mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
     if _custom_preprocessor_spec(recipe) is not None:
         setattr(fitted, "_macrocast_custom_preprocessor_recipe", recipe)
-        setattr(fitted, "_macrocast_custom_preprocessor_X_train", X)
-        setattr(fitted, "_macrocast_custom_preprocessor_y_train", y)
-    return lag_order, X_fit, y_fit, fitted, tuning_payload
+        setattr(fitted, "_macrocast_custom_preprocessor_X_train", representation.Z_train)
+        setattr(fitted, "_macrocast_custom_preprocessor_y_train", representation.y_train)
+        setattr(fitted, "_macrocast_layer2_representation", representation)
+    return representation, X_fit, y_fit, fitted, tuning_payload
 
 
 def _as_scalar_prediction(value, *, model_name: str) -> float:
@@ -2836,12 +2873,11 @@ def _run_custom_autoreg_executor(
 ) -> dict[str, float | int]:
     model_name = _model_family(recipe)
     spec = get_custom_model(model_name)
-    lag_order = _lag_order(recipe, train)
-    X_train, y_train = _build_lagged_supervised_matrix(train, lag_order)
-    X_train_for_custom = X_train
-    y_train_for_custom = y_train
+    representation = _build_target_lag_representation(train, recipe, default_prefix="y_lag")
+    lag_order = int(representation.alignment["lag_order"])
+    X_train_for_custom = representation.Z_train
+    y_train_for_custom = representation.y_train
     history = list(train.to_numpy(dtype=float))
-    feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="y_lag")
     for step in range(1, int(horizon) + 1):
         X_test = np.asarray(history[-lag_order:][::-1], dtype=float).reshape(1, -1)
         context = {
@@ -2849,15 +2885,18 @@ def _run_custom_autoreg_executor(
             "target": recipe.target,
             "horizon": int(horizon),
             "recursive_step": step,
-            "feature_names": feature_names,
+            "feature_names": list(representation.feature_names),
             "train_index": list(train.index),
             "contract_version": "custom_model_v1",
         }
-        context.update(_feature_runtime_context(recipe, mode="custom_model"))
+        context.update(representation.runtime_context(mode="custom_model"))
         if _custom_preprocessor_spec(recipe) is not None:
             X_train_for_custom, y_train_for_custom, X_test = _apply_custom_preprocessor_arrays(
-                X_train, y_train, X_test, recipe,
-                context_extra=_feature_runtime_context(recipe, mode="custom_model"),
+                representation.Z_train,
+                representation.y_train,
+                X_test,
+                recipe,
+                context_extra=representation.runtime_context(mode="custom_model"),
             )
         pred = _as_scalar_prediction(
             spec.function(X_train_for_custom, y_train_for_custom, X_test, context),
@@ -2884,12 +2923,14 @@ def _recursive_predict_adaptive_lasso(model, train: pd.Series, horizon: int, lag
 
 
 def _run_ols_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "ols", LinearRegression())
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "ols", LinearRegression())
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "ridge", Ridge(alpha=1.0))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "ridge", Ridge(alpha=1.0))
+    lag_order = int(representation.alignment["lag_order"])
     return {
         "y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order),
         "selected_lag": lag_order,
@@ -2898,72 +2939,86 @@ def _run_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 
 def _run_lasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "lasso", Lasso(alpha=1e-4, max_iter=10000))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "lasso", Lasso(alpha=1e-4, max_iter=10000))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_elasticnet_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_randomforest_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_bayesianridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "bayesianridge", BayesianRidge())
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "bayesianridge", BayesianRidge())
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_huber_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "huber", HuberRegressor())
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "huber", HuberRegressor())
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_adaptivelasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "adaptivelasso", None)
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "adaptivelasso", None)
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_adaptive_lasso(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_linear_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_rbf_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_extratrees_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_gbm_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_xgboost_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_lightgbm_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_catboost_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_mlp_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -3218,43 +3273,68 @@ def _linear_boosting_fit(X: np.ndarray, y: np.ndarray, base: str) -> tuple[np.nd
 
 
 def _run_componentwise_boosting_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "componentwise_boosting", None)
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "componentwise_boosting", None)
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_ridge_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "boosting_ridge", None)
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "boosting_ridge", None)
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_lasso_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "boosting_lasso", None)
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "boosting_lasso", None)
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_pcr_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order = _lag_order(recipe, train)
-    X, y = _build_lagged_supervised_matrix(train, lag_order)
-    pred, _tp = fit_factor_model("pcr", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=False)
+    representation = _build_target_lag_representation(train, recipe, default_prefix="y_lag")
+    lag_order = int(representation.alignment["lag_order"])
+    pred, _tp = fit_factor_model(
+        "pcr",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        recipe.training_spec,
+        include_ar_lags=False,
+    )
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_pls_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order = _lag_order(recipe, train)
-    X, y = _build_lagged_supervised_matrix(train, lag_order)
-    pred, _tp = fit_factor_model("pls", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=False)
+    representation = _build_target_lag_representation(train, recipe, default_prefix="y_lag")
+    lag_order = int(representation.alignment["lag_order"])
+    pred, _tp = fit_factor_model(
+        "pls",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        recipe.training_spec,
+        include_ar_lags=False,
+    )
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_factor_augmented_linear_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order = _lag_order(recipe, train)
-    X, y = _build_lagged_supervised_matrix(train, lag_order)
-    pred, _tp = fit_factor_model("factor_augmented_linear", pd.DataFrame(X), y, pd.DataFrame(np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1]).reshape(1, -1)), recipe.training_spec, include_ar_lags=True)
+    representation = _build_target_lag_representation(train, recipe, default_prefix="y_lag")
+    lag_order = int(representation.alignment["lag_order"])
+    pred, _tp = fit_factor_model(
+        "factor_augmented_linear",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        recipe.training_spec,
+        include_ar_lags=True,
+    )
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_quantile_linear_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
-    lag_order, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "quantile_linear", None)
+    representation, _, _, model, _tp = _fit_autoreg_sklearn(train, recipe, "quantile_linear", None)
+    lag_order = int(representation.alignment["lag_order"])
     return {"y_pred": _recursive_predict_sklearn(model, train, horizon, lag_order), "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4609,11 +4689,8 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
         return list(representation.feature_names), representation.Z_train, representation.y_train, representation.Z_pred
     if feature_runtime_builder == "autoreg_lagged_target":
         train = target_series.iloc[start_idx: origin_idx + 1]
-        lag_order = _lag_order(recipe, train)
-        X_train, y_train = _build_lagged_supervised_matrix(train, lag_order)
-        X_pred = np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1], dtype=float).reshape(1, -1)
-        feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="lag")
-        return feature_names, X_train, y_train, X_pred
+        representation = _build_target_lag_representation(train, recipe, default_prefix="lag")
+        return list(representation.feature_names), representation.Z_train, representation.y_train, representation.Z_pred
     raise ExecutionError(f"importance not implemented for feature runtime {feature_runtime_builder!r}")
 
 

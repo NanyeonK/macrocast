@@ -448,6 +448,7 @@ For feature-block patches, also test:
 | Factor/selection blocks | done for static PCA | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; feature-selection/factor composition remains gated. |
 | Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
 | Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
+| Representation handoff unification | done for supported runtime slices | Supported raw-panel and autoregressive target-lag runtimes now emit a canonical `Layer2Representation` bundle with `Z_train`, `y_train`, `Z_pred`, feature names, block roles, alignment, fit-state provenance, and leakage metadata before Layer 3 fit/predict. |
 | Simple/public sweeps | out of L2 cleanup scope | Fixed full recipes are closed under the supported runtime surface. Public sweep exposure is a separate API/governance step, not a Layer 2 boundary blocker. |
 
 ## Layer 2 Closure

@@ -19,6 +19,7 @@ from macrocast.execution.build import (
     _build_predictions,
     _build_lagged_supervised_matrix,
     _build_raw_panel_representation,
+    _build_target_lag_representation,
     _build_raw_panel_training_data,
     _compute_minimal_importance,
     _feature_runtime_builder,
@@ -181,6 +182,38 @@ def test_target_lag_block_lag_order_matches_legacy_max_ar_lag():
     assert np.allclose(legacy_y, explicit_y)
 
 
+def test_target_lag_representation_bundle_tracks_alignment_and_roles():
+    train = pd.Series([1.0, 1.2, 1.1, 1.5, 1.7, 1.8])
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "target_lags_only"},
+            "target_lag_block": {
+                "value": "fixed_target_lags",
+                "lag_orders": [1, 2],
+                "feature_names": ["target_lag_1", "target_lag_2"],
+                "runtime_block": {"matrix_composition": "fixed_target_lags", "lag_count": 2},
+            },
+        },
+    )
+    recipe.benchmark_config = {"max_ar_lag": 4}
+
+    bundle = _build_target_lag_representation(train, recipe, default_prefix="target_lag")
+
+    assert bundle.Z_train.tolist() == [[1.2, 1.0], [1.1, 1.2], [1.5, 1.1], [1.7, 1.5]]
+    assert bundle.y_train.tolist() == [1.1, 1.5, 1.7, 1.8]
+    assert bundle.Z_pred.tolist() == [[1.8, 1.7]]
+    assert bundle.feature_names == ("target_lag_1", "target_lag_2")
+    assert bundle.block_order == ("target_lag",)
+    assert bundle.block_roles == {
+        "target_lag_1": "target_lag",
+        "target_lag_2": "target_lag",
+    }
+    assert bundle.alignment["representation_runtime"] == "autoreg_lagged_target"
+    assert bundle.alignment["lag_order"] == 2
+    assert bundle.leakage_contract == "forecast_origin_only"
+
+
 def test_importance_feature_names_follow_runtime_feature_blocks():
     frame = pd.DataFrame(
         {
@@ -209,6 +242,35 @@ def test_importance_feature_names_follow_runtime_feature_blocks():
     assert X_train.shape[1] == 2
     assert len(y_train) == X_train.shape[0]
     assert X_pred.shape == (1, 2)
+
+
+def test_importance_feature_names_use_representation_bundle_for_autoreg_path():
+    frame = pd.DataFrame({"target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0]})
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "target_lags_only"},
+            "target_lag_block": {
+                "value": "fixed_target_lags",
+                "lag_orders": [1, 2],
+                "feature_names": ["target_lag_1", "target_lag_2"],
+                "runtime_block": {"matrix_composition": "fixed_target_lags", "lag_count": 2},
+            },
+        },
+    )
+    recipe.benchmark_config = {"minimum_train_size": 5, "rolling_window_size": 5}
+
+    feature_names, X_train, y_train, X_pred = _importance_feature_names(
+        recipe,
+        frame,
+        frame["target"],
+        _contract(),
+    )
+
+    assert feature_names == ["target_lag_1", "target_lag_2"]
+    assert X_train.tolist() == [[13.0, 12.0], [14.0, 13.0], [15.0, 14.0]]
+    assert y_train.tolist() == [14.0, 15.0, 16.0]
+    assert X_pred.tolist() == [[16.0, 15.0]]
 
 
 def test_minimal_importance_uses_runtime_feature_builder_metadata():

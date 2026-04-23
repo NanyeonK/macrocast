@@ -266,10 +266,10 @@ slices:
    provenance for supported slices.
 
 Remaining work is semantic feature-composer work, not bridge cleanup:
-Layer 2 representation handoff unification, factor/selection composition, MARX
-with additional X-lag/temporal/factor composition, MAF/custom rotations,
-custom callable contracts, target-side normalization/evaluation-scale
-expansion, and public sweep governance.
+factor/selection composition, MARX with additional
+X-lag/temporal/factor composition, MAF/custom rotations, custom callable
+contracts, target-side normalization/evaluation-scale expansion, and public
+sweep governance.
 
 The detailed target contract for freely sweeping Layer 2 representations with
 Layer 3 forecast generators is documented in
