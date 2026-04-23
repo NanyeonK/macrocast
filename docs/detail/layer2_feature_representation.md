@@ -117,12 +117,17 @@ Operational support is currently narrow:
   feature names, fit-state provenance, or leakage metadata. Operational custom
   temporal blocks need a callable contract that returns train/pred temporal
   feature frames plus names and provenance before they can enter `Z`.
+- `rotation_feature_block=none` and `moving_average_rotation` are operational
+  for raw-panel feature builders. `none` records explicit no-rotation
+  provenance. `moving_average_rotation` appends deterministic trailing 3- and
+  6-period moving-average rotations of each active predictor as
+  `{predictor}_rotma3` and `{predictor}_rotma6`, using only row-date /
+  prediction-origin history. This is the generic rotation primitive; full MARX,
+  MAF, and custom rotation presets remain registry-only until lag-polynomial,
+  factor-rotation, and callable block-composition semantics are explicit.
 - Feature selection currently applies only to raw predictor blocks. It cannot
   be combined with factor blocks or dimensionality reduction until the package
   defines selection-before-factor vs selection-after-factor semantics.
-- `rotation_feature_block=none` is operational as explicit no-rotation
-  provenance. Non-none rotation blocks and custom block-combination axes remain
-  registry-only.
 
 ## Target Representation Grammar
 
@@ -202,6 +207,7 @@ A safe implementation order is:
 4. Implement `factor_feature_block=pca_static_factors` with recursive factor
    fit/apply tests and loadings provenance.
 5. Extend `level_feature_block` beyond whole-panel add-backs, then implement
-   non-none `rotation_feature_block` values as optional blocks.
+   deterministic non-none `rotation_feature_block` primitives such as
+   `moving_average_rotation` before learned or custom rotations.
 6. Move runtime dispatch from coarse `feature_builder` names to explicit block
    composition only after old recipes can be translated losslessly.

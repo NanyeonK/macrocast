@@ -1690,6 +1690,47 @@ def test_layer2_explicit_rotation_none_records_no_rotation_block() -> None:
     }
 
 
+def test_layer2_explicit_moving_average_rotation_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(
+            temporal_feature_block="none",
+            rotation_feature_block="moving_average_rotation",
+        )
+    )
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["rotation_feature_block"]
+    assert block["value"] == "moving_average_rotation"
+    assert block["source_axis"] == "rotation_feature_block"
+    assert block["windows"] == [3, 6]
+    assert block["feature_name_patterns"] == ["{predictor}_rotma3", "{predictor}_rotma6"]
+    assert block["runtime_feature_name_patterns"] == ["{predictor}__rotma3", "{predictor}__rotma6"]
+    assert block["runtime_bridge"] == {"raw_panel_rotation_features": "moving_average_rotation"}
+    assert block["alignment"]["lookahead"] == "forbidden"
+    assert "full MARX/MAF presets remain separate future blocks" in block["scope_note"]
+
+
+def test_layer2_explicit_rotation_block_requires_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(
+            feature_builder="autoreg_lagged_target",
+            model_family="ar",
+            temporal_feature_block="none",
+            rotation_feature_block="moving_average_rotation",
+        )
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("rotation_feature_block='moving_average_rotation' currently lowers only" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_explicit_rotation_block_rejects_temporal_composition() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(rotation_feature_block="moving_average_rotation")
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("cannot yet be combined with temporal_feature_block" in warning for warning in result.compiled.warnings)
+
+
 def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")

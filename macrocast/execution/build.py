@@ -1041,6 +1041,17 @@ def _temporal_feature_block(recipe: RecipeSpec | None) -> str:
     return "none"
 
 
+def _rotation_feature_block(recipe: RecipeSpec | None) -> str:
+    if recipe is None:
+        return "none"
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    blocks = dict(spec.get("feature_blocks", {}) or {})
+    block = blocks.get("rotation_feature_block", {})
+    if isinstance(block, dict):
+        return str(block.get("value", "none"))
+    return "none"
+
+
 def _recipe_targets(recipe: RecipeSpec) -> tuple[str, ...]:
     return recipe.targets if recipe.targets else (recipe.target,)
 
@@ -1669,6 +1680,7 @@ _TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
 _TARGET_LEVEL_ADD_BACK_FEATURE_NAME = "target_level_origin"
 _X_LEVEL_ADD_BACK_SUFFIX = "level"
 _MOVING_AVERAGE_FEATURE_WINDOW = 3
+_MOVING_AVERAGE_ROTATION_WINDOWS = (3, 6)
 _VOLATILITY_FEATURE_WINDOW = 3
 _ROLLING_MOMENTS_FEATURE_WINDOW = 3
 _LOCAL_TEMPORAL_FACTOR_WINDOW = 3
@@ -1740,6 +1752,14 @@ def _moving_average_feature_name(column: str) -> str:
 
 def _moving_average_public_feature_name(column: str) -> str:
     return f"{column}_ma{_MOVING_AVERAGE_FEATURE_WINDOW}"
+
+
+def _moving_average_rotation_feature_name(column: str, window: int) -> str:
+    return f"{column}__rotma{window}"
+
+
+def _moving_average_rotation_public_feature_name(column: str, window: int) -> str:
+    return f"{column}_rotma{window}"
 
 
 def _volatility_feature_name(column: str) -> str:
@@ -1834,6 +1854,32 @@ def _apply_temporal_feature_block(
     return X_train, X_pred
 
 
+def _apply_rotation_feature_block(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    frame: pd.DataFrame,
+    predictors: Sequence[str],
+    *,
+    start_idx: int,
+    pred_idx: int,
+    rotation_feature_block: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if rotation_feature_block == "none":
+        return X_train, X_pred
+    if rotation_feature_block != "moving_average_rotation":
+        raise ExecutionError(f"unsupported rotation_feature_block={rotation_feature_block!r}")
+    source = frame[list(predictors)].iloc[start_idx : pred_idx + 1].astype(float).copy()
+    X_train = X_train.copy()
+    X_pred = X_pred.copy()
+    for window in _MOVING_AVERAGE_ROTATION_WINDOWS:
+        rotated = source.rolling(window=window, min_periods=1).mean()
+        for column in predictors:
+            name = _moving_average_rotation_feature_name(str(column), window)
+            X_train[name] = rotated.loc[X_train.index, column].to_numpy(dtype=float)
+            X_pred[name] = rotated.loc[X_pred.index, column].to_numpy(dtype=float)
+    return X_train, X_pred
+
+
 def _raw_panel_feature_names(
     frame: pd.DataFrame,
     target: str,
@@ -1861,6 +1907,10 @@ def _raw_panel_feature_names(
                 _LOCAL_TEMPORAL_FACTOR_DISPERSION_FEATURE_NAME,
             ]
         )
+    rotation_feature_block = _rotation_feature_block(recipe)
+    if rotation_feature_block == "moving_average_rotation":
+        for window in _MOVING_AVERAGE_ROTATION_WINDOWS:
+            names.extend(_moving_average_rotation_public_feature_name(str(column), window) for column in base_names)
     level_feature_block = _level_feature_block(recipe)
     if level_feature_block == "target_level_addback":
         names.append(_TARGET_LEVEL_ADD_BACK_FEATURE_NAME)
@@ -1889,6 +1939,7 @@ def _build_raw_panel_training_data(
     fit_state_sink: list[dict[str, object]] | None = None,
     level_feature_block: str = "none",
     temporal_feature_block: str = "none",
+    rotation_feature_block: str = "none",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
@@ -1943,6 +1994,15 @@ def _build_raw_panel_training_data(
         start_idx=start_idx,
         pred_idx=pred_idx,
         temporal_feature_block=temporal_feature_block,
+    )
+    X_train, X_pred = _apply_rotation_feature_block(
+        X_train,
+        X_pred,
+        frame,
+        predictors,
+        start_idx=start_idx,
+        pred_idx=pred_idx,
+        rotation_feature_block=rotation_feature_block,
     )
     X_train, X_pred = _apply_level_feature_block(
         X_train,
@@ -2446,6 +2506,7 @@ def _fit_raw_panel_model(
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=target_window,
         fit_state_sink=fit_state, level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
+        rotation_feature_block=_rotation_feature_block(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -2475,6 +2536,7 @@ def _run_custom_raw_panel_executor(
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=train,
         level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
+        rotation_feature_block=_rotation_feature_block(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -3959,6 +4021,7 @@ def _compute_minimal_importance(
         spec=dict(recipe.data_task_spec),
         level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
+        rotation_feature_block=_rotation_feature_block(recipe),
     )
 
     if model_family == "ridge":
@@ -4009,6 +4072,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             spec=dict(recipe.data_task_spec),
             level_feature_block=_level_feature_block(recipe),
             temporal_feature_block=_temporal_feature_block(recipe),
+            rotation_feature_block=_rotation_feature_block(recipe),
         )
         return feature_names, X_train, y_train, X_pred
     if feature_builder == "autoreg_lagged_target":

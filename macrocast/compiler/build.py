@@ -1307,6 +1307,29 @@ def _rotation_block_from_selection(selection_map: dict[str, AxisSelection]) -> d
             "source_axis": "rotation_feature_block",
             "source_value": "none",
         }
+    if block == "moving_average_rotation":
+        return {
+            "value": "moving_average_rotation",
+            "source_axis": "rotation_feature_block",
+            "source_value": "moving_average_rotation",
+            "windows": [3, 6],
+            "rotation_construction": "deterministic trailing moving-average rotations of active X columns",
+            "feature_name_patterns": ["{predictor}_rotma3", "{predictor}_rotma6"],
+            "runtime_feature_name_patterns": ["{predictor}__rotma3", "{predictor}__rotma6"],
+            "alignment": {
+                "train_row_t_uses": "X_t and trailing observed X history within each rotation window",
+                "prediction_origin_uses": "X_origin and trailing observed X history within each rotation window",
+                "lookahead": "forbidden",
+            },
+            "runtime_bridge": {"raw_panel_rotation_features": "moving_average_rotation"},
+            "scope_note": "generic moving-average rotation primitive; full MARX/MAF presets remain separate future blocks",
+        }
+    if explicit_block is not None:
+        return {
+            "value": block,
+            "source_axis": "rotation_feature_block",
+            "source_value": explicit_block,
+        }
     return {"value": "none", "source": "not_wired"}
 
 
@@ -1872,6 +1895,8 @@ def _execution_status(
             "rolling_moments",
             "volatility_features",
         }
+        rotation_feature_block = _selection_value(selection_map, "rotation_feature_block", default="none")
+        rotation_block_active = rotation_feature_block in {"moving_average_rotation"}
         if temporal_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
             not_supported.append(
                 f"temporal_feature_block={temporal_feature_block!r} currently lowers only through "
@@ -1882,6 +1907,21 @@ def _execution_status(
                 f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
                 "x_lag_feature_block or x_lag_creation; explicit block composition is not implemented"
             )
+        if rotation_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
+            not_supported.append(
+                f"rotation_feature_block={rotation_feature_block!r} currently lowers only through "
+                "feature_builder in {'raw_feature_panel', 'raw_X_only'}"
+            )
+        if rotation_block_active and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags":
+            not_supported.append(
+                f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
+                "x_lag_feature_block or x_lag_creation; explicit block composition is not implemented"
+            )
+        if rotation_block_active and temporal_block_active:
+            not_supported.append(
+                f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
+                "temporal_feature_block; temporal and rotation block composition requires a block composer"
+            )
         dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
         feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")
         explicit_factor_block = _factor_feature_block_value(selection_map)
@@ -1891,6 +1931,11 @@ def _execution_status(
             not_supported.append(
                 f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
                 "factor_feature_block or dimensionality_reduction_policy; temporal-to-factor composition requires a block composer"
+            )
+        if rotation_block_active and (factor_block_active or dimred != "none"):
+            not_supported.append(
+                f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
+                "factor_feature_block or dimensionality_reduction_policy; rotation-to-factor composition requires a block composer"
             )
         if explicit_factor_block == "none" and factor_bridge_active:
             not_supported.append(

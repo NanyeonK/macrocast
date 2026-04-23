@@ -323,9 +323,16 @@ Current lowered slice:
   operational custom temporal blocks need a block-local callable contract that
   returns train/pred feature frames, stable feature names, fit-state
   provenance, and leakage metadata.
-- `rotation_feature_block=none` is executable and records explicit
-  no-rotation provenance when selected. Non-none rotation blocks remain future
-  block-composition work.
+- `rotation_feature_block=none` and `moving_average_rotation` are executable
+  for raw-panel feature builders. `none` records explicit no-rotation
+  provenance when selected. `moving_average_rotation` appends deterministic
+  trailing 3- and 6-period moving-average rotations of each active predictor
+  column with `{predictor}_rotma3` / `{predictor}_rotma6` public names, using
+  only information available through each row date / prediction origin. This is
+  a generic rotation primitive that can support MARX-like presets later; it is
+  not the full MARX or MAF preset. MARX, MAF, custom rotations, and rotation
+  composition with temporal, X-lag, or factor blocks remain future block-composer
+  work.
 
 Acceptance:
 

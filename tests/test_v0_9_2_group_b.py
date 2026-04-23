@@ -250,6 +250,42 @@ def test_raw_panel_moving_average_features_use_trailing_origin_history():
     assert X_pred.tolist() == [[5.0, 4.0]]
 
 
+def test_raw_panel_moving_average_rotation_uses_trailing_origin_history():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            "b": [2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0],
+        }
+    )
+    c = _contract()
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=6,
+        contract=c,
+        predictor_family="all_macro_vars",
+        rotation_feature_block="moving_average_rotation",
+    )
+
+    assert np.allclose(
+        X_train,
+        [
+            [1.0, 2.0, 1.0, 2.0, 1.0, 2.0],
+            [2.0, 4.0, 1.5, 3.0, 1.5, 3.0],
+            [3.0, 6.0, 2.0, 4.0, 2.0, 4.0],
+            [4.0, 8.0, 3.0, 6.0, 2.5, 5.0],
+            [5.0, 10.0, 4.0, 8.0, 3.0, 6.0],
+            [6.0, 12.0, 5.0, 10.0, 3.5, 7.0],
+        ],
+    )
+    assert y_train.tolist() == [11.0, 12.0, 13.0, 14.0, 15.0, 16.0]
+    assert np.allclose(X_pred, [[7.0, 14.0, 6.0, 12.0, 4.5, 9.0]])
+
+
 def test_raw_panel_volatility_features_use_trailing_origin_history():
     frame = pd.DataFrame(
         {

@@ -30,7 +30,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="moving_average_rotation",
             description="generic moving average rotation block",
-            status="registry_only",
+            status="operational",
             priority="B",
         ),
         EnumRegistryEntry(
