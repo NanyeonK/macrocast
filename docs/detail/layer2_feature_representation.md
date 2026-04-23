@@ -232,4 +232,5 @@ A safe implementation order is:
    `moving_average_rotation` before learned or custom rotations.
 6. Retire runtime dispatch from coarse `feature_builder` names in slices:
    first route the raw-panel/autoregressive executor choice from explicit
-   blocks, then replace remaining bridge-specific matrix composition.
+   blocks, then move fixed X-lag matrix composition to `x_lag_feature_block`,
+   then replace remaining bridge-specific matrix composition.

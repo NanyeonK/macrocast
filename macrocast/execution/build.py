@@ -1107,6 +1107,15 @@ def _rotation_feature_block(recipe: RecipeSpec | None) -> str:
     return _layer2_block_value(_layer2_feature_blocks(recipe), "rotation_feature_block")
 
 
+def _x_lag_feature_block(recipe: RecipeSpec | None) -> str | None:
+    if recipe is None:
+        return None
+    blocks = _layer2_feature_blocks(recipe)
+    if "x_lag_feature_block" not in blocks:
+        return None
+    return _layer2_block_value(blocks, "x_lag_feature_block")
+
+
 def _marx_rotation_max_lag(recipe: RecipeSpec | None) -> int | None:
     if recipe is None:
         return None
@@ -1613,9 +1622,6 @@ def _fixed_x_lag_public_feature_names(columns: Sequence[str], *, lag_orders: tup
 
 
 def _x_lag_creation_for_feature_names(recipe: RecipeSpec) -> str:
-    contract = getattr(recipe, "preprocess_contract", None)
-    if contract is not None:
-        return str(getattr(contract, "x_lag_creation", "no_x_lags"))
     spec = getattr(recipe, "layer2_representation_spec", {}) or {}
     blocks = dict(spec.get("feature_blocks", {}) or {})
     block = blocks.get("x_lag_feature_block", {})
@@ -1625,7 +1631,22 @@ def _x_lag_creation_for_feature_names(recipe: RecipeSpec) -> str:
             return str(runtime_bridge["x_lag_creation"])
         if block.get("value") == "fixed_x_lags":
             return "fixed_x_lags"
+        if block.get("value") == "none":
+            return "no_x_lags"
+    contract = getattr(recipe, "preprocess_contract", None)
+    if contract is not None:
+        return str(getattr(contract, "x_lag_creation", "no_x_lags"))
     return "no_x_lags"
+
+
+def _x_lag_creation_from_feature_block(value: str | None, fallback: str) -> str:
+    if value is None:
+        return fallback
+    if value == "none":
+        return "no_x_lags"
+    if value == "fixed_x_lags":
+        return "fixed_x_lags"
+    raise ExecutionError(f"x_lag_feature_block {value!r} is not executable in current runtime slice")
 
 
 def _apply_scaling_policy(
@@ -2055,6 +2076,7 @@ def _build_raw_panel_training_data(
     level_feature_block: str = "none",
     temporal_feature_block: str = "none",
     rotation_feature_block: str = "none",
+    x_lag_feature_block: str | None = None,
     marx_max_lag: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
@@ -2100,16 +2122,20 @@ def _build_raw_panel_training_data(
         X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
     if len(X_train) == 0 or len(y_train) == 0:
         raise ExecutionError("raw_feature_panel produced empty training data")
+    x_lag_creation = _x_lag_creation_from_feature_block(
+        x_lag_feature_block,
+        fallback=str(contract.x_lag_creation),
+    )
     if rotation_feature_block == "marx_rotation" and temporal_feature_block != "none":
         raise ExecutionError(
             "rotation_feature_block='marx_rotation' cannot yet be combined with temporal_feature_block"
         )
-    if rotation_feature_block == "marx_rotation" and contract.x_lag_creation != "no_x_lags":
+    if rotation_feature_block == "marx_rotation" and x_lag_creation != "no_x_lags":
         raise ExecutionError(
             "rotation_feature_block='marx_rotation' cannot yet be combined with x_lag_creation"
         )
     preprocessing_contract = contract
-    if contract.x_lag_creation == "fixed_x_lags":
+    if x_lag_creation == "fixed_x_lags":
         lag_source = frame[predictors].iloc[start_idx : pred_idx + 1].astype(float).copy()
         lagged_source = _fixed_x_lag_frame(lag_source)
         X_train = lagged_source.loc[X_train.index].copy()
@@ -2635,6 +2661,7 @@ def _fit_raw_panel_model(
         fit_state_sink=fit_state, level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
+        x_lag_feature_block=_x_lag_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
@@ -2666,6 +2693,7 @@ def _run_custom_raw_panel_executor(
         level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
+        x_lag_feature_block=_x_lag_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
@@ -4152,6 +4180,7 @@ def _compute_minimal_importance(
         level_feature_block=_level_feature_block(recipe),
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
+        x_lag_feature_block=_x_lag_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
 
@@ -4204,6 +4233,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             level_feature_block=_level_feature_block(recipe),
             temporal_feature_block=_temporal_feature_block(recipe),
             rotation_feature_block=_rotation_feature_block(recipe),
+            x_lag_feature_block=_x_lag_feature_block(recipe),
             marx_max_lag=_marx_rotation_max_lag(recipe),
         )
         return feature_names, X_train, y_train, X_pred

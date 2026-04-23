@@ -133,6 +133,38 @@ def test_raw_panel_fixed_x_lag_prediction_uses_origin_history():
     assert X_pred.tolist() == [[4.0, 3.0]]
 
 
+def test_raw_panel_x_lag_feature_block_matches_legacy_bridge():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+
+    legacy = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=3,
+        contract=_contract(x_lag_creation="fixed_x_lags"),
+        predictor_family="all_macro_vars",
+    )
+    explicit = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=3,
+        contract=_contract(x_lag_creation="no_x_lags"),
+        predictor_family="all_macro_vars",
+        x_lag_feature_block="fixed_x_lags",
+    )
+
+    for legacy_arr, explicit_arr in zip(legacy, explicit):
+        assert np.allclose(legacy_arr, explicit_arr)
+
+
 def test_raw_panel_target_level_addback_uses_origin_target_history():
     frame = pd.DataFrame(
         {
@@ -402,6 +434,29 @@ def test_raw_panel_feature_names_order_fixed_x_lags_before_append_blocks():
         "a_rotma3",
         "a_rotma6",
     ]
+
+
+def test_raw_panel_feature_names_prefer_explicit_x_lag_block_over_bridge():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0],
+            "a": [1.0, 2.0, 3.0],
+        }
+    )
+    recipe = SimpleNamespace(
+        data_task_spec={"predictor_family": "all_macro_vars"},
+        preprocess_contract=_contract(x_lag_creation="no_x_lags"),
+        layer2_representation_spec={
+            "feature_blocks": {
+                "x_lag_feature_block": {"value": "fixed_x_lags"},
+                "temporal_feature_block": {"value": "none"},
+                "rotation_feature_block": {"value": "none"},
+                "level_feature_block": {"value": "none"},
+            }
+        },
+    )
+
+    assert _raw_panel_feature_names(frame, "target", recipe) == ["a", "a_lag_1"]
 
 
 def test_raw_panel_marx_rotation_replaces_lag_polynomial_basis_with_origin_history():

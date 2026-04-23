@@ -1185,7 +1185,7 @@ def test_compiled_manifest_records_layer2_representation_provenance() -> None:
     compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
     spec = compile_result.manifest["layer2_representation_spec"]
     assert spec["schema_version"] == "layer2_representation_v1"
-    assert spec["runtime_effect"] == "provenance_plus_executor_dispatch"
+    assert spec["runtime_effect"] == "provenance_plus_runtime_block_dispatch"
     assert spec["source_bridge"]["feature_builder"] == "autoreg_lagged_target"
     assert spec["source_bridge"]["data_richness_mode"] == "target_lags_only"
     assert spec["source_bridge"]["target_lag_selection"] == "ic_select"
@@ -1196,7 +1196,7 @@ def test_compiled_manifest_records_layer2_representation_provenance() -> None:
     assert spec["feature_blocks"]["feature_block_set"]["value"] == "target_lags_only"
     assert spec["feature_blocks"]["target_lag_block"]["value"] == "ic_selected_target_lags"
     assert spec["feature_blocks"]["x_lag_feature_block"]["value"] == "none"
-    assert "Feature-block specs drive executor-family dispatch" in spec["compatibility_notes"][0]
+    assert "Feature-block specs drive executor-family dispatch and fixed X-lag matrix composition" in spec["compatibility_notes"][0]
     assert compile_result.compiled.recipe_spec.layer2_representation_spec == spec
 
 

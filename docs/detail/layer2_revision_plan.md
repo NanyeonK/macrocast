@@ -79,8 +79,10 @@ The current fixed full support surface is:
 The explicit feature-block grammar now participates in the first runtime
 dispatch decision: execution derives the raw-panel versus autoregressive model
 executor path from Layer 2 feature blocks and uses old `feature_builder` names
-only as compatibility fallback. Matrix composition still reuses the existing
-raw-panel/autoregressive builders.
+only as compatibility fallback. Fixed X-lag matrix composition now also reads
+the explicit `x_lag_feature_block` first and uses the old
+`PreprocessContract.x_lag_creation` bridge only as fallback. Other matrix
+composition still reuses the existing raw-panel/autoregressive builders.
 
 ## Revision Principles
 
@@ -438,8 +440,8 @@ For feature-block patches, also test:
 | Compatibility name cleanup | done, provenance-only | Added `target_lag_selection` and `target_lag_count` provenance while keeping legacy `y_lag_count` / `factor_ar_lags` accepted. |
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
-| Explicit target/X lag blocks | planned | First runtime block migration. |
+| Explicit target/X lag blocks | in progress | Fixed X-lag matrix composition now reads `x_lag_feature_block` before the old `x_lag_creation` bridge. |
 | Factor/selection blocks | planned | PCA/static factors and selection provenance. |
 | Level/rotation/temporal blocks | in progress | Level blocks, temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and cross-block composition remain gated. |
-| Bridge dispatch retirement | in progress | First slice routes executor-family dispatch through explicit Layer 2 blocks; matrix composition still uses existing builders. |
+| Bridge dispatch retirement | in progress | Executor-family dispatch and fixed X-lag matrix composition now route through explicit Layer 2 blocks; remaining matrix composition still uses existing builders. |
 | Simple/public sweeps | blocked | Wait for fixed full support and compiler guards. |
