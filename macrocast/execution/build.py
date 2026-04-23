@@ -47,7 +47,7 @@ from .lag_polynomial_rotation import (
 from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as _resolve_min_train_obs
 from .nber import filter_origins_by_regime as _filter_origins_by_regime
 from .deterministic import augment_array as _augment_deterministic_array
-from .types import ExecutionResult, ExecutionSpec
+from .types import ExecutionResult, ExecutionSpec, Layer2Representation
 from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
 from ..preprocessing import (
     PreprocessContract,
@@ -2255,6 +2255,163 @@ def _raw_panel_feature_names(
     return names
 
 
+def _factor_feature_names_from_fit_state(fit_state: Sequence[Mapping[str, object]]) -> list[str] | None:
+    for payload in reversed(tuple(fit_state)):
+        if str(payload.get("block", "")) != "pca_static_factors":
+            continue
+        names = payload.get("feature_names")
+        if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
+            return [str(name) for name in names]
+    return None
+
+
+def _raw_panel_representation_feature_names(
+    frame: pd.DataFrame,
+    target: str,
+    recipe: RecipeSpec,
+    fit_state: Sequence[Mapping[str, object]],
+) -> list[str]:
+    factor_names = _factor_feature_names_from_fit_state(fit_state)
+    if factor_names is None:
+        return _raw_panel_feature_names(frame, target, recipe)
+    names = list(factor_names)
+    if _feature_runtime_builder(recipe) == "raw_feature_panel" and _target_lag_feature_block(recipe) == "fixed_target_lags":
+        lag_order = _target_lag_order_from_block(recipe, _max_ar_lag(recipe))
+        names.extend(_target_lag_feature_names(recipe, lag_order, default_prefix="target_lag"))
+    return names
+
+
+def _raw_panel_feature_role(name: str) -> str:
+    if name.startswith("factor_"):
+        return "factor"
+    if name.startswith("target_lag_") or name.startswith("y_lag_") or name.startswith("lag_"):
+        return "target_lag"
+    if "_marx_ma_lag1_to_lag" in name or "_rotma" in name:
+        return "rotation"
+    if (
+        name in {_LOCAL_TEMPORAL_FACTOR_MEAN_FEATURE_NAME, _LOCAL_TEMPORAL_FACTOR_DISPERSION_FEATURE_NAME}
+        or name.endswith("_ma3")
+        or name.endswith("_mean3")
+        or name.endswith("_var3")
+        or name.endswith("_vol3")
+    ):
+        return "temporal"
+    if name == _TARGET_LEVEL_ADD_BACK_FEATURE_NAME or name.endswith("_level"):
+        return "level"
+    if "_lag_" in name:
+        return "x_lag"
+    return "base_x"
+
+
+def _raw_panel_block_order(
+    recipe: RecipeSpec,
+    fit_state: Sequence[Mapping[str, object]],
+) -> tuple[str, ...]:
+    order: list[str] = []
+    if _factor_feature_names_from_fit_state(fit_state) is not None:
+        order.append("factor")
+    else:
+        order.append("base_x")
+        if _x_lag_creation_for_feature_names(recipe) == "fixed_x_lags":
+            order.append("x_lag")
+        if _temporal_feature_block(recipe) != "none":
+            order.append("temporal")
+        if _rotation_feature_block(recipe) != "none":
+            order.append("rotation")
+        if _level_feature_block(recipe) != "none":
+            order.append("level")
+    if _feature_runtime_builder(recipe) == "raw_feature_panel" and _target_lag_feature_block(recipe) == "fixed_target_lags":
+        order.append("target_lag")
+    return tuple(order)
+
+
+def _raw_panel_alignment(
+    recipe: RecipeSpec,
+    *,
+    spec: Mapping[str, object] | None,
+    fit_state: Sequence[Mapping[str, object]],
+) -> dict[str, object]:
+    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous"))
+    alignment: dict[str, object] = {
+        "representation_runtime": "raw_feature_panel",
+        "contemporaneous_x_rule": contemp_rule,
+        "x_observation_timing": (
+            "target_date_x"
+            if contemp_rule == "allow_contemporaneous"
+            else "forecast_origin_x"
+        ),
+    }
+    if _feature_runtime_builder(recipe) == "raw_feature_panel" and _target_lag_feature_block(recipe) == "fixed_target_lags":
+        alignment["target_lag_timing"] = "target_lag_1_equals_target_observed_at_forecast_origin"
+    if _x_lag_creation_for_feature_names(recipe) == "fixed_x_lags":
+        alignment["x_lag_timing"] = "origin_aligned_trailing_x_history"
+    if _temporal_feature_block(recipe) != "none":
+        alignment["temporal_timing"] = "origin_aligned_trailing_window"
+    if _rotation_feature_block(recipe) != "none":
+        alignment["rotation_timing"] = "origin_aligned_trailing_window"
+    if _level_feature_block(recipe) != "none":
+        alignment["level_timing"] = "observable_at_forecast_origin"
+    if _factor_feature_names_from_fit_state(fit_state) is not None:
+        alignment["factor_fit_scope"] = "train_window_only"
+    return alignment
+
+
+def _raw_panel_leakage_contract(spec: Mapping[str, object] | None) -> str:
+    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous"))
+    if contemp_rule == "allow_contemporaneous":
+        return "allow_contemporaneous_oracle_x"
+    return "forecast_origin_only"
+
+
+def _build_raw_panel_representation(
+    frame: pd.DataFrame,
+    recipe: RecipeSpec,
+    horizon: int,
+    start_idx: int,
+    origin_idx: int,
+    contract: PreprocessContract,
+    *,
+    target_window: pd.Series | None = None,
+) -> Layer2Representation:
+    fit_state: list[dict[str, object]] = []
+    spec = dict(recipe.data_task_spec)
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        recipe.target,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        predictor_family=_predictor_family(recipe),
+        spec=spec,
+        target_window=target_window,
+        fit_state_sink=fit_state,
+        level_feature_block=_level_feature_block(recipe),
+        temporal_feature_block=_temporal_feature_block(recipe),
+        rotation_feature_block=_rotation_feature_block(recipe),
+        x_lag_feature_block=_x_lag_feature_block(recipe),
+        factor_feature_block=_factor_feature_block(recipe),
+        target_lag_block=_target_lag_feature_block(recipe),
+        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
+        marx_max_lag=_marx_rotation_max_lag(recipe),
+    )
+    feature_names = tuple(_raw_panel_representation_feature_names(frame, recipe.target, recipe, fit_state))
+    return Layer2Representation(
+        Z_train=np.asarray(X_train, dtype=float),
+        y_train=np.asarray(y_train, dtype=float),
+        Z_pred=np.asarray(X_pred, dtype=float),
+        feature_names=feature_names,
+        block_order=_raw_panel_block_order(recipe, fit_state),
+        block_roles={name: _raw_panel_feature_role(name) for name in feature_names},
+        fit_state=tuple(dict(payload) for payload in fit_state),
+        alignment=_raw_panel_alignment(recipe, spec=spec, fit_state=fit_state),
+        leakage_contract=_raw_panel_leakage_contract(spec),
+        feature_builder=_feature_runtime_builder(recipe),
+        feature_runtime_builder=_feature_runtime_builder(recipe),
+        legacy_feature_builder=_feature_builder(recipe),
+    )
+
+
 def _build_raw_panel_training_data(
     frame: pd.DataFrame,
     target: str,
@@ -2871,29 +3028,28 @@ def _fit_raw_panel_model(
     model,
     *,
     target_window: pd.Series | None = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
-    fit_state: list[dict[str, object]] = []
-    X_train, y_train, X_pred = _build_raw_panel_training_data(
-        raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
-        predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=target_window,
-        fit_state_sink=fit_state, level_feature_block=_level_feature_block(recipe),
-        temporal_feature_block=_temporal_feature_block(recipe),
-        rotation_feature_block=_rotation_feature_block(recipe),
-        x_lag_feature_block=_x_lag_feature_block(recipe),
-        factor_feature_block=_factor_feature_block(recipe),
-        target_lag_block=_target_lag_feature_block(recipe),
-        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
-        marx_max_lag=_marx_rotation_max_lag(recipe),
+) -> tuple[Layer2Representation, np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
+    representation = _build_raw_panel_representation(
+        raw_frame,
+        recipe,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        target_window=target_window,
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
-        X_train, y_train, X_pred, recipe,
-        context_extra=_feature_runtime_context(recipe, mode="fit"),
+        representation.Z_train,
+        representation.y_train,
+        representation.Z_pred,
+        recipe,
+        context_extra=representation.runtime_context(mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
     tuning_payload = dict(tuning_payload or {})
-    if fit_state:
-        tuning_payload["feature_representation_fit_state"] = fit_state[-1]
-    return X_fit, y_fit, X_pred_fit, fitted, tuning_payload
+    if representation.latest_fit_state is not None:
+        tuning_payload["feature_representation_fit_state"] = representation.latest_fit_state
+    return representation, X_fit, y_fit, X_pred_fit, fitted, tuning_payload
 
 
 def _run_custom_raw_panel_executor(
@@ -2908,127 +3064,127 @@ def _run_custom_raw_panel_executor(
     assert raw_frame is not None and origin_idx is not None
     model_name = _model_family(recipe)
     spec = get_custom_model(model_name)
-    X_train, y_train, X_pred = _build_raw_panel_training_data(
-        raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
-        predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=train,
-        level_feature_block=_level_feature_block(recipe),
-        temporal_feature_block=_temporal_feature_block(recipe),
-        rotation_feature_block=_rotation_feature_block(recipe),
-        x_lag_feature_block=_x_lag_feature_block(recipe),
-        factor_feature_block=_factor_feature_block(recipe),
-        target_lag_block=_target_lag_feature_block(recipe),
-        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
-        marx_max_lag=_marx_rotation_max_lag(recipe),
+    representation = _build_raw_panel_representation(
+        raw_frame,
+        recipe,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        target_window=train,
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
-        X_train, y_train, X_pred, recipe,
-        context_extra=_feature_runtime_context(recipe, mode="custom_model"),
+        representation.Z_train,
+        representation.y_train,
+        representation.Z_pred,
+        recipe,
+        context_extra=representation.runtime_context(mode="custom_model"),
     )
     context = {
         "model_name": model_name,
         "target": recipe.target,
         "horizon": int(horizon),
-        "feature_names": _raw_panel_feature_names(raw_frame, recipe.target, recipe),
+        "feature_names": list(representation.feature_names),
         "contract_version": "custom_model_v1",
     }
-    context.update(_feature_runtime_context(recipe, mode="custom_model"))
+    context.update(representation.runtime_context(mode="custom_model"))
     pred = _as_scalar_prediction(spec.function(X_train, y_train, X_pred, context), model_name=model_name)
     return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": {}}
 
 
 def _run_ols_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ols", LinearRegression(), target_window=train)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ols", LinearRegression(), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_ridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ridge", Ridge(alpha=1.0), target_window=train)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "ridge", Ridge(alpha=1.0), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_lasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lasso", Lasso(alpha=1e-4, max_iter=10000), target_window=train)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lasso", Lasso(alpha=1e-4, max_iter=10000), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_elasticnet_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000), target_window=train)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "elasticnet", ElasticNet(alpha=1e-4, l1_ratio=0.5, max_iter=10000), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_randomforest_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_bayesianridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "bayesianridge", BayesianRidge())
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "bayesianridge", BayesianRidge())
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_huber_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "huber", HuberRegressor())
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "huber", HuberRegressor())
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_adaptivelasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "adaptivelasso", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "adaptivelasso", None)
     return {"y_pred": float(predict_adaptive_lasso(model, X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_rbf_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_extratrees_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_gbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_xgboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_lightgbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_catboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_mlp_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -3104,19 +3260,19 @@ def _run_quantile_linear_autoreg_executor(train: pd.Series, horizon: int, recipe
 
 def _run_componentwise_boosting_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "componentwise_boosting", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "componentwise_boosting", None)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_ridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_ridge", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_ridge", None)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_lasso", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_lasso", None)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -3152,7 +3308,7 @@ def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: i
 
 def _run_quantile_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "quantile_linear", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "quantile_linear", None)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4394,42 +4550,31 @@ def _compute_minimal_importance(
         raise ExecutionError("minimal_importance requires at least one valid forecast origin")
     start_idx = max(0, origin_idx + 1 - _rolling_window_size(recipe)) if rolling else 0
     horizon = min(recipe.horizons)
-    predictors = _raw_panel_feature_names(aligned_frame, recipe.target, recipe)
-    X_train, y_train, _ = _build_raw_panel_training_data(
+    representation = _build_raw_panel_representation(
         aligned_frame,
-        recipe.target,
+        recipe,
         horizon,
         start_idx,
         origin_idx,
         contract,
-        predictor_family=_predictor_family(recipe),
-        spec=dict(recipe.data_task_spec),
-        level_feature_block=_level_feature_block(recipe),
-        temporal_feature_block=_temporal_feature_block(recipe),
-        rotation_feature_block=_rotation_feature_block(recipe),
-        x_lag_feature_block=_x_lag_feature_block(recipe),
-        factor_feature_block=_factor_feature_block(recipe),
-        target_lag_block=_target_lag_feature_block(recipe),
-        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
-        marx_max_lag=_marx_rotation_max_lag(recipe),
     )
 
     if model_family == "ridge":
         model = Ridge(alpha=1.0)
-        model.fit(X_train, y_train)
+        model.fit(representation.Z_train, representation.y_train)
         importance_values = np.abs(model.coef_)
     elif model_family == "lasso":
         model = Lasso(alpha=1e-4, max_iter=10000)
-        model.fit(X_train, y_train)
+        model.fit(representation.Z_train, representation.y_train)
         importance_values = np.abs(model.coef_)
     else:
         model = RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest"))
-        model.fit(X_train, y_train)
+        model.fit(representation.Z_train, representation.y_train)
         importance_values = model.feature_importances_
 
     feature_importance = [
         {"feature": feature, "importance": float(value)}
-        for feature, value in sorted(zip(predictors, importance_values), key=lambda item: item[1], reverse=True)
+        for feature, value in sorted(zip(representation.feature_names, importance_values), key=lambda item: item[1], reverse=True)
     ]
     return {
         "importance_method": "minimal_importance",
@@ -4438,7 +4583,7 @@ def _compute_minimal_importance(
         "feature_runtime_builder": feature_runtime_builder,
         "legacy_feature_builder": legacy_feature_builder,
         "feature_dispatch_source": "layer2_feature_blocks",
-        "n_train": int(len(y_train)),
+        "n_train": int(len(representation.y_train)),
         "feature_importance": feature_importance,
     }
 
@@ -4453,26 +4598,15 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
     start_idx = max(0, origin_idx + 1 - _rolling_window_size(recipe)) if rolling else 0
     if feature_runtime_builder == "raw_feature_panel":
         aligned_frame = raw_frame.loc[target_series.index]
-        feature_names = _raw_panel_feature_names(aligned_frame, recipe.target, recipe)
-        X_train, y_train, X_pred = _build_raw_panel_training_data(
+        representation = _build_raw_panel_representation(
             aligned_frame,
-            recipe.target,
+            recipe,
             horizon,
             start_idx,
             origin_idx,
             contract,
-            predictor_family=_predictor_family(recipe),
-            spec=dict(recipe.data_task_spec),
-            level_feature_block=_level_feature_block(recipe),
-            temporal_feature_block=_temporal_feature_block(recipe),
-            rotation_feature_block=_rotation_feature_block(recipe),
-            x_lag_feature_block=_x_lag_feature_block(recipe),
-            factor_feature_block=_factor_feature_block(recipe),
-            target_lag_block=_target_lag_feature_block(recipe),
-            target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
-            marx_max_lag=_marx_rotation_max_lag(recipe),
         )
-        return feature_names, X_train, y_train, X_pred
+        return list(representation.feature_names), representation.Z_train, representation.y_train, representation.Z_pred
     if feature_runtime_builder == "autoreg_lagged_target":
         train = target_series.iloc[start_idx: origin_idx + 1]
         lag_order = _lag_order(recipe, train)

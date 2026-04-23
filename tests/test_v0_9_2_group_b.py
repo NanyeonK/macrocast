@@ -18,6 +18,7 @@ from macrocast.execution.build import (
     _apply_x_lag_creation,
     _build_predictions,
     _build_lagged_supervised_matrix,
+    _build_raw_panel_representation,
     _build_raw_panel_training_data,
     _compute_minimal_importance,
     _feature_runtime_builder,
@@ -372,6 +373,76 @@ def test_raw_panel_factor_feature_block_matches_legacy_dimred_bridge():
         assert np.allclose(legacy_arr, explicit_arr)
     assert legacy_fit_state[-1]["runtime_policy"] == "pca"
     assert explicit_fit_state[-1]["runtime_policy"] == "pca"
+
+
+def test_raw_panel_representation_bundle_uses_factor_feature_names_and_metadata():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "factor_blocks_only"},
+            "factor_feature_block": {"value": "pca_static_factors"},
+        },
+    )
+    recipe.data_task_spec = {"predictor_family": "all_macro_vars"}
+
+    bundle = _build_raw_panel_representation(
+        frame,
+        recipe,
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(),
+    )
+
+    assert bundle.feature_names == ("factor_1", "factor_2", "factor_3")
+    assert bundle.block_order == ("factor",)
+    assert bundle.block_roles == {
+        "factor_1": "factor",
+        "factor_2": "factor",
+        "factor_3": "factor",
+    }
+    assert bundle.alignment["factor_fit_scope"] == "train_window_only"
+    assert bundle.latest_fit_state["block"] == "pca_static_factors"
+
+
+def test_importance_feature_names_use_representation_bundle_for_factor_path():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0, 17.0, 19.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0, 5.5, 6.0],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "factor_blocks_only"},
+            "factor_feature_block": {"value": "pca_static_factors"},
+        },
+    )
+    recipe.benchmark_config = {"minimum_train_size": 5, "rolling_window_size": 5}
+    recipe.data_task_spec = {"predictor_family": "all_macro_vars"}
+
+    feature_names, X_train, y_train, X_pred = _importance_feature_names(
+        recipe,
+        frame,
+        frame["target"],
+        _contract(),
+    )
+
+    assert feature_names == ["factor_1", "factor_2", "factor_3"]
+    assert X_train.shape == (4, 3)
+    assert len(y_train) == 4
+    assert X_pred.shape == (1, 3)
 
 
 def test_raw_panel_target_level_addback_uses_origin_target_history():
