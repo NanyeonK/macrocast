@@ -729,6 +729,25 @@ def _preprocess_lasso_select_contract() -> PreprocessContract:
     )
 
 
+def _preprocess_pca_lasso_select_contract() -> PreprocessContract:
+    return build_preprocess_contract(
+        target_transform_policy="raw_level",
+        x_transform_policy="raw_level",
+        tcode_policy="extra_preprocess_without_tcode",
+        target_missing_policy="none",
+        x_missing_policy="mean_impute",
+        target_outlier_policy="none",
+        x_outlier_policy="zscore_clip",
+        scaling_policy="standard",
+        dimensionality_reduction_policy="pca",
+        feature_selection_policy="lasso_select",
+        preprocess_order="extra_only",
+        preprocess_fit_scope="train_only",
+        inverse_transform_policy="none",
+        evaluation_scale="raw_level",
+    )
+
+
 def test_execute_recipe_supports_mean_impute_minmax_winsor_path(tmp_path: Path) -> None:
     fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
     result = execute_recipe(
@@ -775,6 +794,27 @@ def test_execute_recipe_supports_lasso_feature_selection_path(tmp_path: Path) ->
     run_dir = tmp_path / result.run.artifact_subdir
     manifest = json.loads((run_dir / "manifest.json").read_text())
     assert manifest["preprocess_contract"]["feature_selection_policy"] == "lasso_select"
+    assert manifest["prediction_rows"] > 0
+
+
+def test_execute_recipe_supports_select_before_factor_path(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_pca_lasso_select_contract(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    fit_state = json.loads((run_dir / "feature_representation_fit_state.json").read_text())
+    assert manifest["preprocess_contract"]["dimensionality_reduction_policy"] == "pca"
+    assert manifest["preprocess_contract"]["feature_selection_policy"] == "lasso_select"
+    assert fit_state["block"] == "pca_static_factors"
+    assert fit_state["feature_selection_policy"] == "lasso_select"
+    assert fit_state["feature_selection_semantics"] == "select_before_factor"
+    assert fit_state["selected_source_feature_count"] == len(fit_state["selected_source_feature_names"])
+    assert set(fit_state["selected_source_feature_names"]) == set(fit_state["loadings"][fit_state["feature_names"][0]].keys())
     assert manifest["prediction_rows"] > 0
 
 

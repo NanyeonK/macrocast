@@ -188,15 +188,17 @@ When target lags are also present, the default rule is:
 
 ### Feature Selection
 
-Feature selection applies to raw predictor blocks today. The full contract must
-separate two future semantics:
+Feature selection now supports one explicit factor-composer semantic and still
+reserves the second:
 
 - `select_before_factor`: select X columns, then estimate factor block;
 - `select_after_factor`: estimate factor block, then select among final `Z`
   columns.
 
-Until both semantics are represented explicitly, factor/selection composition
-must stay gated.
+The current runtime opens only `select_before_factor` for
+`factor_feature_block=pca_static_factors` and the equivalent
+`dimensionality_reduction_policy` bridge. `select_after_factor` remains gated
+until Layer 2 exposes a distinct composer contract.
 
 ### Level Blocks
 
@@ -284,6 +286,8 @@ This patch opens the first previously gated composition class:
 - fixed target lags plus fixed X lags;
 - fixed target lags plus PCA static-factor blocks, where target lags are
   concatenated after the factor block rather than entering PCA.
+- raw predictor feature selection followed by PCA static factors
+  (`select_before_factor`) in supported raw-panel runtimes.
 
 ## Still Gated
 
@@ -291,7 +295,7 @@ These are the next semantic composer tasks:
 
 | Area | Why gated |
 |---|---|
-| Factor plus feature selection | Need explicit select-before-factor versus select-after-factor semantics. |
+| Factor plus feature selection | `select_before_factor` is operational for `pca_static_factors`; `select_after_factor` still needs a distinct composer contract. |
 | MARX plus X-lag/temporal/factor blocks | Need append versus replacement semantics and stable feature naming. |
 | MAF rotation | Need factor-to-rotation composer and leakage metadata. |
 | Custom temporal/rotation blocks | Need block-local callable contract. |
@@ -321,7 +325,7 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
    models. This is the current patch.
 4. Add feature-name and block-role artifacts for every `Z` column.
 5. Add full recipe examples for Layer 2 x Layer 3 grids.
-6. Add factor/selection composition with explicit semantics.
+6. Add `select_after_factor` and broader factor/selection composition semantics.
 7. Add MARX composition modes beyond basis replacement.
 8. Add custom block callable contracts.
 9. Expose a safe simple-API representation sweep after the full-route contract

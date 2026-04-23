@@ -334,8 +334,6 @@ def _supported_train_only_extra(contract: PreprocessContract) -> bool:
         return False
     if contract.feature_selection_policy not in allowed_feature_selection:
         return False
-    if contract.dimensionality_reduction_policy != "none" and contract.feature_selection_policy != "none":
-        return False
     return True
 
 

@@ -297,4 +297,4 @@ def test_build_preprocess_contract_rejects_combined_dimred_and_feature_selection
         inverse_transform_policy="none",
         evaluation_scale="raw_level",
     )
-    assert is_operational_preprocess_contract(contract) is False
+    assert is_operational_preprocess_contract(contract) is True

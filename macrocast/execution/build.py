@@ -1931,6 +1931,7 @@ def _apply_dimensionality_reduction(
     X_pred: pd.DataFrame,
     contract: PreprocessContract,
     *,
+    feature_selection_policy: str = "none",
     fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     policy = contract.dimensionality_reduction_policy
@@ -1942,7 +1943,14 @@ def _apply_dimensionality_reduction(
         train_scores = reducer.fit_transform(X_train)
         pred_scores = reducer.transform(X_pred)
         if fit_state_sink is not None:
-            fit_state_sink.append(_factor_fit_state_from_pca(policy, X_train, reducer))
+            fit_state_sink.append(
+                _factor_fit_state_from_pca(
+                    policy,
+                    X_train,
+                    reducer,
+                    feature_selection_policy=feature_selection_policy,
+                )
+            )
         return train_scores, pred_scores
     if policy == "static_factor":
         train_values = X_train.to_numpy(dtype=float)
@@ -1954,7 +1962,16 @@ def _apply_dimensionality_reduction(
         centered_pred = X_pred.to_numpy(dtype=float) - mean
         pred_scores = centered_pred @ components.T
         if fit_state_sink is not None:
-            fit_state_sink.append(_factor_fit_state_from_components(policy, X_train, components, mean.reshape(-1), s))
+            fit_state_sink.append(
+                _factor_fit_state_from_components(
+                    policy,
+                    X_train,
+                    components,
+                    mean.reshape(-1),
+                    s,
+                    feature_selection_policy=feature_selection_policy,
+                )
+            )
         return train_scores, pred_scores
     raise ExecutionError(f"dimensionality_reduction_policy {policy!r} is not executable in current runtime slice")
 
@@ -1965,6 +1982,8 @@ def _factor_fit_state_from_components(
     components: np.ndarray,
     mean: np.ndarray,
     singular_values: np.ndarray | None = None,
+    *,
+    feature_selection_policy: str = "none",
 ) -> dict[str, object]:
     source_names = [str(col) for col in X_train.columns]
     feature_names = [f"factor_{idx}" for idx in range(1, int(components.shape[0]) + 1)]
@@ -1982,19 +2001,32 @@ def _factor_fit_state_from_components(
         "train_window_columns": int(X_train.shape[1]),
         "center_mean": [float(x) for x in np.asarray(mean, dtype=float).reshape(-1)],
         "loadings": loadings,
+        "feature_selection_policy": str(feature_selection_policy),
+        "feature_selection_semantics": (
+            "select_before_factor" if str(feature_selection_policy) != "none" else "none"
+        ),
+        "selected_source_feature_names": source_names,
+        "selected_source_feature_count": int(len(source_names)),
     }
     if singular_values is not None:
         payload["singular_values"] = [float(x) for x in np.asarray(singular_values, dtype=float)[: int(components.shape[0])]]
     return payload
 
 
-def _factor_fit_state_from_pca(policy: str, X_train: pd.DataFrame, reducer: PCA) -> dict[str, object]:
+def _factor_fit_state_from_pca(
+    policy: str,
+    X_train: pd.DataFrame,
+    reducer: PCA,
+    *,
+    feature_selection_policy: str = "none",
+) -> dict[str, object]:
     payload = _factor_fit_state_from_components(
         policy,
         X_train,
         np.asarray(reducer.components_, dtype=float),
         np.asarray(reducer.mean_, dtype=float),
         np.asarray(getattr(reducer, "singular_values_", []), dtype=float),
+        feature_selection_policy=feature_selection_policy,
     )
     payload["explained_variance_ratio"] = [float(x) for x in np.asarray(reducer.explained_variance_ratio_, dtype=float)]
     return payload
@@ -2008,15 +2040,19 @@ def _apply_raw_panel_preprocessing(
     *,
     fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if contract.dimensionality_reduction_policy != "none" and contract.feature_selection_policy != "none":
-        raise ExecutionError("current runtime slice does not support combining dimensionality reduction with feature selection")
     X_train, X_pred = _apply_missing_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_outlier_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_additional_preprocessing(X_train, X_pred, contract)
     X_train, X_pred = _apply_scaling_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_feature_selection(X_train, y_train, X_pred, contract)
     X_train, X_pred = _apply_x_lag_creation(X_train, X_pred, contract)
-    return _apply_dimensionality_reduction(X_train, X_pred, contract, fit_state_sink=fit_state_sink)
+    return _apply_dimensionality_reduction(
+        X_train,
+        X_pred,
+        contract,
+        feature_selection_policy=str(contract.feature_selection_policy),
+        fit_state_sink=fit_state_sink,
+    )
 
 
 _TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
@@ -2387,6 +2423,12 @@ def _raw_panel_alignment(
         alignment["level_timing"] = "observable_at_forecast_origin"
     if _factor_feature_names_from_fit_state(fit_state) is not None:
         alignment["factor_fit_scope"] = "train_window_only"
+        for payload in reversed(tuple(fit_state)):
+            if str(payload.get("block", "")) != "pca_static_factors":
+                continue
+            if str(payload.get("feature_selection_semantics", "none")) != "none":
+                alignment["factor_selection_semantics"] = str(payload["feature_selection_semantics"])
+            break
     return alignment
 
 

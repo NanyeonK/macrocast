@@ -2321,8 +2321,12 @@ def test_layer2_factor_block_rejects_feature_selection_mix() -> None:
         },
     }
     result = compile_recipe_dict(recipe)
-    assert result.compiled.execution_status == "not_supported"
-    assert any("feature_selection_policy cannot yet be combined" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
+    block = result.manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]
+    interaction = block["feature_selection_interaction"]
+    assert interaction["feature_selection_policy"] == "lasso_select"
+    assert interaction["active_semantic"] == "select_before_factor"
+    assert interaction["supported_semantics"] == ["select_before_factor"]
 
 
 def test_compile_recipe_accepts_stage3_training_axes() -> None:

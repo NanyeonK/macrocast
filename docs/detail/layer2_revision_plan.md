@@ -257,11 +257,12 @@ Acceptance:
 ### Patch L2-F: Factor And Selection Blocks
 
 Status: complete for `factor_feature_block=pca_static_factors` in the supported
-runtime slice. Matrix composition reads the explicit factor block first and
-uses old factor/dimensionality-reduction bridge fields only as fallback.
-Factor lags, supervised factors, custom factors, and factor/selection
-composition remain registry-only or `not_supported` until the explicit block
-composer exists.
+runtime slice, including `select_before_factor` composition with
+`feature_selection_policy`. Matrix composition reads the explicit factor block
+first and uses old factor/dimensionality-reduction bridge fields only as
+fallback. Factor lags, supervised factors, custom factors, and
+`select_after_factor` composition remain registry-only or `not_supported`
+until the explicit block composer exists.
 
 Goal: move factor construction from coarse runtime switches into explicit
 Layer 2 blocks.
@@ -271,8 +272,8 @@ Changes:
 - implement `factor_feature_block=pca_static_factors`;
 - attach `factor_count` and any factor-lag config to factor-block metadata;
 - keep `dimensionality_reduction_policy=pca` as compatibility bridge;
-- define how `feature_selection_policy` interacts with factor blocks and raw
-  predictor blocks;
+- define and then open the remaining `feature_selection_policy` interactions,
+  especially `select_after_factor`;
 - block unsupported combinations with precise compiler messages.
 
 Acceptance:
@@ -445,7 +446,7 @@ For feature-block patches, also test:
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
 | Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; fixed target-plus-X composition is executable in raw-panel direct runtimes. |
-| Factor/selection blocks | done for static PCA | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; feature-selection/factor composition remains gated. |
+| Factor/selection blocks | done for static PCA + select-before-factor | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; `feature_selection_policy` can compose as `select_before_factor`, while `select_after_factor` remains gated. |
 | Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
 | Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
 | Representation handoff unification | done for supported runtime slices | Supported raw-panel and autoregressive target-lag runtimes now emit a canonical `Layer2Representation` bundle with `Z_train`, `y_train`, `Z_pred`, feature names, block roles, alignment, fit-state provenance, and leakage metadata before Layer 3 fit/predict. |
@@ -460,7 +461,7 @@ aliases remain intentionally accepted for old recipes and old manifests.
 
 The remaining items in this file are not cleanup blockers:
 
-- factor/selection composition;
+- `select_after_factor` and broader factor/selection composition;
 - MARX with additional X-lag/temporal/factor composition;
 - MAF/custom rotations;
 - custom temporal/feature-block callable contracts;

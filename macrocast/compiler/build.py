@@ -1530,7 +1530,17 @@ def _factor_block_from_bridge(
         ),
         "feature_selection_interaction": {
             "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
-            "rule": "feature selection currently applies only to raw predictor blocks; factor blocks require feature_selection_policy='none'",
+            "supported_semantics": ["select_before_factor"],
+            "active_semantic": (
+                "select_before_factor"
+                if block == "pca_static_factors" and getattr(preprocess_contract, "feature_selection_policy", "none") != "none"
+                else "none"
+            ),
+            "rule": (
+                "when feature_selection_policy is active with pca_static_factors, the runtime first selects raw predictor X "
+                "within each train window and then fits the factor block on the selected panel; "
+                "select_after_factor remains gated"
+            ),
         },
     }
     if block == "pca_static_factors":
@@ -2131,10 +2141,10 @@ def _execution_status(
                 "factor_feature_block='none' conflicts with an active factor compatibility bridge "
                 f"(legacy feature builder={feature_builder!r}, dimensionality_reduction_policy={dimred!r})"
             )
-        if feature_selection != "none" and (factor_block_active or dimred != "none"):
+        if feature_selection != "none" and explicit_factor_block not in {None, "none", "pca_static_factors"}:
             not_supported.append(
-                "feature_selection_policy cannot yet be combined with factor_feature_block "
-                "or dimensionality_reduction_policy; choose raw predictor selection or factor extraction, not both"
+                "feature_selection_policy is operational only for select_before_factor composition "
+                "with factor_feature_block='pca_static_factors'; other factor composers remain gated"
             )
 
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")
