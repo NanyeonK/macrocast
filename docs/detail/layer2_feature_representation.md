@@ -134,6 +134,15 @@ Operational support is currently narrow:
   remains registry-only until a block-local callable contract returns train/pred
   rotation feature frames, stable names, fit-state provenance, and leakage
   metadata.
+- The MARX composer skeleton is defined by
+  `lag_polynomial_rotation_contract_v1`. Its naming contract is
+  `{predictor}_marx_ma_lag1_to_lag{p}` for public feature names and
+  `{predictor}__marx_ma_lag1_to_lag{p}` for runtime names, ordered by predictor
+  and then rotation order. Its alignment contract is
+  `Z_{i,p,t} = p^{-1} * sum_{j=1}^{p} X_{i,t-j}` for training rows and
+  `X_{origin-1}, ..., X_{origin-p}` at prediction origin. The rotated MARX
+  basis replaces the source lag-polynomial basis in final `Z`; source lag
+  columns must not be appended a second time when the MARX basis is active.
 - Feature selection currently applies only to raw predictor blocks. It cannot
   be combined with factor blocks or dimensionality reduction until the package
   defines selection-before-factor vs selection-after-factor semantics.

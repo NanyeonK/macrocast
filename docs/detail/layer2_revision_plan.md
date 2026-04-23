@@ -340,6 +340,13 @@ Current lowered slice:
   and custom rotations require a block-local callable contract. None of these
   values should silently reuse `moving_average_rotation` or the broad
   `custom_preprocessor` hook.
+- MARX now has a code-level skeleton contract,
+  `lag_polynomial_rotation_contract_v1`. It fixes naming
+  (`{predictor}_marx_ma_lag1_to_lag{p}` / `{predictor}__marx_ma_lag1_to_lag{p}`),
+  feature order (predictor-major, then rotation order), alignment
+  (`Z_{i,p,t} = p^{-1} * sum_{j=1}^{p} X_{i,t-j}`), and basis composition
+  (`replace_lag_polynomial_basis`). The next runtime patch must implement this
+  contract rather than appending an ad hoc moving-average block.
 
 Acceptance:
 

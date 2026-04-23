@@ -14,6 +14,9 @@ from ..execution.horizon_target import (
     construction_scale as _target_construction_scale,
     is_path_average_construction as _is_path_average_construction,
 )
+from ..execution.lag_polynomial_rotation import (
+    build_marx_rotation_contract as _build_marx_rotation_contract,
+)
 from ..preprocessing import (
     build_preprocess_contract,
     check_preprocess_governance,
@@ -1325,18 +1328,15 @@ def _rotation_block_from_selection(selection_map: dict[str, AxisSelection]) -> d
             "scope_note": "generic moving-average rotation primitive; full MARX/MAF presets remain separate future blocks",
         }
     if block == "marx_rotation":
+        contract = _build_marx_rotation_contract()
         return {
             "value": "marx_rotation",
             "source_axis": "rotation_feature_block",
             "source_value": "marx_rotation",
             "runtime_status": "registry_only",
-            "required_runtime_contract": "lag_polynomial_rotation_block_composer",
-            "required_semantics": [
-                "build an explicit X-lag block before rotation",
-                "apply cumulative lower-triangular moving-average rotation over the lag polynomial",
-                "define duplicate base-X policy and stable rotated-lag feature names",
-                "prove row-date and prediction-origin no-lookahead alignment",
-            ],
+            "required_runtime_contract": contract["composer_contract"],
+            "composer_contract": contract,
+            "required_semantics": contract["composer_requirements"],
             "scope_note": "MARX is a preset over lag-polynomial rotation and is not equivalent to rotation_feature_block=moving_average_rotation",
         }
     if block == "maf_rotation":

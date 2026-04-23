@@ -1755,6 +1755,15 @@ def test_layer2_advanced_rotation_blocks_record_registry_only_boundary(
     assert block["required_runtime_contract"] == required_contract
     assert scope_phrase in block["scope_note"]
     assert "runtime_bridge" not in block
+    if rotation_block == "marx_rotation":
+        composer = block["composer_contract"]
+        assert composer["schema_version"] == "lag_polynomial_rotation_contract_v1"
+        assert composer["runtime_status"] == "skeleton_only"
+        assert composer["rotation_orders"] == "required_from_recipe"
+        assert composer["source_feature_name_pattern"] == "{predictor}_lag_{k}"
+        assert composer["rotated_feature_name_pattern"] == "{predictor}_marx_ma_lag1_to_lag{p}"
+        assert composer["basis_policy"] == "replace_lag_polynomial_basis"
+        assert composer["alignment"]["lookahead"] == "forbidden"
 
 
 def test_layer2_explicit_rotation_block_requires_raw_panel_bridge() -> None:
