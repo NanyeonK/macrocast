@@ -1203,6 +1203,13 @@ def _factor_feature_block(recipe: RecipeSpec | None) -> str | None:
     return _layer2_block_value(blocks, "factor_feature_block")
 
 
+def _target_lag_feature_block(recipe: RecipeSpec | None) -> str:
+    block = _target_lag_feature_block_spec(recipe)
+    if not block:
+        return "none"
+    return str(block.get("value", "none"))
+
+
 def _target_lag_feature_block_spec(recipe: RecipeSpec | None) -> dict[str, object] | None:
     if recipe is None:
         return None
@@ -1570,6 +1577,26 @@ def _build_lagged_supervised_matrix(train: pd.Series, lag_order: int) -> tuple[n
     if not X:
         raise ExecutionError("insufficient training data to build lagged supervised matrix")
     return np.asarray(X, dtype=float), np.asarray(y, dtype=float)
+
+
+def _fixed_target_lag_frame(
+    target_series: pd.Series,
+    row_index: pd.Index,
+    lag_order: int,
+) -> pd.DataFrame:
+    """Build origin-aligned target-history features for a direct feature row.
+
+    ``target_lag_1`` is the target observed at the forecast origin row,
+    ``target_lag_2`` is the previous target value, and so on. Leading
+    unavailable values are zero-filled, matching fixed X-lag behavior.
+    """
+    if lag_order < 1:
+        raise ExecutionError("target_lag_block='fixed_target_lags' requires a positive lag order")
+    aligned = target_series.astype(float)
+    columns = []
+    for lag in range(1, lag_order + 1):
+        columns.append(aligned.shift(lag - 1).reindex(row_index).rename(f"__target_lag{lag}"))
+    return pd.concat(columns, axis=1).fillna(0.0)
 
 
 def _recursive_predict_sklearn(model, train: pd.Series, horizon: int, lag_order: int) -> float:
@@ -2222,6 +2249,9 @@ def _raw_panel_feature_names(
     elif level_feature_block == "level_growth_pairs":
         pair_columns = tuple(dict(recipe.data_task_spec).get("level_growth_pair_columns") or ())
         names.extend(_x_level_public_feature_name(str(column)) for column in pair_columns)
+    if _feature_runtime_builder(recipe) == "raw_feature_panel" and _target_lag_feature_block(recipe) == "fixed_target_lags":
+        lag_order = _target_lag_order_from_block(recipe, _max_ar_lag(recipe))
+        names.extend(_target_lag_feature_names(recipe, lag_order, default_prefix="target_lag"))
     return names
 
 
@@ -2242,6 +2272,8 @@ def _build_raw_panel_training_data(
     rotation_feature_block: str = "none",
     x_lag_feature_block: str | None = None,
     factor_feature_block: str | None = None,
+    target_lag_block: str = "none",
+    target_lag_order: int | None = None,
     marx_max_lag: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
@@ -2343,6 +2375,15 @@ def _build_raw_panel_training_data(
         predictors,
         spec,
     )
+    target_lag_train: pd.DataFrame | None = None
+    target_lag_pred: pd.DataFrame | None = None
+    if target_lag_block == "fixed_target_lags":
+        lag_order = int(target_lag_order or 1)
+        lag_source = target_window if target_window is not None else frame[target].astype(float)
+        target_lag_train = _fixed_target_lag_frame(lag_source, X_train.index, lag_order)
+        target_lag_pred = _fixed_target_lag_frame(lag_source, X_pred.index, lag_order)
+    elif target_lag_block != "none":
+        raise ExecutionError(f"target_lag_block {target_lag_block!r} is not executable in current runtime slice")
     X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
         X_train,
         y_train,
@@ -2350,6 +2391,9 @@ def _build_raw_panel_training_data(
         preprocessing_contract,
         fit_state_sink=fit_state_sink,
     )
+    if target_lag_train is not None and target_lag_pred is not None:
+        X_train_arr = np.concatenate([X_train_arr, target_lag_train.to_numpy(dtype=float)], axis=1)
+        X_pred_arr = np.concatenate([X_pred_arr, target_lag_pred.to_numpy(dtype=float)], axis=1)
 
     # 1.4.5 deterministic_components augmentation (applied after preprocessing)
     det_component = None
@@ -2837,6 +2881,8 @@ def _fit_raw_panel_model(
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
         factor_feature_block=_factor_feature_block(recipe),
+        target_lag_block=_target_lag_feature_block(recipe),
+        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
@@ -2870,6 +2916,8 @@ def _run_custom_raw_panel_executor(
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
         factor_feature_block=_factor_feature_block(recipe),
+        target_lag_block=_target_lag_feature_block(recipe),
+        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
@@ -4361,6 +4409,8 @@ def _compute_minimal_importance(
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
         factor_feature_block=_factor_feature_block(recipe),
+        target_lag_block=_target_lag_feature_block(recipe),
+        target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
 
@@ -4418,6 +4468,8 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             rotation_feature_block=_rotation_feature_block(recipe),
             x_lag_feature_block=_x_lag_feature_block(recipe),
             factor_feature_block=_factor_feature_block(recipe),
+            target_lag_block=_target_lag_feature_block(recipe),
+            target_lag_order=_target_lag_order_from_block(recipe, _max_ar_lag(recipe)),
             marx_max_lag=_marx_rotation_max_lag(recipe),
         )
         return feature_names, X_train, y_train, X_pred

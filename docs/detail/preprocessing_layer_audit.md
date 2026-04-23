@@ -62,7 +62,7 @@ records what the current runtime can execute today.
 | Axis | Executable values today | Notes |
 |------|-------------------------|-------|
 | `feature_builder` | `autoreg_lagged_target`, `factors_plus_AR`, `raw_feature_panel`, `raw_X_only`, `factor_pca` | Compatibility/source bridge for old recipes. Runtime dispatch now derives the supported feature runtime from Layer 2 blocks first, with this value retained as fallback/provenance. `sequence_tensor` is future. |
-| `target_lag_block` / `target_lag_selection` | `none`, `fixed_target_lags` / `none`, `fixed` | Fixed target-lag construction is executable from the explicit block first; legacy target-lag fields remain fallback/provenance. IC, CV, horizon-specific, and custom lag selection remain registry-only. |
+| `target_lag_block` / `target_lag_selection` | `none`, `fixed_target_lags` / `none`, `fixed` | Fixed target-lag construction is executable from the explicit block first. It can run as the standalone target-lag runtime or concatenate into raw-panel/factor-panel direct `Z` after X-side block construction. Legacy target-lag fields remain fallback/provenance. IC, CV, horizon-specific, and custom lag selection remain registry-only. |
 | `x_lag_feature_block` | `none`, `fixed_x_lags` | Fixed predictor lags are executable from the explicit block first with origin-aligned prediction lags; `x_lag_creation` remains a compatibility fallback. |
 | `factor_feature_block` | `none`, `pca_static_factors` | Static PCA factors are executable from the explicit block first; old factor builders and raw-panel `dimensionality_reduction_policy=pca` / `static_factor` remain compatibility fallbacks. Runtime writes factor fit-state/loadings provenance for the latest recursive window. |
 | `level_feature_block` | `none`, `target_level_addback`, `x_level_addback`, `selected_level_addbacks`, `level_growth_pairs` | Level add-backs are executable for raw-panel feature runtimes. Target add-back appends observed `target_t` / `target_origin`; X-level add-back appends raw-level `H` predictor values preserved before official transforms/T-codes; selected subset add-back restricts those columns via `leaf_config.selected_level_addback_columns`; level-growth pairs record existing transformed predictor columns with raw-level counterparts from `leaf_config.level_growth_pair_columns`. |
@@ -124,9 +124,10 @@ blocks, level add-backs, lag rotations, local temporal factors, volatility
 blocks, and custom blocks. The split is defined in
 `layer2_feature_representation.md`; the implementation sequence is defined in
 `layer2_revision_plan.md`. Runtime support now reads fixed target-lag, fixed
-X-lag, and static PCA factor blocks before compatibility bridge fields. Joint
-block composition beyond the supported runtime slices is still an implementation
-task.
+X-lag, and static PCA factor blocks before compatibility bridge fields. Fixed
+target lags can compose with raw-panel X blocks and static PCA factor blocks;
+other joint/custom composition beyond the supported runtime slices is still an
+implementation task.
 
 
 ## Full Closure Status
@@ -411,7 +412,8 @@ t-code fields remain accepted for compatibility, and supported Layer 2 runtime
 paths now expose explicit block/runtime provenance.
 
 Next implementation targets should be semantic feature-composer tasks rather
-than bridge cleanup: joint target-lag plus X/factor composition, factor/selection
-composition, MARX composition beyond basis replacement, MAF/custom rotations,
-custom callable contracts, target-side normalization/evaluation-scale expansion,
-and public sweep governance.
+than bridge cleanup: factor/selection composition, MARX composition beyond basis
+replacement, MAF/custom rotations, custom callable contracts, target-side
+normalization/evaluation-scale expansion, and public sweep governance. The
+detailed Layer 2 x Layer 3 free-sweep contract is in
+`layer2_layer3_sweep_contract.md`.

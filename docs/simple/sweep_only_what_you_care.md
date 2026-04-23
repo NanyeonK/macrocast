@@ -31,8 +31,8 @@ MVP aliases:
 | Alias | Internal axis | Runtime status |
 |-------|---------------|----------------|
 | `model`, `models`, `model_family` | `3_training.model_family` | executable |
-| `scaling`, `scaling_policy` | `2_preprocessing.scaling_policy` | recipe-only until preprocessing audit |
-| `missing`, `x_missing`, `x_missing_policy` | `2_preprocessing.x_missing_policy` | recipe-only until preprocessing audit |
+| `scaling`, `scaling_policy` | `2_preprocessing.scaling_policy` | full-route executable; simple exposure pending result-contract docs |
+| `missing`, `x_missing`, `x_missing_policy` | `2_preprocessing.x_missing_policy` | full-route executable; simple exposure pending result-contract docs |
 | `preprocessor`, `custom_preprocessor` | `2_preprocessing.custom_preprocessor` | fixed custom preprocessor executable; sweep blocked |
 | `target_transformer` | `2_preprocessing.target_transformer` | fixed transformer executable for autoreg path; sweep blocked |
 
@@ -49,6 +49,10 @@ exp = mc.Experiment(
 recipe = exp.to_recipe_dict()
 ```
 
-Preprocessing sweeps are intentionally blocked in the simple runtime for now. The full Layer 0 grammar can route them to the sweep runner, but the simple API does not expose them until Layer 2 fixes the preprocessing order, leakage, and result interpretation contract.
+Representation and preprocessing sweeps are a full-route feature first. The
+full Layer 0 grammar can route Layer 2 x Layer 3 grids to the sweep runner, and
+the detailed contract is in
+`docs/detail/layer2_layer3_sweep_contract.md`. The simple API will expose this
+only after the public naming and result-summary contract is stable.
 
 Full grids, ablations, replications, benchmark suites, and multi-target wrappers follow the same rule: they are internal/full routes first, simple routes later.

@@ -304,6 +304,36 @@ def test_raw_panel_x_lag_feature_block_matches_legacy_bridge():
         assert np.allclose(legacy_arr, explicit_arr)
 
 
+def test_raw_panel_target_lag_block_composes_with_fixed_x_lags():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=3,
+        contract=_contract(x_lag_creation="no_x_lags"),
+        predictor_family="all_macro_vars",
+        x_lag_feature_block="fixed_x_lags",
+        target_lag_block="fixed_target_lags",
+        target_lag_order=2,
+    )
+
+    assert X_train.tolist() == [
+        [1.0, 0.0, 10.0, 0.0],
+        [2.0, 1.0, 11.0, 10.0],
+        [3.0, 2.0, 12.0, 11.0],
+    ]
+    assert y_train.tolist() == [11.0, 12.0, 13.0]
+    assert X_pred.tolist() == [[4.0, 3.0, 13.0, 12.0]]
+
+
 def test_raw_panel_factor_feature_block_matches_legacy_dimred_bridge():
     frame = pd.DataFrame(
         {

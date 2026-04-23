@@ -1201,9 +1201,9 @@ def test_compiled_manifest_records_layer2_representation_provenance() -> None:
     assert spec["feature_blocks"]["x_lag_feature_block"]["value"] == "none"
     assert (
         "Feature-block specs drive executor-family dispatch, fixed target-lag matrix composition, "
-        "fixed X-lag matrix composition, "
-        "and PCA static-factor matrix composition"
-    ) in spec["compatibility_notes"][0]
+        "fixed X-lag matrix composition, PCA static-factor matrix composition, "
+        "and fixed target-lag concatenation with raw-panel/factor-panel direct Z."
+    ) == spec["compatibility_notes"][0]
     assert compile_result.compiled.recipe_spec.layer2_representation_spec == spec
 
 
@@ -1613,8 +1613,8 @@ def test_layer2_explicit_level_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_level_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")
     )
-    assert result.compiled.execution_status == "not_supported"
-    assert any("level_feature_block='target_level_addback' is currently executable only with raw-panel feature runtimes" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "blocked_by_incompatibility"
+    assert any("raw_feature_panel is not compatible with model_family='ar'" in reason for reason in result.compiled.blocked_reasons)
 
 
 def test_layer2_explicit_level_block_rejects_contemporaneous_oracle_alignment() -> None:
@@ -1870,8 +1870,8 @@ def test_layer2_explicit_rotation_block_requires_raw_panel_bridge() -> None:
             rotation_feature_block="moving_average_rotation",
         )
     )
-    assert result.compiled.execution_status == "not_supported"
-    assert any("rotation_feature_block='moving_average_rotation' is currently executable only with raw-panel feature runtimes" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "blocked_by_incompatibility"
+    assert any("raw_feature_panel is not compatible with model_family='ar'" in reason for reason in result.compiled.blocked_reasons)
 
 
 def test_layer2_explicit_moving_average_rotation_allows_temporal_composition() -> None:
@@ -1894,8 +1894,8 @@ def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")
     )
-    assert result.compiled.execution_status == "not_supported"
-    assert any("temporal_feature_block='moving_average_features' is currently executable only with raw-panel feature runtimes" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "blocked_by_incompatibility"
+    assert any("raw_feature_panel is not compatible with model_family='ar'" in reason for reason in result.compiled.blocked_reasons)
 
 
 def test_layer2_explicit_temporal_block_allows_fixed_x_lag_composition() -> None:
@@ -1912,7 +1912,7 @@ def test_layer2_explicit_temporal_block_allows_fixed_x_lag_composition() -> None
     }
 
 
-def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -> None:
+def test_layer2_explicit_target_and_x_lag_blocks_execute_with_raw_panel_composer(tmp_path) -> None:
     recipe = {
         "recipe_id": "l2-explicit-lag-block-composition",
         "path": {
@@ -1964,8 +1964,81 @@ def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -
         },
     }
     result = compile_recipe_dict(recipe)
-    assert result.compiled.execution_status == "not_supported"
-    assert any("target_lag_block is currently executable only as the standalone target-lag runtime" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["target_lag_block"]["value"] == "fixed_target_lags"
+    assert blocks["x_lag_feature_block"]["value"] == "fixed_x_lags"
+    assert blocks["target_lag_block"]["alignment"]["train_row_t_uses"] == "target_{origin_t-k+1}"
+    execution = run_compiled_recipe(
+        result.compiled,
+        output_root=tmp_path,
+        local_raw_source="tests/fixtures/fred_md_ar_sample.csv",
+    )
+    assert (Path(execution.artifact_dir) / "predictions.csv").exists()
+
+
+def test_layer2_explicit_target_lag_and_static_factor_blocks_execute(tmp_path) -> None:
+    recipe = {
+        "recipe_id": "l2-target-lag-factor-composition",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "training_config": {"target_lag_count": 2},
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "extra_preprocess_without_tcode",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "em_impute",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "standard",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "extra_only",
+                    "preprocess_fit_scope": "train_only",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "target_lag_block": "fixed_target_lags",
+                    "factor_feature_block": "pca_static_factors",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["target_lag_block"]["value"] == "fixed_target_lags"
+    assert blocks["factor_feature_block"]["value"] == "pca_static_factors"
+    execution = run_compiled_recipe(
+        result.compiled,
+        output_root=tmp_path,
+        local_raw_source="tests/fixtures/fred_md_ar_sample.csv",
+    )
+    assert (Path(execution.artifact_dir) / "tuning_result.json").exists()
 
 
 def test_layer2_explicit_x_lag_block_rejects_conflicting_legacy_bridge() -> None:

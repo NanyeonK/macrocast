@@ -230,9 +230,8 @@ Acceptance:
 
 Status: complete for fixed target and fixed predictor lag blocks. Advanced
 IC/CV/custom lag-selection blocks remain registry-only until they have a
-dedicated train-window fit/apply path.
-Joint target-lag plus X-lag block composition remains gated until the explicit
-block composer replaces the compatibility bridge.
+dedicated train-window fit/apply path. Fixed target-lag blocks can now compose
+with raw-panel X blocks, fixed X lags, and static PCA factor blocks.
 
 Goal: implement the first explicit feature blocks while still supporting the
 old `feature_builder` bridge.
@@ -251,8 +250,8 @@ Acceptance:
 - old autoregressive and raw-panel recipes keep using the same compatibility
   runtime bridge where possible;
 - new explicit block recipes can compile in full mode;
-- unsupported target-lag plus X-lag composition reports `not_supported`
-  instead of pretending the target-lag block is in `Z`;
+- fixed target-lag plus X-lag composition executes through the raw-panel
+  composer and records the target-lag block in `Z`;
 - leakage tests cover origin alignment for `Z_train` and `Z_pred`.
 
 ### Patch L2-F: Factor And Selection Blocks
@@ -445,7 +444,7 @@ For feature-block patches, also test:
 | Compatibility name cleanup | done, provenance-only | Added `target_lag_selection` and `target_lag_count` provenance while keeping legacy `y_lag_count` / `factor_ar_lags` accepted. |
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
-| Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; joint target-plus-X composition remains gated. |
+| Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; fixed target-plus-X composition is executable in raw-panel direct runtimes. |
 | Factor/selection blocks | done for static PCA | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; feature-selection/factor composition remains gated. |
 | Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
 | Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
@@ -460,7 +459,6 @@ aliases remain intentionally accepted for old recipes and old manifests.
 
 The remaining items in this file are not cleanup blockers:
 
-- joint target-lag plus X/factor composition;
 - factor/selection composition;
 - MARX with additional X-lag/temporal/factor composition;
 - MAF/custom rotations;

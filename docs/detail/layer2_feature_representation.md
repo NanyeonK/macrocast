@@ -84,10 +84,12 @@ Operational support is currently narrow:
   matrix composition reads `x_lag_feature_block` directly; legacy
   `x_lag_creation` remains accepted as fallback. Variable, category, CV, and
   custom X-lag blocks remain registry-only.
-- Simultaneous target-lag and X-lag block composition is not executable yet:
-  fixed target lags are supported by the standalone target-lag runtime, while
-  fixed X lags are supported by macro-X panel runtimes. A composer that joins
-  both blocks into one `Z` has not landed.
+- Simultaneous fixed target-lag and raw-panel X-block composition is
+  operational. In direct raw-panel rows, `target_lag_1` is the target observed
+  at the forecast origin, `target_lag_2` is the previous target value, and so
+  on. Fixed target lags can compose with fixed X lags and with
+  `pca_static_factors`; in the factor case, PCA is fit on the X-side block and
+  target lags are concatenated after the factor scores.
 - `factor_feature_block=none` and `pca_static_factors` are operational.
   `pca_static_factors` now drives matrix composition directly; old
   `feature_builder=factor_pca` / `factors_plus_AR` and raw-panel
@@ -244,8 +246,11 @@ slices:
    contexts, and decomposition metadata now use block-derived feature runtime
    provenance for supported slices.
 
-Remaining work is semantic feature-composer work, not bridge cleanup: joint
-target-lag plus X/factor composition, factor/selection composition, MARX with
-additional X-lag/temporal/factor composition, MAF/custom rotations, custom
-callable contracts, target-side normalization/evaluation-scale expansion, and
-public sweep governance.
+Remaining work is semantic feature-composer work, not bridge cleanup:
+factor/selection composition, MARX with additional X-lag/temporal/factor
+composition, MAF/custom rotations, custom callable contracts, target-side
+normalization/evaluation-scale expansion, and public sweep governance.
+
+The detailed target contract for freely sweeping Layer 2 representations with
+Layer 3 forecast generators is documented in
+`layer2_layer3_sweep_contract.md`.

@@ -1,0 +1,315 @@
+# Layer 2 And Layer 3 Sweep Contract
+
+Date: 2026-04-23
+
+This document defines the target contract for freely sweeping research feature
+representations together with forecast generators. It is the bridge between
+Layer 2, which constructs the research representation `Z`, and Layer 3, which
+fits forecast generators on `Z`.
+
+## Core Goal
+
+Researchers should be able to sweep over operational Layer 2 representation
+choices and operational Layer 3 training choices without hand-writing special
+case recipes for each combination.
+
+The goal is not to mark every named registry value executable immediately.
+The goal is stronger and more precise:
+
+- every value marked `operational` must either compose with other operational
+  values through a declared contract, or declare a narrow semantic
+  incompatibility;
+- every sweep variant must record the exact Layer 2 representation and Layer 3
+  forecast-generator contract that produced it;
+- unsupported values must remain `registry_only` or `not_supported_yet`, not
+  silently enter a sweep;
+- failed cells in large exploratory grids must be resumable and auditable when
+  the selected Layer 0 failure policy allows partial results.
+
+## Boundary
+
+Layer 2 owns the transformation from Layer 1 outputs to model inputs:
+
+- official-frame target series and predictor panel from Layer 1;
+- post-frame X conditioning;
+- target representation and horizon target construction;
+- target-history blocks;
+- predictor-lag blocks;
+- factor blocks;
+- level add-back blocks;
+- temporal feature blocks;
+- rotation blocks;
+- feature-selection blocks;
+- feature-block combination into `Z_train` and `Z_pred`;
+- block-local leakage and fit-state provenance.
+
+Layer 3 owns forecast generation:
+
+- model family;
+- benchmark family;
+- direct versus iterated forecast generation;
+- forecast object;
+- training window and refit protocol;
+- validation and hyperparameter search;
+- model-order selection when the order is estimator behavior;
+- convergence, seed, cache, checkpointing, and execution backend.
+
+Layer 3 must not decide which feature blocks exist. It consumes `Z_train`,
+`y_train`, and `Z_pred` plus feature names and fit-state provenance.
+
+## Terms
+
+`H`
+: The Layer 1 official frame after source loading, official transform policy,
+  raw-source missing/outlier decisions, release-lag policy, and target/X
+  alignment.
+
+`X`
+: The active predictor panel selected from `H` by Layer 2 predictor-family and
+  representation rules.
+
+`target history`
+: Target observations available at the forecast origin. For a direct row with
+  forecast origin `t`, `target_lag_1` means the target value observed at `t`,
+  `target_lag_2` means `t-1`, and so on.
+
+`Z`
+: The final feature matrix handed to Layer 3.
+
+`block`
+: A named Layer 2 feature source. Examples: base transformed X, fixed target
+  lags, fixed X lags, PCA factors, level add-backs, moving-average features,
+  rolling moments, MARX rotations.
+
+`composer`
+: The Layer 2 runtime object or function that builds one or more blocks,
+  aligns their train/prediction rows, applies fit discipline, and returns
+  `Z_train`, `Z_pred`, feature names, and provenance.
+
+## Sweep Model
+
+The full recipe grammar already supports `sweep_axes` on Layer 2 and Layer 3.
+`compile_sweep_plan()` expands those axes into Cartesian variants. Each variant
+is then compiled and executed as a normal single-path recipe.
+
+Free representation sweep means the following:
+
+1. A researcher may place operational Layer 2 axes in `2_preprocessing.sweep_axes`.
+2. A researcher may place operational Layer 3 axes in `3_training.sweep_axes`.
+3. The runner materializes each Layer 2 x Layer 3 cell as a separate variant.
+4. The compiler validates each cell after expansion, because some choices are
+   only meaningful together.
+5. Execution writes per-cell artifacts under the variant directory.
+6. The study manifest records the axis values, execution status, metrics, and
+   block provenance for every cell.
+
+For example, a full recipe may sweep:
+
+```yaml
+path:
+  2_preprocessing:
+    sweep_axes:
+      x_lag_feature_block: [none, fixed_x_lags]
+      target_lag_block: [none, fixed_target_lags]
+      temporal_feature_block: [none, moving_average_features, rolling_moments]
+      rotation_feature_block: [none, moving_average_rotation]
+      scaling_policy: [none, standard, robust]
+  3_training:
+    sweep_axes:
+      model_family: [ridge, lasso, randomforest]
+```
+
+The compiler should not treat this as a special "preprocessing sweep" route.
+It should treat this as a set of concrete `Z` construction recipes crossed with
+forecast-generator choices.
+
+## Composer Contract
+
+Every operational composer must produce a payload with these fields:
+
+| Field | Meaning |
+|---|---|
+| `Z_train` | 2-D numeric array or frame for the current recursive training window. |
+| `y_train` | 1-D numeric target vector aligned to `Z_train`. |
+| `Z_pred` | 2-D numeric one-row prediction matrix for the forecast origin. |
+| `feature_names` | Stable public names in the same order as `Z_train` columns. |
+| `block_order` | Ordered list of blocks used to form `Z`. |
+| `block_roles` | Map from feature name to block role: base X, target lag, factor, level, temporal, rotation, selected X, custom. |
+| `fit_state` | Recursive fit metadata, such as scaler, selector, factor loadings, or custom block provenance. |
+| `alignment` | Train-row and prediction-row timing rules for each block. |
+| `leakage_contract` | Whether the block uses only forecast-origin information. |
+
+The initial runtime still uses functions rather than a dedicated dataclass, but
+new implementation should move toward this payload shape. It is the minimum
+surface Layer 3 needs to become representation-agnostic.
+
+## Block Semantics
+
+### Base X
+
+Base X starts from the active predictor panel. It may be raw official frame X,
+dataset t-code transformed X, or post-frame extra-preprocessed X depending on
+the Layer 1 official-transform choices and Layer 2 frame-conditioning choices.
+
+### Target Lags
+
+Fixed target lags are origin-aligned. For a direct row whose forecast origin is
+`t`, `target_lag_1` is `target_t`, `target_lag_2` is `target_{t-1}`. For the
+prediction row at origin `T`, the same rule gives `target_T`, `target_{T-1}`.
+
+Target lags are allowed to compose with raw-panel/factor-panel features when
+the runtime can concatenate them after block-local conditioning. This is not
+Layer 3 AR model-order selection. AR-BIC model-order selection remains a
+Layer 3 estimator behavior.
+
+### X Lags
+
+Fixed X lags are origin-aligned predictor lags. The current operational block
+uses one lag. Leading unavailable values are zero-filled, matching the existing
+runtime behavior.
+
+### Factor Blocks
+
+`pca_static_factors` is a train-window factor block. It fits PCA on the current
+training window and transforms the prediction row with the same loadings.
+Factors must carry source feature names, loadings, number of components, and
+window metadata.
+
+When target lags are also present, the default rule is:
+
+- fit PCA on the X-side block only;
+- concatenate target lags after factor scores;
+- do not let target lags enter the PCA unless a future explicit combiner says
+  `factor_of_augmented_panel`.
+
+### Feature Selection
+
+Feature selection applies to raw predictor blocks today. The full contract must
+separate two future semantics:
+
+- `select_before_factor`: select X columns, then estimate factor block;
+- `select_after_factor`: estimate factor block, then select among final `Z`
+  columns.
+
+Until both semantics are represented explicitly, factor/selection composition
+must stay gated.
+
+### Level Blocks
+
+Level blocks add raw-level values preserved from Layer 1 before official
+transforms. They require `contemporaneous_x_rule=forbid_contemporaneous` so the
+feature row uses information available at the forecast origin.
+
+### Temporal Blocks
+
+Temporal blocks are local deterministic time-series summaries of active
+predictors, such as moving averages, rolling moments, volatility features, and
+local temporal cross-sectional summaries. They can compose with fixed X lags
+and moving-average rotation in the current raw-panel runtime.
+
+### Rotation Blocks
+
+`moving_average_rotation` appends deterministic trailing moving-average
+rotations. `marx_rotation` replaces the source X lag-polynomial basis. Because
+MARX is a replacement basis rather than a simple append block, future
+composition must distinguish:
+
+- `marx_replace_x_basis`;
+- `marx_append_to_x`;
+- `marx_then_factor`;
+- `factor_then_marx`.
+
+Only the first mode is operational today.
+
+### Custom Blocks
+
+Custom blocks require a stricter contract than the existing broad
+`custom_preprocessor` hook. A custom block must return named train/pred frames,
+fit-state provenance, and leakage metadata. The broad custom preprocessor may
+remain as a fixed hook, but it should not be treated as a freely composable
+feature block until it satisfies the block contract.
+
+## Layer 3 Obligations
+
+Layer 3 should see one of two input types:
+
+1. target-lag-only `Z` for autoregressive/iterated forecast generators;
+2. generic 2-D `Z` for direct forecast generators.
+
+The long-run target is one generic `Z` interface for all direct models:
+
+```text
+fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
+```
+
+Layer 3 should not branch on `feature_builder`, `x_lag_feature_block`,
+`factor_feature_block`, or any other Layer 2 representation axis. Those choices
+must be resolved before Layer 3 receives the matrix.
+
+Layer 3 still owns forecast-type constraints. A raw-panel `Z` does not
+automatically make iterated exogenous-X forecasting possible. Direct raw-panel
+forecasting is operational; iterated raw-panel forecasting remains gated until
+there is an exogenous-X path forecast contract.
+
+## Current Operational Sweep Surface
+
+The current runtime can sweep these Layer 2 choices in full recipes, subject to
+the usual model compatibility constraints:
+
+- `target_lag_block`: `none`, `fixed_target_lags`;
+- `x_lag_feature_block`: `none`, `fixed_x_lags`;
+- `factor_feature_block`: `none`, `pca_static_factors`;
+- `level_feature_block`: `none`, `target_level_addback`,
+  `x_level_addback`, `selected_level_addbacks`, `level_growth_pairs`;
+- `temporal_feature_block`: `none`, `moving_average_features`,
+  `rolling_moments`, `local_temporal_factors`, `volatility_features`;
+- `rotation_feature_block`: `none`, `moving_average_rotation`,
+  `marx_rotation` with its current replacement-basis restriction;
+- X-side frame conditioning axes already marked operational, such as missing,
+  outlier, scaling, HP filter, and train-only fit scope.
+
+This patch opens the first previously gated composition class:
+
+- fixed target lags plus raw-panel X blocks;
+- fixed target lags plus fixed X lags;
+- fixed target lags plus PCA static-factor blocks, where target lags are
+  concatenated after the factor block rather than entering PCA.
+
+## Still Gated
+
+These are the next semantic composer tasks:
+
+| Area | Why gated |
+|---|---|
+| Factor plus feature selection | Need explicit select-before-factor versus select-after-factor semantics. |
+| MARX plus X-lag/temporal/factor blocks | Need append versus replacement semantics and stable feature naming. |
+| MAF rotation | Need factor-to-rotation composer and leakage metadata. |
+| Custom temporal/rotation blocks | Need block-local callable contract. |
+| Target normalization and inverse/evaluation scale | Need recursive fit/inverse state and metric-scale contract. |
+| Iterated raw-panel forecasting | Need exogenous-X forecasting or scenario path contract. |
+
+## Acceptance Tests
+
+Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
+
+- compile status for the fixed recipe;
+- sweep-plan expansion when the axis is placed in `sweep_axes`;
+- runtime execution on a fixture dataset;
+- stable `feature_names` order;
+- no lookahead in target lag, X lag, temporal, rotation, and level blocks;
+- fit-state provenance for estimated blocks;
+- study-manifest recording of variant axis values;
+- failure-policy behavior for invalid cells in large grids.
+
+## Implementation Roadmap
+
+1. Unify the runtime matrix path around a Layer 2 composer payload.
+2. Open fixed target-lag composition with raw-panel and factor-panel direct
+   models. This is the current patch.
+3. Add feature-name and block-role artifacts for every `Z` column.
+4. Add full recipe examples for Layer 2 x Layer 3 grids.
+5. Add factor/selection composition with explicit semantics.
+6. Add MARX composition modes beyond basis replacement.
+7. Add custom block callable contracts.
+8. Expose a safe simple-API representation sweep after the full-route contract
+   is stable.
