@@ -81,8 +81,10 @@ dispatch decision: execution derives the raw-panel versus autoregressive model
 executor path from Layer 2 feature blocks and uses old `feature_builder` names
 only as compatibility fallback. Fixed X-lag matrix composition now also reads
 the explicit `x_lag_feature_block` first and uses the old
-`PreprocessContract.x_lag_creation` bridge only as fallback. Other matrix
-composition still reuses the existing raw-panel/autoregressive builders.
+`PreprocessContract.x_lag_creation` bridge only as fallback. PCA static-factor
+matrix composition now reads `factor_feature_block=pca_static_factors` first
+and uses old factor/dimensionality-reduction bridges only as fallback. Other
+matrix composition still reuses the existing raw-panel/autoregressive builders.
 
 ## Revision Principles
 
@@ -441,7 +443,7 @@ For feature-block patches, also test:
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
 | Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
 | Explicit target/X lag blocks | in progress | Fixed X-lag matrix composition now reads `x_lag_feature_block` before the old `x_lag_creation` bridge. |
-| Factor/selection blocks | planned | PCA/static factors and selection provenance. |
+| Factor/selection blocks | in progress | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; feature-selection/factor composition remains gated. |
 | Level/rotation/temporal blocks | in progress | Level blocks, temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and cross-block composition remain gated. |
-| Bridge dispatch retirement | in progress | Executor-family dispatch and fixed X-lag matrix composition now route through explicit Layer 2 blocks; remaining matrix composition still uses existing builders. |
+| Bridge dispatch retirement | in progress | Executor-family dispatch, fixed X-lag matrix composition, and PCA static-factor matrix composition now route through explicit Layer 2 blocks; remaining matrix composition still uses existing builders. |
 | Simple/public sweeps | blocked | Wait for fixed full support and compiler guards. |

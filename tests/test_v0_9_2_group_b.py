@@ -165,6 +165,46 @@ def test_raw_panel_x_lag_feature_block_matches_legacy_bridge():
         assert np.allclose(legacy_arr, explicit_arr)
 
 
+def test_raw_panel_factor_feature_block_matches_legacy_dimred_bridge():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0],
+        }
+    )
+    legacy_fit_state: list[dict[str, object]] = []
+    explicit_fit_state: list[dict[str, object]] = []
+
+    legacy = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(dimensionality_reduction_policy="pca"),
+        predictor_family="all_macro_vars",
+        fit_state_sink=legacy_fit_state,
+    )
+    explicit = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(dimensionality_reduction_policy="none"),
+        predictor_family="all_macro_vars",
+        fit_state_sink=explicit_fit_state,
+        factor_feature_block="pca_static_factors",
+    )
+
+    for legacy_arr, explicit_arr in zip(legacy, explicit):
+        assert np.allclose(legacy_arr, explicit_arr)
+    assert legacy_fit_state[-1]["runtime_policy"] == "pca"
+    assert explicit_fit_state[-1]["runtime_policy"] == "pca"
+
+
 def test_raw_panel_target_level_addback_uses_origin_target_history():
     frame = pd.DataFrame(
         {

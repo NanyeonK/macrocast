@@ -1486,6 +1486,11 @@ def _factor_block_from_bridge(
         "source_axis": "factor_feature_block" if explicit_block is not None else "feature_builder/dimensionality_reduction_policy",
         "source_value": explicit_block if explicit_block is not None else {"feature_builder": feature_builder, "dimensionality_reduction_policy": dimred},
         "runtime_bridge": runtime_bridge,
+        "runtime_block": (
+            {"matrix_composition": "pca_static_factors", "default_dimensionality_reduction_policy": "pca"}
+            if block == "pca_static_factors"
+            else {}
+        ),
         "feature_selection_interaction": {
             "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
             "rule": "feature selection currently applies only to raw predictor blocks; factor blocks require feature_selection_policy='none'",
@@ -1686,7 +1691,7 @@ def _layer2_representation_spec(
             "separation_rule": _selection_value(selection_map, "separation_rule", default="strict_separation"),
         },
         "compatibility_notes": [
-            "Feature-block specs drive executor-family dispatch and fixed X-lag matrix composition; remaining matrix composition still uses compatibility builders where those builders own the supported path.",
+            "Feature-block specs drive executor-family dispatch, fixed X-lag matrix composition, and PCA static-factor matrix composition; remaining matrix composition still uses compatibility builders where those builders own the supported path.",
             "Legacy y_lag_count and factor_ar_lags remain accepted; target_lag_selection and target_lag_count are the target-language provenance names.",
         ],
     }
@@ -2020,12 +2025,6 @@ def _execution_status(
             not_supported.append(
                 "factor_feature_block='none' conflicts with an active factor runtime bridge "
                 f"(feature_builder={feature_builder!r}, dimensionality_reduction_policy={dimred!r})"
-            )
-        if explicit_factor_block == "pca_static_factors" and not factor_bridge_active:
-            not_supported.append(
-                "factor_feature_block='pca_static_factors' requires either "
-                "feature_builder in {'factor_pca', 'factors_plus_AR'} or "
-                "dimensionality_reduction_policy in {'pca', 'static_factor'}"
             )
         if feature_selection != "none" and (factor_block_active or dimred != "none"):
             not_supported.append(

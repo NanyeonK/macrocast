@@ -78,18 +78,19 @@ Operational support is currently narrow:
   lowering to `target_lag_selection` and the legacy AR-lag runtime bridge.
 - `target_lag_selection=none` and `fixed` are operational Layer 2 names; IC,
   CV, horizon-specific, and custom lag selection remain registry-only.
-- `x_lag_feature_block=none` and `fixed_x_lags` are operational through
-  lowering to the legacy `x_lag_creation` bridge under the raw
-  train-only-extra preprocessing profile. Variable, category, CV, and custom
-  X-lag blocks remain registry-only.
+- `x_lag_feature_block=none` and `fixed_x_lags` are operational. Fixed X-lag
+  matrix composition reads `x_lag_feature_block` directly; legacy
+  `x_lag_creation` remains accepted as fallback. Variable, category, CV, and
+  custom X-lag blocks remain registry-only.
 - Simultaneous target-lag and X-lag block composition is not executable yet:
   fixed target lags lower through `feature_builder=autoreg_lagged_target`,
   while fixed X lags lower through raw-panel feature builders.
-- `factor_feature_block=none` and `pca_static_factors` are operational through
-  separate compatibility bridges: old `feature_builder=factor_pca` /
-  `factors_plus_AR`, or raw-panel `dimensionality_reduction_policy=pca` /
-  `static_factor`. Runtime writes a factor fit-state artifact containing stable
-  factor/loadings provenance.
+- `factor_feature_block=none` and `pca_static_factors` are operational.
+  `pca_static_factors` now drives matrix composition directly; old
+  `feature_builder=factor_pca` / `factors_plus_AR` and raw-panel
+  `dimensionality_reduction_policy=pca` / `static_factor` remain accepted
+  compatibility paths. Runtime writes a factor fit-state artifact containing
+  stable factor/loadings provenance.
 - `level_feature_block=none`, `target_level_addback`, `x_level_addback`,
   `selected_level_addbacks`, and `level_growth_pairs` are operational for
   raw-panel feature builders.
@@ -233,4 +234,5 @@ A safe implementation order is:
 6. Retire runtime dispatch from coarse `feature_builder` names in slices:
    first route the raw-panel/autoregressive executor choice from explicit
    blocks, then move fixed X-lag matrix composition to `x_lag_feature_block`,
+   then move PCA static-factor matrix composition to `factor_feature_block`,
    then replace remaining bridge-specific matrix composition.

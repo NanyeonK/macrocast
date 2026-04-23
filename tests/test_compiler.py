@@ -1196,7 +1196,10 @@ def test_compiled_manifest_records_layer2_representation_provenance() -> None:
     assert spec["feature_blocks"]["feature_block_set"]["value"] == "target_lags_only"
     assert spec["feature_blocks"]["target_lag_block"]["value"] == "ic_selected_target_lags"
     assert spec["feature_blocks"]["x_lag_feature_block"]["value"] == "none"
-    assert "Feature-block specs drive executor-family dispatch and fixed X-lag matrix composition" in spec["compatibility_notes"][0]
+    assert (
+        "Feature-block specs drive executor-family dispatch, fixed X-lag matrix composition, "
+        "and PCA static-factor matrix composition"
+    ) in spec["compatibility_notes"][0]
     assert compile_result.compiled.recipe_spec.layer2_representation_spec == spec
 
 
@@ -2114,6 +2117,10 @@ def test_layer2_explicit_factor_block_lowers_to_dimred_bridge() -> None:
     assert block["value"] == "pca_static_factors"
     assert block["source_axis"] == "factor_feature_block"
     assert block["runtime_bridge"] == {"dimensionality_reduction_policy": "pca"}
+    assert block["runtime_block"] == {
+        "matrix_composition": "pca_static_factors",
+        "default_dimensionality_reduction_policy": "pca",
+    }
     assert block["factor_count"] == {
         "mode": "fixed",
         "fixed_factor_count": 2,
@@ -2125,7 +2132,7 @@ def test_layer2_explicit_factor_block_lowers_to_dimred_bridge() -> None:
     assert block["alignment"]["lookahead"] == "forbidden"
 
 
-def test_layer2_factor_block_requires_runtime_bridge() -> None:
+def test_layer2_factor_block_lowers_without_dimred_bridge() -> None:
     recipe = {
         "recipe_id": "l2-factor-block-missing-bridge",
         "path": {
@@ -2172,8 +2179,15 @@ def test_layer2_factor_block_requires_runtime_bridge() -> None:
         },
     }
     result = compile_recipe_dict(recipe)
-    assert result.compiled.execution_status == "not_supported"
-    assert any("factor_feature_block='pca_static_factors' requires" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
+    assert not any("factor_feature_block='pca_static_factors' requires" in warning for warning in result.compiled.warnings)
+    block = result.manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]
+    assert block["value"] == "pca_static_factors"
+    assert block["runtime_bridge"] == {}
+    assert block["runtime_block"] == {
+        "matrix_composition": "pca_static_factors",
+        "default_dimensionality_reduction_policy": "pca",
+    }
 
 
 def test_layer2_factor_block_rejects_feature_selection_mix() -> None:

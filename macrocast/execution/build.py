@@ -1116,6 +1116,15 @@ def _x_lag_feature_block(recipe: RecipeSpec | None) -> str | None:
     return _layer2_block_value(blocks, "x_lag_feature_block")
 
 
+def _factor_feature_block(recipe: RecipeSpec | None) -> str | None:
+    if recipe is None:
+        return None
+    blocks = _layer2_feature_blocks(recipe)
+    if "factor_feature_block" not in blocks:
+        return None
+    return _layer2_block_value(blocks, "factor_feature_block")
+
+
 def _marx_rotation_max_lag(recipe: RecipeSpec | None) -> int | None:
     if recipe is None:
         return None
@@ -1649,6 +1658,16 @@ def _x_lag_creation_from_feature_block(value: str | None, fallback: str) -> str:
     raise ExecutionError(f"x_lag_feature_block {value!r} is not executable in current runtime slice")
 
 
+def _dimensionality_reduction_policy_from_factor_block(value: str | None, fallback: str) -> str:
+    if value is None:
+        return fallback
+    if value == "none":
+        return "none"
+    if value == "pca_static_factors":
+        return fallback if fallback in {"pca", "static_factor"} else "pca"
+    raise ExecutionError(f"factor_feature_block {value!r} is not executable in current runtime slice")
+
+
 def _apply_scaling_policy(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
@@ -2077,6 +2096,7 @@ def _build_raw_panel_training_data(
     temporal_feature_block: str = "none",
     rotation_feature_block: str = "none",
     x_lag_feature_block: str | None = None,
+    factor_feature_block: str | None = None,
     marx_max_lag: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
@@ -2126,6 +2146,10 @@ def _build_raw_panel_training_data(
         x_lag_feature_block,
         fallback=str(contract.x_lag_creation),
     )
+    dimensionality_reduction_policy = _dimensionality_reduction_policy_from_factor_block(
+        factor_feature_block,
+        fallback=str(contract.dimensionality_reduction_policy),
+    )
     if rotation_feature_block == "marx_rotation" and temporal_feature_block != "none":
         raise ExecutionError(
             "rotation_feature_block='marx_rotation' cannot yet be combined with temporal_feature_block"
@@ -2141,6 +2165,11 @@ def _build_raw_panel_training_data(
         X_train = lagged_source.loc[X_train.index].copy()
         X_pred = lagged_source.loc[X_pred.index].copy()
         preprocessing_contract = replace(contract, x_lag_creation="no_x_lags")
+    if dimensionality_reduction_policy != preprocessing_contract.dimensionality_reduction_policy:
+        preprocessing_contract = replace(
+            preprocessing_contract,
+            dimensionality_reduction_policy=dimensionality_reduction_policy,
+        )
     X_train, X_pred = _apply_temporal_feature_block(
         X_train,
         X_pred,
@@ -2662,6 +2691,7 @@ def _fit_raw_panel_model(
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
+        factor_feature_block=_factor_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
@@ -2694,6 +2724,7 @@ def _run_custom_raw_panel_executor(
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
+        factor_feature_block=_factor_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
@@ -4181,6 +4212,7 @@ def _compute_minimal_importance(
         temporal_feature_block=_temporal_feature_block(recipe),
         rotation_feature_block=_rotation_feature_block(recipe),
         x_lag_feature_block=_x_lag_feature_block(recipe),
+        factor_feature_block=_factor_feature_block(recipe),
         marx_max_lag=_marx_rotation_max_lag(recipe),
     )
 
@@ -4234,6 +4266,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
             temporal_feature_block=_temporal_feature_block(recipe),
             rotation_feature_block=_rotation_feature_block(recipe),
             x_lag_feature_block=_x_lag_feature_block(recipe),
+            factor_feature_block=_factor_feature_block(recipe),
             marx_max_lag=_marx_rotation_max_lag(recipe),
         )
         return feature_names, X_train, y_train, X_pred
