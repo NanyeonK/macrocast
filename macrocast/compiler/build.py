@@ -1172,6 +1172,40 @@ def _factor_feature_block_value(selection_map: dict[str, AxisSelection]) -> str 
     )
 
 
+def _level_feature_block_value(selection_map: dict[str, AxisSelection]) -> str | None:
+    return (
+        _selection_value(selection_map, "level_feature_block")
+        if "level_feature_block" in selection_map
+        else None
+    )
+
+
+def _level_block_from_selection(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
+    explicit_block = _level_feature_block_value(selection_map)
+    block = explicit_block or "none"
+    if block == "target_level_addback":
+        return {
+            "value": "target_level_addback",
+            "source_axis": "level_feature_block",
+            "source_value": "target_level_addback",
+            "feature_names": ["target_level_origin"],
+            "runtime_feature_name": "__target_level_origin",
+            "alignment": {
+                "train_row_t_uses": "target_t",
+                "prediction_origin_uses": "target_origin",
+                "lookahead": "forbidden",
+            },
+            "runtime_bridge": {"raw_panel_level_addback": "target_level_addback"},
+        }
+    if explicit_block is not None:
+        return {
+            "value": block,
+            "source_axis": "level_feature_block",
+            "source_value": explicit_block,
+        }
+    return {"value": "none", "source": "not_wired"}
+
+
 def _factor_block_from_bridge(
     *,
     feature_builder: str,
@@ -1373,7 +1407,7 @@ def _layer2_representation_spec(
                 preprocess_contract=preprocess_contract,
                 explicit_block=explicit_factor_feature_block,
             ),
-            "level_feature_block": {"value": "none", "source": "not_wired"},
+            "level_feature_block": _level_block_from_selection(selection_map),
             "rotation_feature_block": {"value": "none", "source": "not_wired"},
             "temporal_feature_block": {"value": "none", "source": "not_wired"},
             "feature_block_combination": _feature_block_combination_from_bridge(str(feature_builder), str(x_lag_creation)),
@@ -1643,6 +1677,22 @@ def _execution_status(
             not_supported.append(
                 "x_lag_feature_block currently lowers only through raw-panel feature builders "
                 "{'raw_feature_panel', 'raw_X_only', 'factor_pca', 'factors_plus_AR'}"
+            )
+        level_feature_block = _selection_value(selection_map, "level_feature_block", default="none")
+        if level_feature_block == "target_level_addback" and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
+            not_supported.append(
+                "level_feature_block='target_level_addback' currently lowers only through "
+                "feature_builder in {'raw_feature_panel', 'raw_X_only'}; factor and target-lag "
+                "composition requires a dedicated block composer"
+            )
+        if (
+            level_feature_block == "target_level_addback"
+            and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
+            != "forbid_contemporaneous"
+        ):
+            not_supported.append(
+                "level_feature_block='target_level_addback' requires "
+                "contemporaneous_x_rule='forbid_contemporaneous' so the added target level is observed at the forecast origin"
             )
         dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
         feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")

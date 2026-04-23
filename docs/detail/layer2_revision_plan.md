@@ -295,6 +295,16 @@ Changes:
   layer names;
 - keep custom hooks for researchers whose preprocessing is outside built-ins.
 
+Current lowered slice:
+
+- `level_feature_block=target_level_addback` is executable for raw-panel
+  feature builders. It appends the observed target level at the feature row date
+  and at the prediction origin, and rejects contemporaneous-oracle X alignment
+  because that would require target-date information at prediction time.
+- `level_feature_block=selected_level_addbacks`, `level_growth_pairs`,
+  `rotation_feature_block=*`, and `temporal_feature_block=*` remain future
+  block-composition work.
+
 Acceptance:
 
 - each block writes block-level metadata;

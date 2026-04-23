@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="none",
             description="no level add-back block",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
             id="target_level_addback",
             description="target level added back as a feature",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

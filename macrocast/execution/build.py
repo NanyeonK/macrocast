@@ -981,6 +981,17 @@ def _feature_builder(recipe: RecipeSpec) -> str:
     return "autoreg_lagged_target"
 
 
+def _level_feature_block(recipe: RecipeSpec | None) -> str:
+    if recipe is None:
+        return "none"
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    blocks = dict(spec.get("feature_blocks", {}) or {})
+    block = blocks.get("level_feature_block", {})
+    if isinstance(block, dict):
+        return str(block.get("value", "none"))
+    return "none"
+
+
 def _recipe_targets(recipe: RecipeSpec) -> tuple[str, ...]:
     return recipe.targets if recipe.targets else (recipe.target,)
 
@@ -1605,6 +1616,45 @@ def _apply_raw_panel_preprocessing(
     return _apply_dimensionality_reduction(X_train, X_pred, contract, fit_state_sink=fit_state_sink)
 
 
+_TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
+_TARGET_LEVEL_ADD_BACK_FEATURE_NAME = "target_level_origin"
+
+
+def _apply_level_feature_block(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    frame: pd.DataFrame,
+    target: str,
+    level_feature_block: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if level_feature_block == "none":
+        return X_train, X_pred
+    if level_feature_block != "target_level_addback":
+        raise ExecutionError(f"unsupported level_feature_block={level_feature_block!r}")
+    target_series = frame[target].astype(float)
+    X_train = X_train.copy()
+    X_pred = X_pred.copy()
+    X_train[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_train.index].to_numpy(dtype=float)
+    X_pred[_TARGET_LEVEL_ADD_BACK_COLUMN] = target_series.loc[X_pred.index].to_numpy(dtype=float)
+    return X_train, X_pred
+
+
+def _raw_panel_feature_names(
+    frame: pd.DataFrame,
+    target: str,
+    recipe: RecipeSpec,
+) -> list[str]:
+    names = _raw_panel_columns(
+        frame,
+        target,
+        predictor_family=_predictor_family(recipe),
+        spec=dict(recipe.data_task_spec),
+    )
+    if _level_feature_block(recipe) == "target_level_addback":
+        names.append(_TARGET_LEVEL_ADD_BACK_FEATURE_NAME)
+    return names
+
+
 def _build_raw_panel_training_data(
     frame: pd.DataFrame,
     target: str,
@@ -1617,6 +1667,7 @@ def _build_raw_panel_training_data(
     spec: dict | None = None,
     target_window: pd.Series | None = None,
     fit_state_sink: list[dict[str, object]] | None = None,
+    level_feature_block: str = "none",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
@@ -1637,6 +1688,8 @@ def _build_raw_panel_training_data(
     # allow uses X aligned to the target date (X_{t+h} with y_{t+h}) — the oracle / data-leak
     # benchmark variant.
     contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous")
+    if level_feature_block == "target_level_addback" and contemp_rule != "forbid_contemporaneous":
+        raise ExecutionError("level_feature_block='target_level_addback' requires contemporaneous_x_rule='forbid_contemporaneous'")
     if contemp_rule == "allow_contemporaneous":
         X_train = frame[predictors].iloc[start_idx + horizon : origin_idx + 1].astype(float).copy()
         y_train = _target_values()
@@ -1658,6 +1711,13 @@ def _build_raw_panel_training_data(
         X_train = lagged_source.loc[X_train.index].copy()
         X_pred = lagged_source.loc[X_pred.index].copy()
         preprocessing_contract = replace(contract, x_lag_creation="no_x_lags")
+    X_train, X_pred = _apply_level_feature_block(
+        X_train,
+        X_pred,
+        frame,
+        target,
+        level_feature_block,
+    )
     X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
         X_train,
         y_train,
@@ -2149,7 +2209,7 @@ def _fit_raw_panel_model(
     X_train, y_train, X_pred = _build_raw_panel_training_data(
         raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=target_window,
-        fit_state_sink=fit_state,
+        fit_state_sink=fit_state, level_feature_block=_level_feature_block(recipe),
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -2177,6 +2237,7 @@ def _run_custom_raw_panel_executor(
     X_train, y_train, X_pred = _build_raw_panel_training_data(
         raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=train,
+        level_feature_block=_level_feature_block(recipe),
     )
     X_train, y_train, X_pred = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
@@ -2187,7 +2248,7 @@ def _run_custom_raw_panel_executor(
         "feature_builder": _feature_builder(recipe),
         "target": recipe.target,
         "horizon": int(horizon),
-        "feature_names": _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec)),
+        "feature_names": _raw_panel_feature_names(raw_frame, recipe.target, recipe),
         "contract_version": "custom_model_v1",
     }
     pred = _as_scalar_prediction(spec.function(X_train, y_train, X_pred, context), model_name=model_name)
@@ -3649,8 +3710,18 @@ def _compute_minimal_importance(
         raise ExecutionError("minimal_importance requires at least one valid forecast origin")
     start_idx = max(0, origin_idx + 1 - _rolling_window_size(recipe)) if rolling else 0
     horizon = min(recipe.horizons)
-    predictors = _raw_panel_columns(aligned_frame, recipe.target)
-    X_train, y_train, _ = _build_raw_panel_training_data(aligned_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+    predictors = _raw_panel_feature_names(aligned_frame, recipe.target, recipe)
+    X_train, y_train, _ = _build_raw_panel_training_data(
+        aligned_frame,
+        recipe.target,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        predictor_family=_predictor_family(recipe),
+        spec=dict(recipe.data_task_spec),
+        level_feature_block=_level_feature_block(recipe),
+    )
 
     if model_family == "ridge":
         model = Ridge(alpha=1.0)
@@ -3688,8 +3759,18 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
     start_idx = max(0, origin_idx + 1 - _rolling_window_size(recipe)) if rolling else 0
     if feature_builder == "raw_feature_panel":
         aligned_frame = raw_frame.loc[target_series.index]
-        feature_names = _raw_panel_columns(aligned_frame, recipe.target)
-        X_train, y_train, X_pred = _build_raw_panel_training_data(aligned_frame, recipe.target, horizon, start_idx, origin_idx, contract)
+        feature_names = _raw_panel_feature_names(aligned_frame, recipe.target, recipe)
+        X_train, y_train, X_pred = _build_raw_panel_training_data(
+            aligned_frame,
+            recipe.target,
+            horizon,
+            start_idx,
+            origin_idx,
+            contract,
+            predictor_family=_predictor_family(recipe),
+            spec=dict(recipe.data_task_spec),
+            level_feature_block=_level_feature_block(recipe),
+        )
         return feature_names, X_train, y_train, X_pred
     if feature_builder == "autoreg_lagged_target":
         train = target_series.iloc[start_idx: origin_idx + 1]

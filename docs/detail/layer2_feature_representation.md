@@ -88,11 +88,16 @@ Operational support is currently narrow:
   separate compatibility bridges: old `feature_builder=factor_pca` /
   `factors_plus_AR`, or raw-panel `dimensionality_reduction_policy=pca` /
   `static_factor`. Runtime writes a factor fit-state artifact containing stable
-  factor names and loadings for the latest recursive training window.
+  factor/loadings provenance.
+- `level_feature_block=none` and `target_level_addback` are operational for
+  raw-panel feature builders. `target_level_addback` appends the observable
+  target level at the feature row date (`target_t`) and at the prediction
+  origin (`target_origin`); selected X-level add-backs and level-growth pairs
+  remain registry-only.
 - Feature selection currently applies only to raw predictor blocks. It cannot
   be combined with factor blocks or dimensionality reduction until the package
   defines selection-before-factor vs selection-after-factor semantics.
-- Level, rotation, temporal, and custom block-combination axes remain
+- Rotation, temporal, and custom block-combination axes remain
   registry-only.
 
 ## Target Representation Grammar
@@ -172,7 +177,7 @@ A safe implementation order is:
    train-window alignment tests.
 4. Implement `factor_feature_block=pca_static_factors` with recursive factor
    fit/apply tests and loadings provenance.
-5. Implement `level_feature_block`, `rotation_feature_block`, and
-   `temporal_feature_block` as optional blocks.
+5. Extend `level_feature_block` beyond `target_level_addback`, then implement
+   `rotation_feature_block` and `temporal_feature_block` as optional blocks.
 6. Move runtime dispatch from coarse `feature_builder` names to explicit block
    composition only after old recipes can be translated losslessly.

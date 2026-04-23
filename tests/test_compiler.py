@@ -15,6 +15,66 @@ from macrocast import (
 )
 
 
+def _layer2_level_block_recipe(
+    *,
+    feature_builder: str = "raw_feature_panel",
+    model_family: str = "ridge",
+    level_feature_block: str = "target_level_addback",
+    contemporaneous_x_rule: str | None = None,
+) -> dict:
+    data_axes = {
+        "dataset": "fred_md",
+        "information_set_type": "revised",
+        "target_structure": "single_target_point_forecast",
+    }
+    if contemporaneous_x_rule is not None:
+        data_axes["contemporaneous_x_rule"] = contemporaneous_x_rule
+    return {
+        "recipe_id": f"l2-level-block-{feature_builder}",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": data_axes,
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "raw_only",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "none",
+                    "preprocess_fit_scope": "not_applicable",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "level_feature_block": level_feature_block,
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": feature_builder,
+                    "model_family": model_family,
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+
+
 def test_compile_minimal_importance_recipe_is_executable_for_ridge(tmp_path: Path) -> None:
     recipe = {
         "recipe_id": "importance-ridge-rolling",
@@ -1374,6 +1434,39 @@ def test_layer2_explicit_x_lag_block_lowers_to_raw_panel_bridge() -> None:
     assert blocks["x_lag_feature_block"]["source_axis"] == "x_lag_feature_block"
     assert blocks["x_lag_feature_block"]["runtime_bridge"] == {"x_lag_creation": "fixed_x_lags"}
     assert blocks["x_lag_feature_block"]["alignment"]["lookahead"] == "forbidden"
+
+
+def test_layer2_explicit_level_block_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(_layer2_level_block_recipe())
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["level_feature_block"]
+    assert block["value"] == "target_level_addback"
+    assert block["source_axis"] == "level_feature_block"
+    assert block["feature_names"] == ["target_level_origin"]
+    assert block["runtime_feature_name"] == "__target_level_origin"
+    assert block["runtime_bridge"] == {"raw_panel_level_addback": "target_level_addback"}
+    assert block["alignment"] == {
+        "train_row_t_uses": "target_t",
+        "prediction_origin_uses": "target_origin",
+        "lookahead": "forbidden",
+    }
+
+
+def test_layer2_explicit_level_block_requires_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_level_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("level_feature_block='target_level_addback' currently lowers only" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_explicit_level_block_rejects_contemporaneous_oracle_alignment() -> None:
+    result = compile_recipe_dict(
+        _layer2_level_block_recipe(contemporaneous_x_rule="allow_contemporaneous")
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any("requires contemporaneous_x_rule='forbid_contemporaneous'" in warning for warning in result.compiled.warnings)
 
 
 def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -> None:

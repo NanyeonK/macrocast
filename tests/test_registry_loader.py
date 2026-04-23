@@ -244,6 +244,9 @@ def test_registry_loader_defines_layer2_feature_block_grammar() -> None:
     assert registry["feature_block_set"].current_status["mixed_blocks"] == "registry_only"
     assert registry["rotation_feature_block"].current_status["marx_rotation"] == "registry_only"
     assert registry["factor_feature_block"].current_status["pca_static_factors"] == "operational"
+    assert registry["level_feature_block"].current_status["none"] == "operational"
+    assert registry["level_feature_block"].current_status["target_level_addback"] == "operational"
+    assert registry["level_feature_block"].current_status["selected_level_addbacks"] == "registry_only"
     assert registry["target_lag_selection"].current_status["ic_select"] == "registry_only"
 
 
