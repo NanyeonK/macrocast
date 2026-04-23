@@ -71,8 +71,20 @@ _MULTI_BENCHMARK_ALLOWED_MEMBERS = {
     "ardi",
 }
 
-_TARGET_TRANSFORMER_FEATURE_BUILDERS = {"autoreg_lagged_target", "raw_feature_panel", "raw_X_only"}
+_TARGET_TRANSFORMER_FEATURE_RUNTIMES = {"autoreg_lagged_target", "raw_feature_panel"}
 _TARGET_TRANSFORMER_RAW_PANEL_MODELS = {"ols", "ridge", "lasso", "elasticnet"}
+_RAW_PANEL_FEATURE_BUILDERS = {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}
+_RAW_PANEL_FEATURE_BLOCK_SETS = {
+    "transformed_x",
+    "transformed_x_lags",
+    "factors_plus_target_lags",
+    "high_dimensional_x",
+    "selected_sparse_x",
+    "level_augmented_x",
+    "rotation_augmented_x",
+    "mixed_blocks",
+    "custom_blocks",
+}
 _PATH_AVERAGE_LAYER3_GATE = (
     "path-average target construction has Layer 2 protocol metadata but requires "
     "Layer 3 multi-step fit/aggregation runtime"
@@ -1576,6 +1588,41 @@ def _feature_block_combination_from_bridge(feature_builder: str, x_lag_creation:
     }
 
 
+def _feature_runtime_for_validation(
+    selection_map: dict[str, AxisSelection],
+    *,
+    fallback_feature_builder: str | None,
+) -> str | None:
+    """Return the runtime feature family implied by Layer 2 block selections.
+
+    Compiler validation still accepts legacy bridge axes, but gates that refer
+    to runtime support should classify the selected feature path the same way
+    execution does: explicit blocks first, source bridge only as fallback.
+    """
+    block_set = _selection_value(selection_map, "feature_block_set", default="")
+    raw_block_axes = (
+        "x_lag_feature_block",
+        "factor_feature_block",
+        "level_feature_block",
+        "temporal_feature_block",
+        "rotation_feature_block",
+    )
+    raw_block_values = (
+        _selection_value(selection_map, axis_name, default="none")
+        for axis_name in raw_block_axes
+    )
+    if block_set in _RAW_PANEL_FEATURE_BLOCK_SETS or any(value != "none" for value in raw_block_values):
+        return "raw_feature_panel"
+
+    target_lag_block = _selection_value(selection_map, "target_lag_block", default="none")
+    if block_set == "target_lags_only" or target_lag_block != "none":
+        return "autoreg_lagged_target"
+
+    if fallback_feature_builder in _RAW_PANEL_FEATURE_BUILDERS:
+        return "raw_feature_panel"
+    return fallback_feature_builder
+
+
 def _path_average_protocols_for_horizons(construction: str, horizons: Sequence[int]) -> dict[str, Any] | None:
     if not _is_path_average_construction(construction):
         return None
@@ -2038,13 +2085,17 @@ def _execution_status(
 
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")
     if target_transformer != "none":
-        if feature_builder not in _TARGET_TRANSFORMER_FEATURE_BUILDERS:
+        feature_runtime = _feature_runtime_for_validation(
+            selection_map,
+            fallback_feature_builder=feature_builder,
+        )
+        if feature_runtime not in _TARGET_TRANSFORMER_FEATURE_RUNTIMES:
             blocked.append(
                 "target_transformer is currently executable only with supported target-lag or raw-panel feature runtimes "
-                f"{sorted(_TARGET_TRANSFORMER_FEATURE_BUILDERS)}"
+                f"{sorted(_TARGET_TRANSFORMER_FEATURE_RUNTIMES)}"
             )
         if (
-            feature_builder in {"raw_feature_panel", "raw_X_only"}
+            feature_runtime == "raw_feature_panel"
             and model_family is not None
             and model_family not in _TARGET_TRANSFORMER_RAW_PANEL_MODELS
             and not is_custom_model(model_family)

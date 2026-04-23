@@ -603,6 +603,39 @@ def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path)
     assert set(predictions["forecast_scale"]) == {"raw"}
 
 
+def test_target_transformer_compile_uses_feature_runtime_for_factor_bridge() -> None:
+    clear_custom_extensions()
+
+    @target_transformer("identity_target_factor_bridge")
+    class IdentityTargetFactorBridge:
+        def fit(self, target_train, context):
+            return self
+
+        def transform(self, target, context):
+            return target
+
+        def inverse_transform_prediction(self, target_pred, context):
+            return target_pred
+
+    recipe = (
+        Experiment(
+            dataset="fred_md",
+            target="INDPRO",
+            start=FIXTURE_START,
+            end=FIXTURE_END,
+            horizons=[1],
+            model_family="ridge",
+            feature_builder="factor_pca",
+        )
+        .use_target_transformer("identity_target_factor_bridge")
+        .to_recipe_dict()
+    )
+
+    compiled = compile_recipe_dict(recipe).compiled
+
+    assert compiled.execution_status == "executable"
+
+
 def test_target_transformer_blocks_unsupported_raw_panel_model() -> None:
     clear_custom_extensions()
 

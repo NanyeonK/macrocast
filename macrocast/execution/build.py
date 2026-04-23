@@ -75,7 +75,7 @@ _EXECUTION_ARCHITECTURE = "separate_model_and_benchmark_executors"
 _DEFAULT_MINIMUM_TRAIN_SIZE = 5
 _DEFAULT_MAX_AR_LAG = 3
 _LAG_SELECTION = "bic"
-_TARGET_TRANSFORMER_FEATURE_BUILDERS = {"autoreg_lagged_target", "raw_feature_panel", "raw_X_only"}
+_TARGET_TRANSFORMER_FEATURE_RUNTIMES = {"autoreg_lagged_target", "raw_feature_panel"}
 _TARGET_TRANSFORMER_RAW_PANEL_MODELS = {"ols", "ridge", "lasso", "elasticnet"}
 _RAW_PANEL_FEATURE_BUILDERS = {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}
 _RAW_PANEL_FEATURE_BLOCK_SETS = {
@@ -4653,21 +4653,15 @@ def _build_predictions(
     model_executor = _get_model_executor(recipe)
     benchmark_executor = _get_benchmark_executor(recipe)
     target_transformer_spec = _target_transformer_spec(recipe)
-    legacy_feature_builder = _feature_builder(recipe)
     feature_builder = _feature_runtime_builder(recipe)
-    feature_builder_for_target_transformer = (
-        legacy_feature_builder
-        if recipe.stage0.varying_design.feature_recipes
-        else feature_builder
-    )
     model_family = _model_family(recipe)
     if (
         target_transformer_spec is not None
-        and feature_builder_for_target_transformer not in _TARGET_TRANSFORMER_FEATURE_BUILDERS
+        and feature_builder not in _TARGET_TRANSFORMER_FEATURE_RUNTIMES
     ):
         raise ExecutionError(
             "target_transformer runtime currently supports feature runtime in "
-            f"{sorted(_TARGET_TRANSFORMER_FEATURE_BUILDERS)}"
+            f"{sorted(_TARGET_TRANSFORMER_FEATURE_RUNTIMES)}"
         )
     if (
         target_transformer_spec is not None

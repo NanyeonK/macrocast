@@ -11,10 +11,12 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
+from macrocast import clear_custom_extensions, target_transformer
 from macrocast.execution.build import (
     _apply_additional_preprocessing,
     _apply_tcode_preprocessing,
     _apply_x_lag_creation,
+    _build_predictions,
     _build_lagged_supervised_matrix,
     _build_raw_panel_training_data,
     _compute_minimal_importance,
@@ -99,6 +101,51 @@ def test_layer2_target_lag_block_drives_autoreg_runtime_dispatch():
     assert spec["feature_runtime_builder"] == "autoreg_lagged_target"
     assert spec["feature_runtime"] == "autoreg_lagged_target_v1"
     assert spec["executor_name"] == "ar_bic_autoreg_v0"
+
+
+def test_target_transformer_gate_uses_layer2_feature_runtime_not_legacy_bridge():
+    clear_custom_extensions()
+
+    @target_transformer("identity_target_runtime_gate")
+    class IdentityTargetRuntimeGate:
+        def fit(self, target_train, context):
+            return self
+
+        def transform(self, target, context):
+            return target
+
+        def inverse_transform_prediction(self, target_pred, context):
+            return target_pred
+
+    frame = pd.DataFrame(
+        {
+            "target": [1.0, 1.2, 1.4, 1.8, 2.1, 2.4, 2.7, 3.0],
+            "a": [2.0, 2.1, 2.2, 2.5, 2.8, 3.1, 3.2, 3.3],
+        },
+        index=pd.date_range("2000-01-01", periods=8, freq="MS"),
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        feature_recipes=("factor_pca",),
+        blocks={
+            "feature_block_set": {"value": "high_dimensional_x"},
+            "x_lag_feature_block": {"value": "fixed_x_lags"},
+        },
+    )
+    recipe.training_spec = {"target_transformer": "identity_target_runtime_gate"}
+    recipe.benchmark_config = {"minimum_train_size": 5, "rolling_window_size": 5}
+    recipe.data_task_spec = {"predictor_family": "all_macro_vars"}
+
+    predictions, _ = _build_predictions(
+        frame,
+        frame["target"],
+        recipe,
+        _contract(),
+    )
+
+    assert _feature_runtime_builder(recipe) == "raw_feature_panel"
+    assert set(predictions["target_transformer"]) == {"identity_target_runtime_gate"}
+    assert set(predictions["model_target_scale"]) == {"transformed"}
 
 
 def test_target_lag_block_lag_order_matches_legacy_max_ar_lag():
