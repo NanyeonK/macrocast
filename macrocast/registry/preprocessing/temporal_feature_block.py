@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="rolling_moments",
             description="rolling mean variance and related moment features",
-            status="registry_only",
+            status="operational",
             priority="B",
         ),
         EnumRegistryEntry(

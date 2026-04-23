@@ -249,8 +249,9 @@ def test_registry_loader_defines_layer2_feature_block_grammar() -> None:
     assert registry["level_feature_block"].current_status["selected_level_addbacks"] == "registry_only"
     assert registry["temporal_feature_block"].current_status["none"] == "operational"
     assert registry["temporal_feature_block"].current_status["moving_average_features"] == "operational"
+    assert registry["temporal_feature_block"].current_status["rolling_moments"] == "operational"
     assert registry["temporal_feature_block"].current_status["volatility_features"] == "operational"
-    assert registry["temporal_feature_block"].current_status["rolling_moments"] == "registry_only"
+    assert registry["temporal_feature_block"].current_status["local_temporal_factors"] == "registry_only"
     assert registry["target_lag_selection"].current_status["ic_select"] == "registry_only"
 
 

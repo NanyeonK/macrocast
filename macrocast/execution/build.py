@@ -1631,6 +1631,7 @@ _TARGET_LEVEL_ADD_BACK_COLUMN = "__target_level_origin"
 _TARGET_LEVEL_ADD_BACK_FEATURE_NAME = "target_level_origin"
 _MOVING_AVERAGE_FEATURE_WINDOW = 3
 _VOLATILITY_FEATURE_WINDOW = 3
+_ROLLING_MOMENTS_FEATURE_WINDOW = 3
 
 
 def _apply_level_feature_block(
@@ -1668,6 +1669,22 @@ def _volatility_public_feature_name(column: str) -> str:
     return f"{column}_vol{_VOLATILITY_FEATURE_WINDOW}"
 
 
+def _rolling_mean_feature_name(column: str) -> str:
+    return f"{column}__mean{_ROLLING_MOMENTS_FEATURE_WINDOW}"
+
+
+def _rolling_mean_public_feature_name(column: str) -> str:
+    return f"{column}_mean{_ROLLING_MOMENTS_FEATURE_WINDOW}"
+
+
+def _rolling_variance_feature_name(column: str) -> str:
+    return f"{column}__var{_ROLLING_MOMENTS_FEATURE_WINDOW}"
+
+
+def _rolling_variance_public_feature_name(column: str) -> str:
+    return f"{column}_var{_ROLLING_MOMENTS_FEATURE_WINDOW}"
+
+
 def _apply_temporal_feature_block(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
@@ -1680,21 +1697,26 @@ def _apply_temporal_feature_block(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     if temporal_feature_block == "none":
         return X_train, X_pred
-    if temporal_feature_block not in {"moving_average_features", "volatility_features"}:
+    if temporal_feature_block not in {"moving_average_features", "rolling_moments", "volatility_features"}:
         raise ExecutionError(f"unsupported temporal_feature_block={temporal_feature_block!r}")
     source = frame[list(predictors)].iloc[start_idx : pred_idx + 1].astype(float).copy()
     if temporal_feature_block == "moving_average_features":
-        rolling = source.rolling(window=_MOVING_AVERAGE_FEATURE_WINDOW, min_periods=1).mean()
-        feature_name = _moving_average_feature_name
+        feature_frames = [(source.rolling(window=_MOVING_AVERAGE_FEATURE_WINDOW, min_periods=1).mean(), _moving_average_feature_name)]
+    elif temporal_feature_block == "rolling_moments":
+        rolling = source.rolling(window=_ROLLING_MOMENTS_FEATURE_WINDOW, min_periods=1)
+        feature_frames = [
+            (rolling.mean(), _rolling_mean_feature_name),
+            (rolling.var(ddof=0).fillna(0.0), _rolling_variance_feature_name),
+        ]
     else:
-        rolling = source.rolling(window=_VOLATILITY_FEATURE_WINDOW, min_periods=1).std(ddof=0).fillna(0.0)
-        feature_name = _volatility_feature_name
+        feature_frames = [(source.rolling(window=_VOLATILITY_FEATURE_WINDOW, min_periods=1).std(ddof=0).fillna(0.0), _volatility_feature_name)]
     X_train = X_train.copy()
     X_pred = X_pred.copy()
     for column in predictors:
-        name = feature_name(str(column))
-        X_train[name] = rolling.loc[X_train.index, column].to_numpy(dtype=float)
-        X_pred[name] = rolling.loc[X_pred.index, column].to_numpy(dtype=float)
+        for rolling_frame, feature_name in feature_frames:
+            name = feature_name(str(column))
+            X_train[name] = rolling_frame.loc[X_train.index, column].to_numpy(dtype=float)
+            X_pred[name] = rolling_frame.loc[X_pred.index, column].to_numpy(dtype=float)
     return X_train, X_pred
 
 
@@ -1712,6 +1734,10 @@ def _raw_panel_feature_names(
     temporal_feature_block = _temporal_feature_block(recipe)
     if temporal_feature_block == "moving_average_features":
         names.extend(_moving_average_public_feature_name(str(column)) for column in tuple(names))
+    elif temporal_feature_block == "rolling_moments":
+        base_names = tuple(names)
+        names.extend(_rolling_mean_public_feature_name(str(column)) for column in base_names)
+        names.extend(_rolling_variance_public_feature_name(str(column)) for column in base_names)
     elif temporal_feature_block == "volatility_features":
         names.extend(_volatility_public_feature_name(str(column)) for column in tuple(names))
     if _level_feature_block(recipe) == "target_level_addback":

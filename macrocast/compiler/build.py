@@ -1217,6 +1217,22 @@ def _temporal_feature_block_value(selection_map: dict[str, AxisSelection]) -> st
 def _temporal_block_from_selection(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
     explicit_block = _temporal_feature_block_value(selection_map)
     block = explicit_block or "none"
+    if block == "rolling_moments":
+        return {
+            "value": "rolling_moments",
+            "source_axis": "temporal_feature_block",
+            "source_value": "rolling_moments",
+            "window": 3,
+            "moments": ["mean", "variance"],
+            "feature_name_patterns": ["{predictor}_mean3", "{predictor}_var3"],
+            "runtime_feature_name_patterns": ["{predictor}__mean3", "{predictor}__var3"],
+            "alignment": {
+                "train_row_t_uses": "X_{t}, X_{t-1}, X_{t-2}",
+                "prediction_origin_uses": "X_{origin}, X_{origin-1}, X_{origin-2}",
+                "lookahead": "forbidden",
+            },
+            "runtime_bridge": {"raw_panel_temporal_features": "rolling_moments"},
+        }
     if block in {"moving_average_features", "volatility_features"}:
         suffix = "ma3" if block == "moving_average_features" else "vol3"
         bridge = "moving_average_features" if block == "moving_average_features" else "volatility_features"
@@ -1732,7 +1748,7 @@ def _execution_status(
                 "contemporaneous_x_rule='forbid_contemporaneous' so the added target level is observed at the forecast origin"
             )
         temporal_feature_block = _selection_value(selection_map, "temporal_feature_block", default="none")
-        temporal_block_active = temporal_feature_block in {"moving_average_features", "volatility_features"}
+        temporal_block_active = temporal_feature_block in {"moving_average_features", "rolling_moments", "volatility_features"}
         if temporal_block_active and feature_builder not in {"raw_feature_panel", "raw_X_only"}:
             not_supported.append(
                 f"temporal_feature_block={temporal_feature_block!r} currently lowers only through "

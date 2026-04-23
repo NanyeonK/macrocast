@@ -1564,6 +1564,23 @@ def test_layer2_explicit_volatility_block_lowers_to_raw_panel_bridge() -> None:
     assert block["alignment"]["lookahead"] == "forbidden"
 
 
+def test_layer2_explicit_rolling_moments_block_lowers_to_raw_panel_bridge() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(temporal_feature_block="rolling_moments")
+    )
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    block = blocks["temporal_feature_block"]
+    assert block["value"] == "rolling_moments"
+    assert block["source_axis"] == "temporal_feature_block"
+    assert block["window"] == 3
+    assert block["moments"] == ["mean", "variance"]
+    assert block["feature_name_patterns"] == ["{predictor}_mean3", "{predictor}_var3"]
+    assert block["runtime_feature_name_patterns"] == ["{predictor}__mean3", "{predictor}__var3"]
+    assert block["runtime_bridge"] == {"raw_panel_temporal_features": "rolling_moments"}
+    assert block["alignment"]["lookahead"] == "forbidden"
+
+
 def test_layer2_explicit_temporal_block_requires_raw_panel_bridge() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(feature_builder="autoreg_lagged_target", model_family="ar")
