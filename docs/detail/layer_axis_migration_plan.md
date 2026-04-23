@@ -49,8 +49,9 @@ until each block has train-window fit/apply tests and provenance.
 | Axis | Canonical owner | Current support |
 |---|---|---|
 | `target_lag_block`, `target_lag_selection`, `x_lag_feature_block` | 2_preprocessing | `none` and fixed-lag values operational through separate bridge lowering; target-plus-X block composition remains gated |
+| `factor_feature_block` | 2_preprocessing | `none` and `pca_static_factors` operational through factor bridge lowering; factor/selection composition remains gated |
 | `feature_block_set` | 2_preprocessing | registry-only |
-| `factor_feature_block`, `level_feature_block`, `rotation_feature_block` | 2_preprocessing | registry-only |
+| `level_feature_block`, `rotation_feature_block` | 2_preprocessing | registry-only |
 | `temporal_feature_block`, `feature_block_combination` | 2_preprocessing | registry-only |
 
 ## Compatibility Policy

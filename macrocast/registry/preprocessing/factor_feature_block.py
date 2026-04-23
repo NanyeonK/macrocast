@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="none",
             description="no factor feature block",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
             id="pca_static_factors",
             description="static PCA factors extracted from the predictor panel",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

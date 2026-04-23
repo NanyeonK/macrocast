@@ -1534,6 +1534,177 @@ def test_layer2_explicit_target_lag_block_rejects_conflicting_selection() -> Non
         compile_recipe_dict(recipe)
 
 
+def test_layer2_explicit_factor_block_lowers_to_dimred_bridge() -> None:
+    recipe = {
+        "recipe_id": "l2-explicit-factor-block",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "training_config": {"fixed_factor_count": 2, "max_factors": 4},
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "extra_preprocess_without_tcode",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "mean_impute",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "standard",
+                    "dimensionality_reduction_policy": "pca",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "extra_only",
+                    "preprocess_fit_scope": "train_only",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "factor_feature_block": "pca_static_factors",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                    "factor_count": "fixed",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "executable"
+    assert result.manifest["preprocess_contract"]["dimensionality_reduction_policy"] == "pca"
+    block = result.manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]
+    assert block["value"] == "pca_static_factors"
+    assert block["source_axis"] == "factor_feature_block"
+    assert block["runtime_bridge"] == {"dimensionality_reduction_policy": "pca"}
+    assert block["factor_count"] == {
+        "mode": "fixed",
+        "fixed_factor_count": 2,
+        "max_factors": 4,
+        "selection_scope": "train_window",
+    }
+    assert block["feature_names"] == ["factor_1", "factor_2"]
+    assert block["loadings_artifact"] == "feature_representation_fit_state.json"
+    assert block["alignment"]["lookahead"] == "forbidden"
+
+
+def test_layer2_factor_block_requires_runtime_bridge() -> None:
+    recipe = {
+        "recipe_id": "l2-factor-block-missing-bridge",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {"target": "INDPRO", "horizons": [1]},
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "raw_only",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "none",
+                    "preprocess_fit_scope": "not_applicable",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "factor_feature_block": "pca_static_factors",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "not_supported"
+    assert any("factor_feature_block='pca_static_factors' requires" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_factor_block_rejects_feature_selection_mix() -> None:
+    recipe = {
+        "recipe_id": "l2-factor-block-selection-mix",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {"target": "INDPRO", "horizons": [1]},
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "extra_preprocess_without_tcode",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "mean_impute",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "standard",
+                    "dimensionality_reduction_policy": "pca",
+                    "feature_selection_policy": "lasso_select",
+                    "preprocess_order": "extra_only",
+                    "preprocess_fit_scope": "train_only",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "factor_feature_block": "pca_static_factors",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "not_supported"
+    assert any("feature_selection_policy cannot yet be combined" in warning for warning in result.compiled.warnings)
+
+
 def test_compile_recipe_accepts_stage3_training_axes() -> None:
     recipe = {
         "recipe_id": "stage3-training-axes",

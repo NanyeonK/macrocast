@@ -243,7 +243,7 @@ def test_registry_loader_defines_layer2_feature_block_grammar() -> None:
     assert all(registry[axis].layer == "2_preprocessing" for axis in block_axes)
     assert registry["feature_block_set"].current_status["mixed_blocks"] == "registry_only"
     assert registry["rotation_feature_block"].current_status["marx_rotation"] == "registry_only"
-    assert registry["factor_feature_block"].current_status["pca_static_factors"] == "registry_only"
+    assert registry["factor_feature_block"].current_status["pca_static_factors"] == "operational"
     assert registry["target_lag_selection"].current_status["ic_select"] == "registry_only"
 
 
@@ -275,12 +275,15 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     target_lag_block = get_axis_registry_entry("target_lag_block")
     target_lag_selection = get_axis_registry_entry("target_lag_selection")
     x_lag_feature_block = get_axis_registry_entry("x_lag_feature_block")
+    factor_feature_block = get_axis_registry_entry("factor_feature_block")
     assert target_lag_block.current_status["none"] == "operational"
     assert target_lag_block.current_status["fixed_target_lags"] == "operational"
     assert target_lag_selection.current_status["none"] == "operational"
     assert target_lag_selection.current_status["fixed"] == "operational"
     assert x_lag_feature_block.current_status["none"] == "operational"
     assert x_lag_feature_block.current_status["fixed_x_lags"] == "operational"
+    assert factor_feature_block.current_status["none"] == "operational"
+    assert factor_feature_block.current_status["pca_static_factors"] == "operational"
 
 
 def test_registry_loader_demotes_stage2_non_executable_values() -> None:
@@ -295,6 +298,7 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     target_lag_block = get_axis_registry_entry("target_lag_block")
     target_lag_selection = get_axis_registry_entry("target_lag_selection")
     x_lag_feature_block = get_axis_registry_entry("x_lag_feature_block")
+    factor_feature_block = get_axis_registry_entry("factor_feature_block")
 
     assert target_missing.current_status["em_impute"] == "registry_only"
     assert set(dimred.current_status) == {"none", "pca", "static_factor", "custom"}
@@ -315,6 +319,8 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     assert target_lag_block.current_status["custom_target_lags"] == "registry_only"
     assert target_lag_selection.current_status["ic_select"] == "registry_only"
     assert x_lag_feature_block.current_status["cv_selected_x_lags"] == "registry_only"
+    assert factor_feature_block.current_status["pca_factor_lags"] == "registry_only"
+    assert factor_feature_block.current_status["supervised_factors"] == "registry_only"
 
 
 

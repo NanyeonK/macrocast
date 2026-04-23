@@ -249,6 +249,11 @@ Acceptance:
 
 ### Patch L2-F: Factor And Selection Blocks
 
+Status: complete for `factor_feature_block=pca_static_factors` through
+compatibility lowering. Factor lags, supervised factors, custom factors, and
+factor/selection composition remain registry-only or `not_supported` until the
+explicit block composer exists.
+
 Goal: move factor construction from coarse runtime switches into explicit
 Layer 2 blocks.
 

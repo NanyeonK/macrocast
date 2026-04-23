@@ -1516,6 +1516,8 @@ def _apply_dimensionality_reduction(
     X_train: pd.DataFrame,
     X_pred: pd.DataFrame,
     contract: PreprocessContract,
+    *,
+    fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     policy = contract.dimensionality_reduction_policy
     if policy == "none":
@@ -1523,16 +1525,65 @@ def _apply_dimensionality_reduction(
     n_components = max(1, min(3, X_train.shape[0], X_train.shape[1]))
     if policy == "pca":
         reducer = PCA(n_components=n_components)
-        return reducer.fit_transform(X_train), reducer.transform(X_pred)
+        train_scores = reducer.fit_transform(X_train)
+        pred_scores = reducer.transform(X_pred)
+        if fit_state_sink is not None:
+            fit_state_sink.append(_factor_fit_state_from_pca(policy, X_train, reducer))
+        return train_scores, pred_scores
     if policy == "static_factor":
-        centered_train = X_train.to_numpy(dtype=float) - X_train.to_numpy(dtype=float).mean(axis=0, keepdims=True)
+        train_values = X_train.to_numpy(dtype=float)
+        mean = train_values.mean(axis=0, keepdims=True)
+        centered_train = train_values - mean
         u, s, vt = np.linalg.svd(centered_train, full_matrices=False)
         components = vt[:n_components]
         train_scores = centered_train @ components.T
-        centered_pred = X_pred.to_numpy(dtype=float) - X_train.to_numpy(dtype=float).mean(axis=0, keepdims=True)
+        centered_pred = X_pred.to_numpy(dtype=float) - mean
         pred_scores = centered_pred @ components.T
+        if fit_state_sink is not None:
+            fit_state_sink.append(_factor_fit_state_from_components(policy, X_train, components, mean.reshape(-1), s))
         return train_scores, pred_scores
     raise ExecutionError(f"dimensionality_reduction_policy {policy!r} is not executable in current runtime slice")
+
+
+def _factor_fit_state_from_components(
+    policy: str,
+    X_train: pd.DataFrame,
+    components: np.ndarray,
+    mean: np.ndarray,
+    singular_values: np.ndarray | None = None,
+) -> dict[str, object]:
+    source_names = [str(col) for col in X_train.columns]
+    feature_names = [f"factor_{idx}" for idx in range(1, int(components.shape[0]) + 1)]
+    loadings = {
+        feature: {source: float(value) for source, value in zip(source_names, row)}
+        for feature, row in zip(feature_names, np.asarray(components, dtype=float))
+    }
+    payload: dict[str, object] = {
+        "block": "pca_static_factors",
+        "runtime_policy": policy,
+        "n_components": int(components.shape[0]),
+        "feature_names": feature_names,
+        "source_feature_names": source_names,
+        "train_window_rows": int(X_train.shape[0]),
+        "train_window_columns": int(X_train.shape[1]),
+        "center_mean": [float(x) for x in np.asarray(mean, dtype=float).reshape(-1)],
+        "loadings": loadings,
+    }
+    if singular_values is not None:
+        payload["singular_values"] = [float(x) for x in np.asarray(singular_values, dtype=float)[: int(components.shape[0])]]
+    return payload
+
+
+def _factor_fit_state_from_pca(policy: str, X_train: pd.DataFrame, reducer: PCA) -> dict[str, object]:
+    payload = _factor_fit_state_from_components(
+        policy,
+        X_train,
+        np.asarray(reducer.components_, dtype=float),
+        np.asarray(reducer.mean_, dtype=float),
+        np.asarray(getattr(reducer, "singular_values_", []), dtype=float),
+    )
+    payload["explained_variance_ratio"] = [float(x) for x in np.asarray(reducer.explained_variance_ratio_, dtype=float)]
+    return payload
 
 
 def _apply_raw_panel_preprocessing(
@@ -1540,6 +1591,8 @@ def _apply_raw_panel_preprocessing(
     y_train: np.ndarray,
     X_pred: pd.DataFrame,
     contract: PreprocessContract,
+    *,
+    fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     if contract.dimensionality_reduction_policy != "none" and contract.feature_selection_policy != "none":
         raise ExecutionError("current runtime slice does not support combining dimensionality reduction with feature selection")
@@ -1549,7 +1602,7 @@ def _apply_raw_panel_preprocessing(
     X_train, X_pred = _apply_scaling_policy(X_train, X_pred, contract)
     X_train, X_pred = _apply_feature_selection(X_train, y_train, X_pred, contract)
     X_train, X_pred = _apply_x_lag_creation(X_train, X_pred, contract)
-    return _apply_dimensionality_reduction(X_train, X_pred, contract)
+    return _apply_dimensionality_reduction(X_train, X_pred, contract, fit_state_sink=fit_state_sink)
 
 
 def _build_raw_panel_training_data(
@@ -1563,6 +1616,7 @@ def _build_raw_panel_training_data(
     predictor_family: str = "all_macro_vars",
     spec: dict | None = None,
     target_window: pd.Series | None = None,
+    fit_state_sink: list[dict[str, object]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     predictors = _raw_panel_columns(frame, target, predictor_family=predictor_family, spec=spec)
     if origin_idx - horizon < start_idx:
@@ -1604,7 +1658,13 @@ def _build_raw_panel_training_data(
         X_train = lagged_source.loc[X_train.index].copy()
         X_pred = lagged_source.loc[X_pred.index].copy()
         preprocessing_contract = replace(contract, x_lag_creation="no_x_lags")
-    X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(X_train, y_train, X_pred, preprocessing_contract)
+    X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
+        X_train,
+        y_train,
+        X_pred,
+        preprocessing_contract,
+        fit_state_sink=fit_state_sink,
+    )
 
     # 1.4.5 deterministic_components augmentation (applied after preprocessing)
     det_component = None
@@ -2085,15 +2145,20 @@ def _fit_raw_panel_model(
     *,
     target_window: pd.Series | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, object, dict[str, object]]:
+    fit_state: list[dict[str, object]] = []
     X_train, y_train, X_pred = _build_raw_panel_training_data(
         raw_frame, recipe.target, horizon, start_idx, origin_idx, contract,
         predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec), target_window=target_window,
+        fit_state_sink=fit_state,
     )
     X_fit, y_fit, X_pred_fit = _apply_custom_preprocessor_arrays(
         X_train, y_train, X_pred, recipe,
         context_extra={"feature_builder": _feature_builder(recipe), "mode": "fit"},
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
+    tuning_payload = dict(tuning_payload or {})
+    if fit_state:
+        tuning_payload["feature_representation_fit_state"] = fit_state[-1]
     return X_fit, y_fit, X_pred_fit, fitted, tuning_payload
 
 
@@ -4517,6 +4582,10 @@ def execute_recipe(
     }
     if provenance_payload:
         manifest.update(provenance_payload)
+    feature_fit_state = _last_tp.get("feature_representation_fit_state") if isinstance(_last_tp, dict) else None
+    if feature_fit_state:
+        _write_json(run_dir / "feature_representation_fit_state.json", feature_fit_state)
+        manifest["feature_representation_fit_state_file"] = "feature_representation_fit_state.json"
     if failed_components:
         manifest["failure_log_file"] = "failures.json"
         _write_json(run_dir / "failures.json", failed_components)

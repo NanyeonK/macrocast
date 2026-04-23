@@ -64,7 +64,8 @@ records what the current runtime can execute today.
 | `feature_builder` | `autoreg_lagged_target`, `factors_plus_AR`, `raw_feature_panel`, `raw_X_only`, `factor_pca` | Currently used by compiler/runtime dispatch; semantically this chooses feature representation. `sequence_tensor` is future. |
 | `target_lag_block` / `target_lag_selection` | `none`, `fixed_target_lags` / `none`, `fixed` | Fixed target-lag construction is executable through compatibility lowering; IC, CV, horizon-specific, and custom lag selection remain registry-only. |
 | `x_lag_feature_block` | `none`, `fixed_x_lags` | Fixed predictor lags are executable through the legacy `x_lag_creation` bridge with origin-aligned prediction lags. |
-| Other feature-block primitive axes | none | `feature_block_set`, `factor_feature_block`, `level_feature_block`, `rotation_feature_block`, `temporal_feature_block`, and `feature_block_combination` remain registry-only. |
+| `factor_feature_block` | `none`, `pca_static_factors` | Static PCA factors are executable through old `feature_builder=factor_pca` / `factors_plus_AR` or raw-panel `dimensionality_reduction_policy=pca` / `static_factor` lowering. Runtime writes factor fit-state/loadings provenance for the latest recursive window. |
+| Other feature-block primitive axes | none | `feature_block_set`, `level_feature_block`, `rotation_feature_block`, `temporal_feature_block`, and `feature_block_combination` remain registry-only. |
 | `predictor_family` | `target_lags_only`, `all_macro_vars`, `category_based`, `factor_only`, `handpicked_set` | Canonical Layer 2 owner; runtime support is constrained by `feature_builder` compatibility guards. |
 | `data_richness_mode` | `target_lags_only`, `factor_plus_lags`, `full_high_dimensional_X`, `selected_sparse_X` | Canonical Layer 2 owner; `mixed_mode` remains registry-only. |
 | `factor_count` | `fixed`, `cv_select`, `BaiNg_rule` | Canonical Layer 2 owner for factor representation dimensions. `variance_explained_rule` and `model_specific` remain registry-only. |
@@ -74,8 +75,8 @@ records what the current runtime can execute today.
 | `scaling_scope` | `columnwise`, `global_train_only` | Other scopes are blocked by governance. |
 | `additional_preprocessing` | `none`, `hp_filter` | Moving average, EMA, and bandpass are registry-only. |
 | `x_lag_creation` | `no_x_lags`, `fixed_x_lags` | CV-selected and variable/category-specific lags are not wired. |
-| `dimensionality_reduction_policy` | `none`, `pca`, `static_factor` | Cannot be combined with feature selection. |
-| `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Cannot be combined with dimensionality reduction. |
+| `dimensionality_reduction_policy` | `none`, `pca`, `static_factor` | Compatibility bridge for `factor_feature_block=pca_static_factors`; cannot be combined with feature selection. |
+| `feature_selection_policy` | `none`, `correlation_filter`, `lasso_select` | Applies to raw predictor blocks only; cannot be combined with factor blocks or dimensionality reduction. |
 | `feature_grouping` | `none` | Non-`none` grouping is blocked in governance. |
 | `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff`, `average_growth_1_to_h`, `average_difference_1_to_h`, `average_log_growth_1_to_h` | Path-average target constructions have Layer 2 protocol metadata but remain registry-only until multi-step target execution is wired in Layer 3. |
 | `target_transform` | `level`, `difference`, `log`, `log_difference`, `growth_rate` | Applied to the target series before model execution, with limited inverse/evaluation semantics. |
@@ -115,9 +116,9 @@ feature-block primitives: target-lag blocks, transformed-X lag blocks, factor
 blocks, level add-backs, lag rotations, local temporal factors, volatility
 blocks, and custom blocks. The split is defined in
 `layer2_feature_representation.md`; the implementation sequence is defined in
-`layer2_revision_plan.md`. Runtime support has started with fixed target-lag
-and fixed X-lag blocks through separate compatibility bridges. Joint block
-composition is still an implementation task.
+`layer2_revision_plan.md`. Runtime support has started with fixed target-lag,
+fixed X-lag, and static PCA factor blocks through compatibility bridges. Joint
+block composition beyond those bridges is still an implementation task.
 
 
 ## Full Closure Status

@@ -755,6 +755,12 @@ def test_execute_recipe_supports_pca_preprocessing_path(tmp_path: Path) -> None:
     run_dir = tmp_path / result.run.artifact_subdir
     manifest = json.loads((run_dir / "manifest.json").read_text())
     assert manifest["preprocess_contract"]["dimensionality_reduction_policy"] == "pca"
+    assert manifest["feature_representation_fit_state_file"] == "feature_representation_fit_state.json"
+    fit_state = json.loads((run_dir / "feature_representation_fit_state.json").read_text())
+    assert fit_state["block"] == "pca_static_factors"
+    assert fit_state["runtime_policy"] == "pca"
+    assert fit_state["feature_names"] == [f"factor_{idx}" for idx in range(1, fit_state["n_components"] + 1)]
+    assert set(fit_state["loadings"]) == set(fit_state["feature_names"])
     assert manifest["prediction_rows"] > 0
 
 

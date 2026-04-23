@@ -105,6 +105,18 @@ _X_LAG_FEATURE_BLOCK_TO_CREATION = {
     "cv_selected_x_lags": "cv_selected_x_lags",
     "custom_x_lags": "no_x_lags",
 }
+_DIMRED_TO_FACTOR_FEATURE_BLOCK = {
+    "none": "none",
+    "pca": "pca_static_factors",
+    "static_factor": "pca_static_factors",
+    "custom": "custom_factors",
+}
+_FACTOR_FEATURE_BLOCK_COMPATIBLE_DIMRED = {
+    "none": {"none"},
+    "pca_static_factors": {"none", "pca", "static_factor"},
+}
+_FACTOR_BRIDGE_BUILDERS = {"factor_pca", "factors_plus_AR"}
+_FACTOR_DIMRED_BRIDGES = {"pca", "static_factor"}
 
 
 def load_recipe_yaml(path: str | Path) -> dict[str, Any]:
@@ -1152,6 +1164,69 @@ def _x_lag_block_from_selection(selection_map: dict[str, AxisSelection], x_lag_c
     ) | {"source_value": block}
 
 
+def _factor_feature_block_value(selection_map: dict[str, AxisSelection]) -> str | None:
+    return (
+        _selection_value(selection_map, "factor_feature_block")
+        if "factor_feature_block" in selection_map
+        else None
+    )
+
+
+def _factor_block_from_bridge(
+    *,
+    feature_builder: str,
+    dimred: str,
+    training_spec: dict[str, Any],
+    preprocess_contract,
+    explicit_block: str | None,
+) -> dict[str, Any]:
+    inferred = "pca_static_factors" if feature_builder in _FACTOR_BRIDGE_BUILDERS else _DIMRED_TO_FACTOR_FEATURE_BLOCK.get(dimred, "custom_factors")
+    block = explicit_block or inferred
+    runtime_bridge: dict[str, Any] = {}
+    if feature_builder in _FACTOR_BRIDGE_BUILDERS:
+        runtime_bridge["feature_builder"] = feature_builder
+    if dimred in _FACTOR_DIMRED_BRIDGES:
+        runtime_bridge["dimensionality_reduction_policy"] = dimred
+    payload: dict[str, Any] = {
+        "value": block,
+        "source_axis": "factor_feature_block" if explicit_block is not None else "feature_builder/dimensionality_reduction_policy",
+        "source_value": explicit_block if explicit_block is not None else {"feature_builder": feature_builder, "dimensionality_reduction_policy": dimred},
+        "runtime_bridge": runtime_bridge,
+        "feature_selection_interaction": {
+            "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
+            "rule": "feature selection currently applies only to raw predictor blocks; factor blocks require feature_selection_policy='none'",
+        },
+    }
+    if block == "pca_static_factors":
+        fixed_count = int(training_spec.get("fixed_factor_count", 3))
+        max_factors = int(training_spec.get("max_factors", 5))
+        payload.update(
+            {
+                "factor_count": {
+                    "mode": training_spec.get("factor_count", "fixed"),
+                    "fixed_factor_count": fixed_count,
+                    "max_factors": max_factors,
+                    "selection_scope": "train_window",
+                },
+                "feature_name_pattern": "factor_{k}",
+                "feature_names": [f"factor_{idx}" for idx in range(1, fixed_count + 1)],
+                "loadings_artifact": "feature_representation_fit_state.json",
+                "alignment": {
+                    "train_window_fit": "fit factor loadings on Z_train source X only",
+                    "prediction_origin_apply": "apply fitted loadings to X at the prediction origin",
+                    "lookahead": "forbidden",
+                },
+                "fit_scope": getattr(preprocess_contract, "preprocess_fit_scope", "train_only"),
+            }
+        )
+    if block in {"pca_factor_lags", "supervised_factors", "custom_factors"}:
+        payload["note"] = (
+            "factor_feature_block is representable, but this value does not yet "
+            "have a dedicated runtime path"
+        )
+    return payload
+
+
 def _feature_block_set_from_bridge(feature_builder: str, data_richness_mode: str) -> dict[str, Any]:
     if feature_builder == "autoreg_lagged_target":
         value = "target_lags_only"
@@ -1242,7 +1317,7 @@ def _layer2_representation_spec(
     horizon_target_construction = data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h")
     horizons = tuple(int(h) for h in leaf_config.get("horizons", [1]))
     path_average_protocol = _path_average_protocols_for_horizons(str(horizon_target_construction), horizons)
-    factor_feature_block = "pca_static_factors" if feature_builder in {"factor_pca", "factors_plus_AR"} or dimred in {"pca", "static_factor"} else "none"
+    explicit_factor_feature_block = _factor_feature_block_value(selection_map)
     has_explicit_target_lag_block = "target_lag_block" in selection_map
     target_lag_block = (
         _target_lag_block_from_selection(
@@ -1291,14 +1366,13 @@ def _layer2_representation_spec(
             "feature_block_set": _feature_block_set_from_bridge(str(feature_builder), str(data_richness_mode)),
             "target_lag_block": target_lag_block,
             "x_lag_feature_block": _x_lag_block_from_selection(selection_map, str(x_lag_creation)),
-            "factor_feature_block": {
-                "value": factor_feature_block,
-                "source_axes": ["feature_builder", "dimensionality_reduction_policy"],
-                "source_values": {
-                    "feature_builder": feature_builder,
-                    "dimensionality_reduction_policy": dimred,
-                },
-            },
+            "factor_feature_block": _factor_block_from_bridge(
+                feature_builder=str(feature_builder),
+                dimred=str(dimred),
+                training_spec=training_spec,
+                preprocess_contract=preprocess_contract,
+                explicit_block=explicit_factor_feature_block,
+            ),
             "level_feature_block": {"value": "none", "source": "not_wired"},
             "rotation_feature_block": {"value": "none", "source": "not_wired"},
             "temporal_feature_block": {"value": "none", "source": "not_wired"},
@@ -1569,6 +1643,27 @@ def _execution_status(
             not_supported.append(
                 "x_lag_feature_block currently lowers only through raw-panel feature builders "
                 "{'raw_feature_panel', 'raw_X_only', 'factor_pca', 'factors_plus_AR'}"
+            )
+        dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
+        feature_selection = getattr(preprocess_contract, "feature_selection_policy", "none")
+        explicit_factor_block = _factor_feature_block_value(selection_map)
+        factor_bridge_active = feature_builder in _FACTOR_BRIDGE_BUILDERS or dimred in _FACTOR_DIMRED_BRIDGES
+        factor_block_active = explicit_factor_block == "pca_static_factors" or (explicit_factor_block is None and factor_bridge_active)
+        if explicit_factor_block == "none" and factor_bridge_active:
+            not_supported.append(
+                "factor_feature_block='none' conflicts with an active factor runtime bridge "
+                f"(feature_builder={feature_builder!r}, dimensionality_reduction_policy={dimred!r})"
+            )
+        if explicit_factor_block == "pca_static_factors" and not factor_bridge_active:
+            not_supported.append(
+                "factor_feature_block='pca_static_factors' requires either "
+                "feature_builder in {'factor_pca', 'factors_plus_AR'} or "
+                "dimensionality_reduction_policy in {'pca', 'static_factor'}"
+            )
+        if feature_selection != "none" and (factor_block_active or dimred != "none"):
+            not_supported.append(
+                "feature_selection_policy cannot yet be combined with factor_feature_block "
+                "or dimensionality_reduction_policy; choose raw predictor selection or factor extraction, not both"
             )
 
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")

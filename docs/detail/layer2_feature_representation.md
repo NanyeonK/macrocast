@@ -84,7 +84,15 @@ Operational support is currently narrow:
 - Simultaneous target-lag and X-lag block composition is not executable yet:
   fixed target lags lower through `feature_builder=autoreg_lagged_target`,
   while fixed X lags lower through raw-panel feature builders.
-- Factor, level, rotation, temporal, and custom block-combination axes remain
+- `factor_feature_block=none` and `pca_static_factors` are operational through
+  separate compatibility bridges: old `feature_builder=factor_pca` /
+  `factors_plus_AR`, or raw-panel `dimensionality_reduction_policy=pca` /
+  `static_factor`. Runtime writes a factor fit-state artifact containing stable
+  factor names and loadings for the latest recursive training window.
+- Feature selection currently applies only to raw predictor blocks. It cannot
+  be combined with factor blocks or dimensionality reduction until the package
+  defines selection-before-factor vs selection-after-factor semantics.
+- Level, rotation, temporal, and custom block-combination axes remain
   registry-only.
 
 ## Target Representation Grammar
@@ -127,11 +135,11 @@ The current coarse names map to the new language as follows:
 | `data_richness_mode=full_high_dimensional_X` | `feature_block_set=high_dimensional_x`. |
 | `data_richness_mode=selected_sparse_X` | `feature_block_set=selected_sparse_x`. |
 
-This mapping is partly executable. Fixed target-lag and fixed X-lag blocks can
-be selected directly when they match the current compatibility bridge. Their
-joint composition with each other or with future factor/level/rotation blocks
-remains descriptive until the block composer has train-window fit/apply tests
-and provenance.
+This mapping is partly executable. Fixed target-lag, fixed X-lag, and static
+PCA factor blocks can be selected directly when they match the current
+compatibility bridge. Joint composition that is not already represented by a
+legacy bridge remains descriptive until the block composer has train-window
+fit/apply tests and provenance.
 
 ## Boundary Cases
 
@@ -162,7 +170,8 @@ A safe implementation order is:
    matrices.
 3. Implement fixed `target_lag_block` and fixed `x_lag_feature_block` with
    train-window alignment tests.
-4. Implement `factor_feature_block` with recursive factor fit/apply tests.
+4. Implement `factor_feature_block=pca_static_factors` with recursive factor
+   fit/apply tests and loadings provenance.
 5. Implement `level_feature_block`, `rotation_feature_block`, and
    `temporal_feature_block` as optional blocks.
 6. Move runtime dispatch from coarse `feature_builder` names to explicit block
