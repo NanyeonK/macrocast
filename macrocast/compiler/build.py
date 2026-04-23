@@ -1150,6 +1150,10 @@ def _target_lag_block_from_selection(
             {
                 "lag_orders": list(range(1, lag_count_i + 1)),
                 "feature_names": [f"target_lag_{lag}" for lag in range(1, lag_count_i + 1)],
+                "runtime_block": {
+                    "matrix_composition": "fixed_target_lags",
+                    "lag_count": lag_count_i,
+                },
                 "alignment": {
                     "train_row_t_uses": "target_{t-k}",
                     "prediction_origin_uses": "target_{origin-k+1}",
@@ -1691,7 +1695,7 @@ def _layer2_representation_spec(
             "separation_rule": _selection_value(selection_map, "separation_rule", default="strict_separation"),
         },
         "compatibility_notes": [
-            "Feature-block specs drive executor-family dispatch, fixed X-lag matrix composition, and PCA static-factor matrix composition; remaining matrix composition still uses compatibility builders where those builders own the supported path.",
+            "Feature-block specs drive executor-family dispatch, fixed target-lag matrix composition, fixed X-lag matrix composition, and PCA static-factor matrix composition; remaining matrix composition still uses compatibility builders where those builders own the supported path.",
             "Legacy y_lag_count and factor_ar_lags remain accepted; target_lag_selection and target_lag_count are the target-language provenance names.",
         ],
     }

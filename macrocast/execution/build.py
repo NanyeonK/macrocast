@@ -1125,6 +1125,70 @@ def _factor_feature_block(recipe: RecipeSpec | None) -> str | None:
     return _layer2_block_value(blocks, "factor_feature_block")
 
 
+def _target_lag_feature_block_spec(recipe: RecipeSpec | None) -> dict[str, object] | None:
+    if recipe is None:
+        return None
+    blocks = _layer2_feature_blocks(recipe)
+    if "target_lag_block" not in blocks:
+        return None
+    block = blocks.get("target_lag_block")
+    if isinstance(block, dict):
+        return dict(block)
+    if block is None:
+        return None
+    return {"value": str(block)}
+
+
+def _positive_int_or_none(value) -> int | None:
+    try:
+        candidate = int(value)
+    except (TypeError, ValueError):
+        return None
+    return candidate if candidate > 0 else None
+
+
+def _target_lag_order_from_block(recipe: RecipeSpec, fallback: int) -> int:
+    block = _target_lag_feature_block_spec(recipe)
+    if not block or str(block.get("value", "none")) != "fixed_target_lags":
+        return fallback
+
+    lag_orders = block.get("lag_orders")
+    if isinstance(lag_orders, Sequence) and not isinstance(lag_orders, (str, bytes)):
+        positive_lags = [
+            lag
+            for lag in (_positive_int_or_none(value) for value in lag_orders)
+            if lag is not None
+        ]
+        if positive_lags:
+            return max(positive_lags)
+
+    runtime_bridge = block.get("runtime_bridge", {})
+    if not isinstance(runtime_bridge, dict):
+        runtime_bridge = {}
+    for value in (
+        block.get("target_lag_count"),
+        runtime_bridge.get("target_lag_count"),
+        runtime_bridge.get("legacy_factor_ar_lags"),
+        fallback,
+    ):
+        lag_order = _positive_int_or_none(value)
+        if lag_order is not None:
+            return lag_order
+    return fallback
+
+
+def _target_lag_feature_names(recipe: RecipeSpec, lag_order: int, *, default_prefix: str) -> list[str]:
+    block = _target_lag_feature_block_spec(recipe)
+    if block and str(block.get("value", "none")) == "fixed_target_lags":
+        names = block.get("feature_names")
+        if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
+            public_names = [str(name) for name in list(names)[:lag_order]]
+            if len(public_names) == lag_order:
+                return public_names
+        return [f"target_lag_{lag}" for lag in range(1, lag_order + 1)]
+    return [f"{default_prefix}_{lag}" for lag in range(1, lag_order + 1)]
+
+
 def _marx_rotation_max_lag(recipe: RecipeSpec | None) -> int | None:
     if recipe is None:
         return None
@@ -1410,7 +1474,8 @@ def _select_ar_bic_model(train: pd.Series, max_ar_lag: int) -> tuple[int, float,
 
 
 def _lag_order(recipe: RecipeSpec, train: pd.Series) -> int:
-    lag_order = min(_max_ar_lag(recipe), len(train) - 1)
+    max_available_lag = len(train) - 1
+    lag_order = min(_target_lag_order_from_block(recipe, _max_ar_lag(recipe)), max_available_lag)
     if lag_order < 1:
         raise ExecutionError("training window too small for lagged supervised model")
     return lag_order
@@ -2495,7 +2560,7 @@ def _run_custom_autoreg_executor(
     X_train_for_custom = X_train
     y_train_for_custom = y_train
     history = list(train.to_numpy(dtype=float))
-    feature_names = [f"y_lag_{idx}" for idx in range(1, lag_order + 1)]
+    feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="y_lag")
     for step in range(1, int(horizon) + 1):
         X_test = np.asarray(history[-lag_order:][::-1], dtype=float).reshape(1, -1)
         context = {
@@ -4275,7 +4340,7 @@ def _importance_feature_names(recipe: RecipeSpec, raw_frame: pd.DataFrame, targe
         lag_order = _lag_order(recipe, train)
         X_train, y_train = _build_lagged_supervised_matrix(train, lag_order)
         X_pred = np.asarray(train.to_numpy(dtype=float)[-lag_order:][::-1], dtype=float).reshape(1, -1)
-        feature_names = [f"lag_{lag}" for lag in range(1, lag_order + 1)]
+        feature_names = _target_lag_feature_names(recipe, lag_order, default_prefix="lag")
         return feature_names, X_train, y_train, X_pred
     raise ExecutionError(f"importance not implemented for feature_builder {feature_builder!r}")
 

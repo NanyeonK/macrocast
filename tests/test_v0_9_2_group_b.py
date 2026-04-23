@@ -15,8 +15,10 @@ from macrocast.execution.build import (
     _apply_additional_preprocessing,
     _apply_tcode_preprocessing,
     _apply_x_lag_creation,
+    _build_lagged_supervised_matrix,
     _build_raw_panel_training_data,
     _feature_runtime_builder,
+    _lag_order,
     _model_spec,
     _raw_panel_feature_names,
 )
@@ -95,6 +97,38 @@ def test_layer2_target_lag_block_drives_autoreg_runtime_dispatch():
     assert spec["feature_runtime_builder"] == "autoreg_lagged_target"
     assert spec["feature_runtime"] == "autoreg_lagged_target_v1"
     assert spec["executor_name"] == "ar_bic_autoreg_v0"
+
+
+def test_target_lag_block_lag_order_matches_legacy_max_ar_lag():
+    train = pd.Series([1.0, 1.2, 1.1, 1.5, 1.7, 1.8])
+    legacy = _dispatch_recipe(model_family="ridge", feature_recipes=("autoreg_lagged_target",))
+    legacy.benchmark_config = {"max_ar_lag": 2}
+    explicit = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "target_lags_only"},
+            "target_lag_block": {
+                "value": "fixed_target_lags",
+                "lag_orders": [1, 2],
+                "feature_names": ["target_lag_1", "target_lag_2"],
+                "runtime_block": {
+                    "matrix_composition": "fixed_target_lags",
+                    "lag_count": 2,
+                },
+            },
+        },
+    )
+    explicit.benchmark_config = {"max_ar_lag": 5}
+
+    legacy_lag_order = _lag_order(legacy, train)
+    explicit_lag_order = _lag_order(explicit, train)
+    legacy_X, legacy_y = _build_lagged_supervised_matrix(train, legacy_lag_order)
+    explicit_X, explicit_y = _build_lagged_supervised_matrix(train, explicit_lag_order)
+
+    assert legacy_lag_order == 2
+    assert explicit_lag_order == 2
+    assert np.allclose(legacy_X, explicit_X)
+    assert np.allclose(legacy_y, explicit_y)
 
 
 def test_fixed_x_lags_adds_lag1_columns():

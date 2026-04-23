@@ -1197,7 +1197,8 @@ def test_compiled_manifest_records_layer2_representation_provenance() -> None:
     assert spec["feature_blocks"]["target_lag_block"]["value"] == "ic_selected_target_lags"
     assert spec["feature_blocks"]["x_lag_feature_block"]["value"] == "none"
     assert (
-        "Feature-block specs drive executor-family dispatch, fixed X-lag matrix composition, "
+        "Feature-block specs drive executor-family dispatch, fixed target-lag matrix composition, "
+        "fixed X-lag matrix composition, "
         "and PCA static-factor matrix composition"
     ) in spec["compatibility_notes"][0]
     assert compile_result.compiled.recipe_spec.layer2_representation_spec == spec
@@ -1454,6 +1455,10 @@ def test_layer2_explicit_target_lag_block_lowers_to_ar_bridge() -> None:
     blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
     assert blocks["target_lag_block"]["source_axis"] == "target_lag_block"
     assert blocks["target_lag_block"]["feature_names"] == ["target_lag_1", "target_lag_2"]
+    assert blocks["target_lag_block"]["runtime_block"] == {
+        "matrix_composition": "fixed_target_lags",
+        "lag_count": 2,
+    }
     assert blocks["target_lag_block"]["alignment"]["lookahead"] == "forbidden"
 
 
