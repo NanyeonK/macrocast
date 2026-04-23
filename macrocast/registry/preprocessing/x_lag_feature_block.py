@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="none",
             description="no X lag feature block",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
             id="fixed_x_lags",
             description="fixed X lag feature block",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

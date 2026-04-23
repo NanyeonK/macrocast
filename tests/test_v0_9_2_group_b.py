@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from macrocast.execution.build import _apply_additional_preprocessing, _apply_x_lag_creation
+from macrocast.execution.build import (
+    _apply_additional_preprocessing,
+    _apply_x_lag_creation,
+    _build_raw_panel_training_data,
+)
 from macrocast.preprocessing.build import PreprocessContract
 
 
@@ -45,6 +49,30 @@ def test_fixed_x_lags_adds_lag1_columns():
     assert Xt["a__lag1"].iloc[0] == 0.0  # filled NaN
     assert Xt.shape == (5, 4)
     assert Xp2.shape == (1, 4)
+
+
+def test_raw_panel_fixed_x_lag_prediction_uses_origin_history():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+    c = _contract(x_lag_creation="fixed_x_lags")
+
+    X_train, y_train, X_pred = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=3,
+        contract=c,
+        predictor_family="all_macro_vars",
+    )
+
+    assert X_train.tolist() == [[1.0, 0.0], [2.0, 1.0], [3.0, 2.0]]
+    assert y_train.tolist() == [11.0, 12.0, 13.0]
+    assert X_pred.tolist() == [[4.0, 3.0]]
 
 
 def test_no_x_lags_is_identity():

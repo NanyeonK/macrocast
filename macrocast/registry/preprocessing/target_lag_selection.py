@@ -12,13 +12,13 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="none",
             description="no target-lag feature selection",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
             id="fixed",
             description="fixed target-lag feature count",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

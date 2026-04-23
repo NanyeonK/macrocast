@@ -55,9 +55,9 @@ statistical tests, or feature-importance interpretation.
 
 ## Feature-Block Grammar
 
-The current runtime still executes through the coarse `feature_builder` bridge.
-This pass defines the canonical feature-block grammar as registry-only axes so
-recipes can name research intentions before runtime support is widened.
+The current runtime still executes mostly through the coarse `feature_builder`
+bridge. This pass defines the canonical feature-block grammar and wires the
+first operational lag blocks through compatibility lowering.
 
 | Axis | Values | Meaning |
 |---|---|---|
@@ -71,9 +71,21 @@ recipes can name research intentions before runtime support is widened.
 | `temporal_feature_block` | `none`, `moving_average_features`, `rolling_moments`, `local_temporal_factors`, `volatility_features`, `custom_temporal_features` | Local time-series features built within each training window. |
 | `feature_block_combination` | `replace_with_blocks`, `append_to_base_x`, `append_to_target_lags`, `concatenate_named_blocks`, `custom_combiner` | How selected blocks are assembled into `Z`. |
 
-All axes in this section are `registry_only` as of this definition pass. The
-operational bridge remains `feature_builder` plus the existing preprocessing
-contract.
+Operational support is currently narrow:
+
+- `target_lag_block=none` and `fixed_target_lags` are operational through
+  lowering to `target_lag_selection` and the legacy AR-lag runtime bridge.
+- `target_lag_selection=none` and `fixed` are operational Layer 2 names; IC,
+  CV, horizon-specific, and custom lag selection remain registry-only.
+- `x_lag_feature_block=none` and `fixed_x_lags` are operational through
+  lowering to the legacy `x_lag_creation` bridge under the raw
+  train-only-extra preprocessing profile. Variable, category, CV, and custom
+  X-lag blocks remain registry-only.
+- Simultaneous target-lag and X-lag block composition is not executable yet:
+  fixed target lags lower through `feature_builder=autoreg_lagged_target`,
+  while fixed X lags lower through raw-panel feature builders.
+- Factor, level, rotation, temporal, and custom block-combination axes remain
+  registry-only.
 
 ## Target Representation Grammar
 
@@ -105,7 +117,7 @@ The current coarse names map to the new language as follows:
 
 | Current bridge | Feature-block interpretation |
 |---|---|
-| `feature_builder=autoreg_lagged_target` | target-lag block only; current runtime still lets Layer 3 select AR lag order through `y_lag_count`. |
+| `feature_builder=autoreg_lagged_target` | target-lag block only; fixed target-lag construction is recorded as Layer 2 metadata, while the legacy runtime still fits the AR design through its compatibility path. |
 | `feature_builder=raw_feature_panel` | transformed or raw predictor panel block, chosen after Layer 1 official-frame policy and `predictor_family`. |
 | `feature_builder=raw_X_only` | predictor panel block without target-lag features. |
 | `feature_builder=factor_pca` | factor feature block from the predictor panel. |
@@ -115,8 +127,11 @@ The current coarse names map to the new language as follows:
 | `data_richness_mode=full_high_dimensional_X` | `feature_block_set=high_dimensional_x`. |
 | `data_richness_mode=selected_sparse_X` | `feature_block_set=selected_sparse_x`. |
 
-This mapping is descriptive. Runtime code should not be changed to consume the
-new axes until each block has train-window fit/apply tests and provenance.
+This mapping is partly executable. Fixed target-lag and fixed X-lag blocks can
+be selected directly when they match the current compatibility bridge. Their
+joint composition with each other or with future factor/level/rotation blocks
+remains descriptive until the block composer has train-window fit/apply tests
+and provenance.
 
 ## Boundary Cases
 
@@ -145,8 +160,8 @@ A safe implementation order is:
 1. Keep current `feature_builder` bridge operational.
 2. Add feature-block provenance to compiled specs without changing runtime
    matrices.
-3. Implement `target_lag_block` and `x_lag_feature_block` with train-window
-   alignment tests.
+3. Implement fixed `target_lag_block` and fixed `x_lag_feature_block` with
+   train-window alignment tests.
 4. Implement `factor_feature_block` with recursive factor fit/apply tests.
 5. Implement `level_feature_block`, `rotation_feature_block`, and
    `temporal_feature_block` as optional blocks.

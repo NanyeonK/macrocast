@@ -1448,19 +1448,16 @@ def _apply_x_lag_creation(
     if policy == "no_x_lags":
         return X_train, X_pred
     if policy == "fixed_x_lags":
-        lag_orders = (1,)
-        lag_cols_train = []
-        lag_cols_pred = []
-        for col in X_train.columns:
-            for k in lag_orders:
-                lt = X_train[col].shift(k).rename(f"{col}__lag{k}")
-                lp = X_pred[col].shift(k).rename(f"{col}__lag{k}")
-                lag_cols_train.append(lt)
-                lag_cols_pred.append(lp)
-        Xt = pd.concat([X_train] + lag_cols_train, axis=1).fillna(0.0)
-        Xp = pd.concat([X_pred] + lag_cols_pred, axis=1).fillna(0.0)
-        return Xt, Xp
+        return _fixed_x_lag_frame(X_train), _fixed_x_lag_frame(X_pred)
     raise ExecutionError(f"x_lag_creation {policy!r} is not executable in current runtime slice")
+
+
+def _fixed_x_lag_frame(X: pd.DataFrame, *, lag_orders: tuple[int, ...] = (1,)) -> pd.DataFrame:
+    lag_cols = []
+    for col in X.columns:
+        for k in lag_orders:
+            lag_cols.append(X[col].shift(k).rename(f"{col}__lag{k}"))
+    return pd.concat([X] + lag_cols, axis=1).fillna(0.0)
 
 
 def _apply_scaling_policy(
@@ -1596,10 +1593,18 @@ def _build_raw_panel_training_data(
     else:
         X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
         y_train = _target_values()
+        pred_idx = origin_idx
         X_pred = frame[predictors].iloc[[origin_idx]].astype(float).copy()
     if len(X_train) == 0 or len(y_train) == 0:
         raise ExecutionError("raw_feature_panel produced empty training data")
-    X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(X_train, y_train, X_pred, contract)
+    preprocessing_contract = contract
+    if contract.x_lag_creation == "fixed_x_lags":
+        lag_source = frame[predictors].iloc[start_idx : pred_idx + 1].astype(float).copy()
+        lagged_source = _fixed_x_lag_frame(lag_source)
+        X_train = lagged_source.loc[X_train.index].copy()
+        X_pred = lagged_source.loc[X_pred.index].copy()
+        preprocessing_contract = replace(contract, x_lag_creation="no_x_lags")
+    X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(X_train, y_train, X_pred, preprocessing_contract)
 
     # 1.4.5 deterministic_components augmentation (applied after preprocessing)
     det_component = None

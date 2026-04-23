@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from macrocast import (
     CompileValidationError,
     axis_governance_table,
@@ -1252,6 +1254,284 @@ def test_layer2_target_lag_selection_axis_records_target_language_provenance() -
         "count_source": "target_lag_count",
     }
     assert spec["feature_blocks"]["target_lag_block"]["value"] == "fixed_target_lags"
+
+
+def test_layer2_explicit_target_lag_block_lowers_to_ar_bridge() -> None:
+    recipe = {
+        "recipe_id": "l2-explicit-target-lag-block",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "training_config": {"target_lag_count": 2},
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "raw_only",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "none",
+                    "preprocess_fit_scope": "not_applicable",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "target_lag_block": "fixed_target_lags",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "autoreg_lagged_target",
+                    "model_family": "ar",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "executable"
+    assert result.manifest["preprocess_contract"]["x_lag_creation"] == "no_x_lags"
+    assert result.manifest["training_spec"]["target_lag_selection"] == "fixed"
+    assert result.manifest["training_spec"]["target_lag_count"] == 2
+    assert result.manifest["benchmark_spec"]["max_ar_lag"] == 2
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["target_lag_block"]["source_axis"] == "target_lag_block"
+    assert blocks["target_lag_block"]["feature_names"] == ["target_lag_1", "target_lag_2"]
+    assert blocks["target_lag_block"]["alignment"]["lookahead"] == "forbidden"
+
+
+def test_layer2_explicit_x_lag_block_lowers_to_raw_panel_bridge() -> None:
+    recipe = {
+        "recipe_id": "l2-explicit-x-lag-block",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "extra_preprocess_without_tcode",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "extra_only",
+                    "preprocess_fit_scope": "train_only",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "x_lag_feature_block": "fixed_x_lags",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "executable"
+    assert result.manifest["preprocess_contract"]["x_lag_creation"] == "fixed_x_lags"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["x_lag_feature_block"]["source_axis"] == "x_lag_feature_block"
+    assert blocks["x_lag_feature_block"]["runtime_bridge"] == {"x_lag_creation": "fixed_x_lags"}
+    assert blocks["x_lag_feature_block"]["alignment"]["lookahead"] == "forbidden"
+
+
+def test_layer2_explicit_target_and_x_lag_blocks_require_composition_runtime() -> None:
+    recipe = {
+        "recipe_id": "l2-explicit-lag-block-composition",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "training_config": {"target_lag_count": 2},
+                },
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "extra_preprocess_without_tcode",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "extra_only",
+                    "preprocess_fit_scope": "train_only",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "target_lag_block": "fixed_target_lags",
+                    "x_lag_feature_block": "fixed_x_lags",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    result = compile_recipe_dict(recipe)
+    assert result.compiled.execution_status == "not_supported"
+    assert any("target_lag_block currently lowers only" in warning for warning in result.compiled.warnings)
+
+
+def test_layer2_explicit_x_lag_block_rejects_conflicting_legacy_bridge() -> None:
+    recipe = {
+        "recipe_id": "l2-x-lag-conflict",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {"target": "INDPRO", "horizons": [1]},
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "raw_only",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "none",
+                    "preprocess_fit_scope": "not_applicable",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "x_lag_feature_block": "fixed_x_lags",
+                    "x_lag_creation": "no_x_lags",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "raw_feature_panel",
+                    "model_family": "ridge",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    with pytest.raises(CompileValidationError, match="x_lag_feature_block conflicts"):
+        compile_recipe_dict(recipe)
+
+
+def test_layer2_explicit_target_lag_block_rejects_conflicting_selection() -> None:
+    recipe = {
+        "recipe_id": "l2-target-lag-conflict",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {"target": "INDPRO", "horizons": [1]},
+            },
+            "2_preprocessing": {
+                "fixed_axes": {
+                    "target_transform_policy": "raw_level",
+                    "x_transform_policy": "raw_level",
+                    "tcode_policy": "raw_only",
+                    "target_missing_policy": "none",
+                    "x_missing_policy": "none",
+                    "target_outlier_policy": "none",
+                    "x_outlier_policy": "none",
+                    "scaling_policy": "none",
+                    "dimensionality_reduction_policy": "none",
+                    "feature_selection_policy": "none",
+                    "preprocess_order": "none",
+                    "preprocess_fit_scope": "not_applicable",
+                    "inverse_transform_policy": "none",
+                    "evaluation_scale": "raw_level",
+                    "target_lag_block": "fixed_target_lags",
+                    "target_lag_selection": "ic_select",
+                }
+            },
+            "3_training": {
+                "fixed_axes": {
+                    "framework": "expanding",
+                    "benchmark_family": "zero_change",
+                    "feature_builder": "autoreg_lagged_target",
+                    "model_family": "ar",
+                }
+            },
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {"stat_test": "none"}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    with pytest.raises(CompileValidationError, match="target_lag_block conflicts"):
+        compile_recipe_dict(recipe)
 
 
 def test_compile_recipe_accepts_stage3_training_axes() -> None:

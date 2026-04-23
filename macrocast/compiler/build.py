@@ -74,6 +74,37 @@ _PATH_AVERAGE_LAYER3_GATE = (
     "path-average target construction has Layer 2 protocol metadata but requires "
     "Layer 3 multi-step fit/aggregation runtime"
 )
+_TARGET_LAG_BLOCK_TO_SELECTION = {
+    "none": "none",
+    "fixed_target_lags": "fixed",
+    "ic_selected_target_lags": "ic_select",
+    "horizon_specific_target_lags": "horizon_specific",
+    "custom_target_lags": "custom",
+}
+_TARGET_LAG_SELECTION_TO_BLOCK = {
+    "none": "none",
+    "fixed": "fixed_target_lags",
+    "ic_select": "ic_selected_target_lags",
+    "cv_select": "custom_target_lags",
+    "horizon_specific": "horizon_specific_target_lags",
+    "custom": "custom_target_lags",
+}
+_TARGET_LAG_SELECTION_TO_LEGACY_Y = {
+    "none": "fixed",
+    "fixed": "fixed",
+    "ic_select": "IC_select",
+    "cv_select": "cv_select",
+    "horizon_specific": "fixed",
+    "custom": "model_specific",
+}
+_X_LAG_FEATURE_BLOCK_TO_CREATION = {
+    "none": "no_x_lags",
+    "fixed_x_lags": "fixed_x_lags",
+    "variable_specific_x_lags": "variable_specific_lags",
+    "category_specific_x_lags": "category_specific_lags",
+    "cv_selected_x_lags": "cv_selected_x_lags",
+    "custom_x_lags": "no_x_lags",
+}
 
 
 def load_recipe_yaml(path: str | Path) -> dict[str, Any]:
@@ -371,12 +402,34 @@ def _extra_preprocessing_requested(selection_map: dict[str, AxisSelection]) -> b
         "feature_selection_policy": "none",
         "additional_preprocessing": "none",
         "x_lag_creation": "no_x_lags",
+        "x_lag_feature_block": "none",
     }
     for axis, neutral in neutral_values.items():
         selection = selection_map.get(axis)
         if selection is not None and selection.selected_values[0] != neutral:
             return True
     return False
+
+
+def _x_lag_creation_from_feature_block(block: str) -> str:
+    return _X_LAG_FEATURE_BLOCK_TO_CREATION.get(block, "custom_lags")
+
+
+def _x_lag_creation_value(selection_map: dict[str, AxisSelection], *, default: str = "no_x_lags") -> str:
+    block = (
+        _selection_value(selection_map, "x_lag_feature_block")
+        if "x_lag_feature_block" in selection_map
+        else None
+    )
+    block_bridge = _x_lag_creation_from_feature_block(str(block)) if block is not None else default
+    value = _selection_value(selection_map, "x_lag_creation", default=block_bridge)
+    if block is not None and value != block_bridge:
+        raise CompileValidationError(
+            "x_lag_feature_block conflicts with legacy x_lag_creation bridge; "
+            f"got x_lag_feature_block={block!r} -> x_lag_creation={block_bridge!r}, "
+            f"but x_lag_creation={value!r}"
+        )
+    return value
 
 
 def _official_preprocess_bridge_defaults(selection_map: dict[str, AxisSelection]) -> dict[str, str]:
@@ -433,7 +486,7 @@ def _build_preprocess_contract(selection_map: dict[str, AxisSelection]) -> Any:
         "target_domain": "unconstrained",
         "scaling_scope": "columnwise",
         "additional_preprocessing": "none",
-        "x_lag_creation": "no_x_lags",
+        "x_lag_creation": _x_lag_creation_value(selection_map),
         "feature_grouping": "none",
     }
     missing = sorted(axis for axis in required if axis not in selection_map)
@@ -467,6 +520,12 @@ def _build_preprocess_contract(selection_map: dict[str, AxisSelection]) -> Any:
 def _benchmark_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     benchmark_family = _selection_value(selection_map, "benchmark_family")
     benchmark_config = dict(leaf_config.get("benchmark_config", {}))
+    training_cfg = dict(leaf_config.get("training_config", {}))
+    if (
+        _target_lag_block_value(selection_map) == "fixed_target_lags"
+        and "max_ar_lag" not in benchmark_config
+    ):
+        benchmark_config["max_ar_lag"] = int(training_cfg.get("target_lag_count", training_cfg.get("factor_ar_lags", 1)))
     if benchmark_family == "custom_benchmark":
         plugin_path = benchmark_config.get("plugin_path")
         callable_name = benchmark_config.get("callable_name")
@@ -869,6 +928,57 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     }
 
 
+def _target_lag_block_value(selection_map: dict[str, AxisSelection]) -> str | None:
+    return (
+        _selection_value(selection_map, "target_lag_block")
+        if "target_lag_block" in selection_map
+        else None
+    )
+
+
+def _target_lag_selection_from_block(block: str | None) -> str | None:
+    if block is None:
+        return None
+    return _TARGET_LAG_BLOCK_TO_SELECTION.get(block, "custom")
+
+
+def _target_lag_block_from_selection_value(selection: str) -> str:
+    return _TARGET_LAG_SELECTION_TO_BLOCK.get(selection, "custom_target_lags")
+
+
+def _legacy_y_lag_count_default(
+    selection_map: dict[str, AxisSelection],
+    *,
+    model_family: str,
+) -> str:
+    selection_from_block = _target_lag_selection_from_block(_target_lag_block_value(selection_map))
+    if selection_from_block is not None:
+        return _TARGET_LAG_SELECTION_TO_LEGACY_Y.get(selection_from_block, "model_specific")
+    return "IC_select" if model_family == "ar" else "fixed"
+
+
+def _target_lag_selection_value(
+    selection_map: dict[str, AxisSelection],
+    *,
+    legacy_y_lag_count: str,
+) -> str:
+    target_lag_block = _target_lag_block_value(selection_map)
+    selection_default = (
+        _target_lag_selection_from_block(target_lag_block)
+        or _target_lag_selection_from_legacy_y_lag_count(str(legacy_y_lag_count))
+    )
+    selection = _selection_value(selection_map, "target_lag_selection", default=selection_default)
+    if target_lag_block is not None:
+        expected_block = _target_lag_block_from_selection_value(selection)
+        if target_lag_block != expected_block:
+            raise CompileValidationError(
+                "target_lag_block conflicts with target_lag_selection; "
+                f"got target_lag_block={target_lag_block!r}, "
+                f"target_lag_selection={selection!r} -> {expected_block!r}"
+            )
+    return selection
+
+
 def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     framework = _first_selected_value(selection_map, "framework", "expanding")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
@@ -880,11 +990,14 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")
     if target_transformer != "none":
         get_custom_target_transformer(target_transformer)
-    legacy_y_lag_count = _selection_value(selection_map, "y_lag_count", default=("IC_select" if model_family == "ar" else "fixed"))
-    target_lag_selection = _selection_value(
+    legacy_y_lag_count = _selection_value(
         selection_map,
-        "target_lag_selection",
-        default=_target_lag_selection_from_legacy_y_lag_count(str(legacy_y_lag_count)),
+        "y_lag_count",
+        default=_legacy_y_lag_count_default(selection_map, model_family=model_family),
+    )
+    target_lag_selection = _target_lag_selection_value(
+        selection_map,
+        legacy_y_lag_count=str(legacy_y_lag_count),
     )
     if "target_lag_count" in training_cfg and "factor_ar_lags" in training_cfg:
         if int(training_cfg["target_lag_count"]) != int(training_cfg["factor_ar_lags"]):
@@ -956,22 +1069,40 @@ def _target_lag_selection_from_legacy_y_lag_count(value: str) -> str:
     return mapping.get(value, "custom")
 
 
-def _target_lag_block_from_selection(selection: str, *, source_axis: str, source_value: Any) -> dict[str, Any]:
-    mapping = {
-        "none": "none",
-        "fixed": "fixed_target_lags",
-        "ic_select": "ic_selected_target_lags",
-        "cv_select": "custom_target_lags",
-        "horizon_specific": "horizon_specific_target_lags",
-        "custom": "custom_target_lags",
-    }
-    block = mapping.get(selection, "custom_target_lags")
+def _target_lag_block_from_selection(
+    selection: str,
+    *,
+    source_axis: str,
+    source_value: Any,
+    lag_count: Any = 1,
+) -> dict[str, Any]:
+    block = _target_lag_block_from_selection_value(selection)
     payload: dict[str, Any] = {
         "value": block,
         "source_axis": source_axis,
         "source_value": source_value,
         "target_lag_selection": selection,
+        "runtime_bridge": {
+            "target_lag_count": lag_count,
+            "legacy_factor_ar_lags": lag_count,
+        },
     }
+    try:
+        lag_count_i = int(lag_count)
+    except (TypeError, ValueError):
+        lag_count_i = 0
+    if block == "fixed_target_lags":
+        payload.update(
+            {
+                "lag_orders": list(range(1, lag_count_i + 1)),
+                "feature_names": [f"target_lag_{lag}" for lag in range(1, lag_count_i + 1)],
+                "alignment": {
+                    "train_row_t_uses": "target_{t-k}",
+                    "prediction_origin_uses": "target_{origin-k+1}",
+                    "lookahead": "forbidden",
+                },
+            }
+        )
     if selection in {"cv_select", "custom"}:
         payload["note"] = (
             "target_lag_block does not yet have a dedicated CV/custom runtime path; "
@@ -980,7 +1111,7 @@ def _target_lag_block_from_selection(selection: str, *, source_axis: str, source
     return payload
 
 
-def _x_lag_block_from_bridge(value: str) -> dict[str, Any]:
+def _x_lag_block_from_bridge(value: str, *, source_axis: str = "x_lag_creation") -> dict[str, Any]:
     mapping = {
         "no_x_lags": "none",
         "fixed_x_lags": "fixed_x_lags",
@@ -988,11 +1119,37 @@ def _x_lag_block_from_bridge(value: str) -> dict[str, Any]:
         "variable_specific_lags": "variable_specific_x_lags",
         "category_specific_lags": "category_specific_x_lags",
     }
-    return {
-        "value": mapping.get(value, "custom_x_lags"),
-        "source_axis": "x_lag_creation",
+    block = mapping.get(value, "custom_x_lags")
+    payload: dict[str, Any] = {
+        "value": block,
+        "source_axis": source_axis,
         "source_value": value,
     }
+    if block == "fixed_x_lags":
+        payload.update(
+            {
+                "lag_orders": [1],
+                "feature_name_pattern": "{predictor}_lag_{k}",
+                "runtime_feature_name_pattern": "{predictor}__lag{k}",
+                "alignment": {
+                    "train_row_t_uses": "X_{t-k}",
+                    "prediction_origin_uses": "X_{origin-k}",
+                    "lookahead": "forbidden",
+                },
+                "runtime_bridge": {"x_lag_creation": "fixed_x_lags"},
+            }
+        )
+    return payload
+
+
+def _x_lag_block_from_selection(selection_map: dict[str, AxisSelection], x_lag_creation: str) -> dict[str, Any]:
+    if "x_lag_feature_block" not in selection_map:
+        return _x_lag_block_from_bridge(x_lag_creation)
+    block = _selection_value(selection_map, "x_lag_feature_block")
+    return _x_lag_block_from_bridge(
+        _x_lag_creation_from_feature_block(block),
+        source_axis="x_lag_feature_block",
+    ) | {"source_value": block}
 
 
 def _feature_block_set_from_bridge(feature_builder: str, data_richness_mode: str) -> dict[str, Any]:
@@ -1069,8 +1226,15 @@ def _layer2_representation_spec(
     data_richness_mode = training_spec.get("data_richness_mode", "target_lags_only")
     y_lag_count = training_spec.get("y_lag_count", "fixed")
     target_lag_selection = training_spec.get("target_lag_selection", _target_lag_selection_from_legacy_y_lag_count(str(y_lag_count)))
-    target_lag_selection_source_axis = "target_lag_selection" if "target_lag_selection" in selection_map else "y_lag_count"
-    target_lag_selection_source_value = target_lag_selection if target_lag_selection_source_axis == "target_lag_selection" else y_lag_count
+    if "target_lag_selection" in selection_map:
+        target_lag_selection_source_axis = "target_lag_selection"
+        target_lag_selection_source_value = target_lag_selection
+    elif "target_lag_block" in selection_map:
+        target_lag_selection_source_axis = "target_lag_block"
+        target_lag_selection_source_value = _selection_value(selection_map, "target_lag_block")
+    else:
+        target_lag_selection_source_axis = "y_lag_count"
+        target_lag_selection_source_value = y_lag_count
     target_lag_count = training_spec.get("target_lag_count", training_spec.get("factor_ar_lags", 1))
     target_lag_count_source = "target_lag_count" if "target_lag_count" in dict(leaf_config.get("training_config", {})) else "factor_ar_lags"
     x_lag_creation = getattr(preprocess_contract, "x_lag_creation", "no_x_lags")
@@ -1079,13 +1243,15 @@ def _layer2_representation_spec(
     horizons = tuple(int(h) for h in leaf_config.get("horizons", [1]))
     path_average_protocol = _path_average_protocols_for_horizons(str(horizon_target_construction), horizons)
     factor_feature_block = "pca_static_factors" if feature_builder in {"factor_pca", "factors_plus_AR"} or dimred in {"pca", "static_factor"} else "none"
+    has_explicit_target_lag_block = "target_lag_block" in selection_map
     target_lag_block = (
         _target_lag_block_from_selection(
             str(target_lag_selection),
             source_axis=target_lag_selection_source_axis,
             source_value=target_lag_selection_source_value,
+            lag_count=target_lag_count,
         )
-        if feature_builder in {"autoreg_lagged_target", "factors_plus_AR"}
+        if has_explicit_target_lag_block or feature_builder in {"autoreg_lagged_target", "factors_plus_AR"}
         else {"value": "none", "source_axis": "feature_builder", "source_value": feature_builder}
     )
     return {
@@ -1124,7 +1290,7 @@ def _layer2_representation_spec(
         "feature_blocks": {
             "feature_block_set": _feature_block_set_from_bridge(str(feature_builder), str(data_richness_mode)),
             "target_lag_block": target_lag_block,
-            "x_lag_feature_block": _x_lag_block_from_bridge(str(x_lag_creation)),
+            "x_lag_feature_block": _x_lag_block_from_selection(selection_map, str(x_lag_creation)),
             "factor_feature_block": {
                 "value": factor_feature_block,
                 "source_axes": ["feature_builder", "dimensionality_reduction_policy"],
@@ -1392,6 +1558,18 @@ def _execution_status(
             blocked.append("predictor_family='target_lags_only' requires feature_builder='autoreg_lagged_target' in the current runtime slice")
         if predictor_family == "all_macro_vars" and feature_builder not in {"raw_feature_panel", "factor_pca", "factors_plus_AR"}:
             blocked.append("predictor_family='all_macro_vars' requires feature_builder in {'raw_feature_panel', 'factor_pca', 'factors_plus_AR'} in the current runtime slice")
+        target_lag_block = _selection_value(selection_map, "target_lag_block", default="none")
+        if target_lag_block != "none" and feature_builder != "autoreg_lagged_target":
+            not_supported.append(
+                "target_lag_block currently lowers only through feature_builder='autoreg_lagged_target'; "
+                "explicit target-lag composition with X/factor blocks is not implemented"
+            )
+        x_lag_feature_block = _selection_value(selection_map, "x_lag_feature_block", default="none")
+        if x_lag_feature_block != "none" and feature_builder not in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
+            not_supported.append(
+                "x_lag_feature_block currently lowers only through raw-panel feature builders "
+                "{'raw_feature_panel', 'raw_X_only', 'factor_pca', 'factors_plus_AR'}"
+            )
 
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")
     if target_transformer != "none":

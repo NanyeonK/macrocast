@@ -220,6 +220,12 @@ Acceptance:
 
 ### Patch L2-E: Target-Lag And X-Lag Blocks
 
+Status: complete for fixed target and fixed predictor lag blocks. Advanced
+IC/CV/custom lag-selection blocks remain registry-only until they have a
+dedicated train-window fit/apply path.
+Joint target-lag plus X-lag block composition remains gated until the explicit
+block composer replaces the compatibility bridge.
+
 Goal: implement the first explicit feature blocks while still supporting the
 old `feature_builder` bridge.
 
@@ -234,9 +240,11 @@ Changes:
 
 Acceptance:
 
-- old autoregressive and raw-panel recipes produce the same predictions before
-  and after bridge lowering;
+- old autoregressive and raw-panel recipes keep using the same compatibility
+  runtime bridge where possible;
 - new explicit block recipes can compile in full mode;
+- unsupported target-lag plus X-lag composition reports `not_supported`
+  instead of pretending the target-lag block is in `Z`;
 - leakage tests cover origin alignment for `Z_train` and `Z_pred`.
 
 ### Patch L2-F: Factor And Selection Blocks

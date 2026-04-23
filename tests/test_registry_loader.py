@@ -272,6 +272,15 @@ def test_registry_loader_expands_stage2_operational_values() -> None:
     assert target_construction.current_status["average_growth_1_to_h"] == "operational"
     assert target_construction.current_status["average_difference_1_to_h"] == "operational"
     assert target_construction.current_status["average_log_growth_1_to_h"] == "operational"
+    target_lag_block = get_axis_registry_entry("target_lag_block")
+    target_lag_selection = get_axis_registry_entry("target_lag_selection")
+    x_lag_feature_block = get_axis_registry_entry("x_lag_feature_block")
+    assert target_lag_block.current_status["none"] == "operational"
+    assert target_lag_block.current_status["fixed_target_lags"] == "operational"
+    assert target_lag_selection.current_status["none"] == "operational"
+    assert target_lag_selection.current_status["fixed"] == "operational"
+    assert x_lag_feature_block.current_status["none"] == "operational"
+    assert x_lag_feature_block.current_status["fixed_x_lags"] == "operational"
 
 
 def test_registry_loader_demotes_stage2_non_executable_values() -> None:
@@ -283,6 +292,9 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     target_normalization = get_axis_registry_entry("target_normalization")
     separation_rule = get_axis_registry_entry("separation_rule")
     target_construction = get_axis_registry_entry("horizon_target_construction")
+    target_lag_block = get_axis_registry_entry("target_lag_block")
+    target_lag_selection = get_axis_registry_entry("target_lag_selection")
+    x_lag_feature_block = get_axis_registry_entry("x_lag_feature_block")
 
     assert target_missing.current_status["em_impute"] == "registry_only"
     assert set(dimred.current_status) == {"none", "pca", "static_factor", "custom"}
@@ -299,6 +311,10 @@ def test_registry_loader_demotes_stage2_non_executable_values() -> None:
     assert target_construction.current_status["path_average_growth_1_to_h"] == "registry_only"
     assert target_construction.current_status["path_average_difference_1_to_h"] == "registry_only"
     assert target_construction.current_status["path_average_log_growth_1_to_h"] == "registry_only"
+    assert target_lag_block.current_status["ic_selected_target_lags"] == "registry_only"
+    assert target_lag_block.current_status["custom_target_lags"] == "registry_only"
+    assert target_lag_selection.current_status["ic_select"] == "registry_only"
+    assert x_lag_feature_block.current_status["cv_selected_x_lags"] == "registry_only"
 
 
 
