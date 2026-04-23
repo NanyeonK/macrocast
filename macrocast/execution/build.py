@@ -77,6 +77,18 @@ _DEFAULT_MAX_AR_LAG = 3
 _LAG_SELECTION = "bic"
 _TARGET_TRANSFORMER_FEATURE_BUILDERS = {"autoreg_lagged_target", "raw_feature_panel", "raw_X_only"}
 _TARGET_TRANSFORMER_RAW_PANEL_MODELS = {"ols", "ridge", "lasso", "elasticnet"}
+_RAW_PANEL_FEATURE_BUILDERS = {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}
+_RAW_PANEL_FEATURE_BLOCK_SETS = {
+    "transformed_x",
+    "transformed_x_lags",
+    "factors_plus_target_lags",
+    "high_dimensional_x",
+    "selected_sparse_x",
+    "level_augmented_x",
+    "rotation_augmented_x",
+    "mixed_blocks",
+    "custom_blocks",
+}
 
 _PHASE3_DEFAULTS = {
     "release_lag_rule": "ignore_release_lag",
@@ -1023,37 +1035,76 @@ def _feature_builder(recipe: RecipeSpec) -> str:
     return "autoreg_lagged_target"
 
 
+def _layer2_feature_blocks(recipe: RecipeSpec | None) -> dict[str, object]:
+    if recipe is None:
+        return {}
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    blocks = spec.get("feature_blocks", {}) if isinstance(spec, dict) else {}
+    return dict(blocks or {}) if isinstance(blocks, dict) else {}
+
+
+def _layer2_block_value(blocks: Mapping[str, object], block_name: str, default: str = "none") -> str:
+    block = blocks.get(block_name, {})
+    if isinstance(block, dict):
+        return str(block.get("value", default))
+    if block is None:
+        return default
+    return str(block)
+
+
+def _feature_runtime_builder(recipe: RecipeSpec) -> str:
+    """Return the executor feature path from canonical Layer 2 blocks.
+
+    The legacy feature_builder remains accepted as source provenance and as a
+    fallback for old RecipeSpec objects. Runtime routing should prefer the
+    explicit feature-block grammar whenever it is present.
+    """
+    blocks = _layer2_feature_blocks(recipe)
+    block_set = _layer2_block_value(blocks, "feature_block_set", "")
+    raw_block_values = (
+        _layer2_block_value(blocks, "x_lag_feature_block"),
+        _layer2_block_value(blocks, "factor_feature_block"),
+        _layer2_block_value(blocks, "level_feature_block"),
+        _layer2_block_value(blocks, "temporal_feature_block"),
+        _layer2_block_value(blocks, "rotation_feature_block"),
+    )
+    if block_set in _RAW_PANEL_FEATURE_BLOCK_SETS or any(value != "none" for value in raw_block_values):
+        return "raw_feature_panel"
+    target_lag_block = _layer2_block_value(blocks, "target_lag_block")
+    if block_set == "target_lags_only" or target_lag_block != "none":
+        return "autoreg_lagged_target"
+
+    feature_builder = _feature_builder(recipe)
+    if feature_builder in _RAW_PANEL_FEATURE_BUILDERS:
+        return "raw_feature_panel"
+    return feature_builder
+
+
+def _feature_runtime_name(recipe: RecipeSpec) -> str:
+    runtime_builder = _feature_runtime_builder(recipe)
+    if runtime_builder == "raw_feature_panel":
+        return "raw_panel_v1"
+    if runtime_builder == "autoreg_lagged_target":
+        return "autoreg_lagged_target_v1"
+    return f"{runtime_builder}_v1"
+
+
 def _level_feature_block(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
-    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
-    blocks = dict(spec.get("feature_blocks", {}) or {})
-    block = blocks.get("level_feature_block", {})
-    if isinstance(block, dict):
-        return str(block.get("value", "none"))
-    return "none"
+    return _layer2_block_value(_layer2_feature_blocks(recipe), "level_feature_block")
 
 
 def _temporal_feature_block(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
-    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
-    blocks = dict(spec.get("feature_blocks", {}) or {})
-    block = blocks.get("temporal_feature_block", {})
-    if isinstance(block, dict):
-        return str(block.get("value", "none"))
-    return "none"
+    return _layer2_block_value(_layer2_feature_blocks(recipe), "temporal_feature_block")
 
 
 def _rotation_feature_block(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
-    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
-    blocks = dict(spec.get("feature_blocks", {}) or {})
-    block = blocks.get("rotation_feature_block", {})
-    if isinstance(block, dict):
-        return str(block.get("value", "none"))
-    return "none"
+    return _layer2_block_value(_layer2_feature_blocks(recipe), "rotation_feature_block")
 
 
 def _marx_rotation_max_lag(recipe: RecipeSpec | None) -> int | None:
@@ -1146,10 +1197,14 @@ def _model_executor_name(model_family: str, feature_builder: str) -> str:
 def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
     model_family = _model_family(recipe)
     feature_builder = _feature_builder(recipe)
+    runtime_feature_builder = _feature_runtime_builder(recipe)
     return {
         "model_family": model_family,
         "feature_builder": feature_builder,
-        "executor_name": _model_executor_name(model_family, feature_builder),
+        "feature_runtime_builder": runtime_feature_builder,
+        "feature_runtime": _feature_runtime_name(recipe),
+        "feature_dispatch_source": "layer2_feature_blocks",
+        "executor_name": _model_executor_name(model_family, runtime_feature_builder),
         "framework": recipe.stage0.fixed_design.sample_split,
         "lag_selection": _LAG_SELECTION if model_family == "ar" else "fixed_lag_feature_builder",
         "max_ar_lag": _max_ar_lag(recipe),
@@ -1159,10 +1214,10 @@ def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
 
 def _get_model_executor(recipe: RecipeSpec):
     model_family = _model_family(recipe)
-    feature_builder = _feature_builder(recipe)
+    feature_builder = _feature_runtime_builder(recipe)
     if is_custom_model(model_family) and feature_builder == "autoreg_lagged_target":
         return _run_custom_autoreg_executor
-    if is_custom_model(model_family) and feature_builder in {"raw_feature_panel", "raw_X_only", "factor_pca", "factors_plus_AR"}:
+    if is_custom_model(model_family) and feature_builder == "raw_feature_panel":
         return _run_custom_raw_panel_executor
     if feature_builder == "autoreg_lagged_target":
         dispatch = {
@@ -1225,7 +1280,7 @@ def _get_model_executor(recipe: RecipeSpec):
         if model_family in dispatch:
             return dispatch[model_family]
     raise ExecutionError(
-        f"model_family {model_family!r} with feature_builder {feature_builder!r} is not executable in current runtime slice"
+        f"model_family {model_family!r} with feature runtime {feature_builder!r} is not executable in current runtime slice"
     )
 
 
@@ -2169,14 +2224,12 @@ def _target_transformer_manifest(recipe: RecipeSpec) -> dict[str, object]:
             "evaluation_scale": "raw",
             "runtime": "not_applicable",
         }
-    feature_builder = _feature_builder(recipe)
-    runtime = "raw_panel_v1" if feature_builder in {"raw_feature_panel", "raw_X_only"} else "autoreg_lagged_target_v1"
     return {
         "name": spec.name,
         "model_scale": spec.model_scale,
         "forecast_scale": spec.forecast_scale,
         "evaluation_scale": spec.evaluation_scale,
-        "runtime": runtime,
+        "runtime": _feature_runtime_name(recipe),
     }
 
 
@@ -4456,11 +4509,20 @@ def _build_predictions(
     model_executor = _get_model_executor(recipe)
     benchmark_executor = _get_benchmark_executor(recipe)
     target_transformer_spec = _target_transformer_spec(recipe)
-    feature_builder = _feature_builder(recipe)
+    legacy_feature_builder = _feature_builder(recipe)
+    feature_builder = _feature_runtime_builder(recipe)
+    feature_builder_for_target_transformer = (
+        legacy_feature_builder
+        if recipe.stage0.varying_design.feature_recipes
+        else feature_builder
+    )
     model_family = _model_family(recipe)
-    if target_transformer_spec is not None and feature_builder not in _TARGET_TRANSFORMER_FEATURE_BUILDERS:
+    if (
+        target_transformer_spec is not None
+        and feature_builder_for_target_transformer not in _TARGET_TRANSFORMER_FEATURE_BUILDERS
+    ):
         raise ExecutionError(
-            "target_transformer runtime currently supports feature_builder in "
+            "target_transformer runtime currently supports feature runtime in "
             f"{sorted(_TARGET_TRANSFORMER_FEATURE_BUILDERS)}"
         )
     if (

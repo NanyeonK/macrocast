@@ -55,9 +55,10 @@ statistical tests, or feature-importance interpretation.
 
 ## Feature-Block Grammar
 
-The current runtime still executes mostly through the coarse `feature_builder`
-bridge. This pass defines the canonical feature-block grammar and wires the
-first operational lag blocks through compatibility lowering.
+Runtime dispatch now prefers the explicit Layer 2 feature-block grammar for
+the first raw-panel/autoregressive route decision. The old `feature_builder`
+names remain accepted as compatibility aliases and as fallback source
+provenance for old recipes.
 
 | Axis | Values | Meaning |
 |---|---|---|
@@ -229,5 +230,6 @@ A safe implementation order is:
 5. Extend `level_feature_block` beyond whole-panel add-backs, then implement
    deterministic non-none `rotation_feature_block` primitives such as
    `moving_average_rotation` before learned or custom rotations.
-6. Move runtime dispatch from coarse `feature_builder` names to explicit block
-   composition only after old recipes can be translated losslessly.
+6. Retire runtime dispatch from coarse `feature_builder` names in slices:
+   first route the raw-panel/autoregressive executor choice from explicit
+   blocks, then replace remaining bridge-specific matrix composition.

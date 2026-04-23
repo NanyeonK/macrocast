@@ -1625,7 +1625,7 @@ def _layer2_representation_spec(
     )
     return {
         "schema_version": "layer2_representation_v1",
-        "runtime_effect": "provenance_only",
+        "runtime_effect": "provenance_plus_executor_dispatch",
         "source_bridge": {
             "feature_builder": feature_builder,
             "predictor_family": predictor_family,
@@ -1686,7 +1686,7 @@ def _layer2_representation_spec(
             "separation_rule": _selection_value(selection_map, "separation_rule", default="strict_separation"),
         },
         "compatibility_notes": [
-            "This payload is provenance-only; runtime Z construction still uses the legacy bridge.",
+            "Feature-block specs drive executor-family dispatch; matrix composition still uses compatibility builders where those builders own the supported path.",
             "Legacy y_lag_count and factor_ar_lags remain accepted; target_lag_selection and target_lag_count are the target-language provenance names.",
         ],
     }

@@ -76,8 +76,11 @@ The current fixed full support surface is:
 | `raw_train_only_extra` | executable | Raw panel path plus train-only Layer 2 extra preprocessing. |
 | `dataset_tcode_then_train_only_extra` | executable | Layer 1 official transforms first, then supported train-only Layer 2 extra preprocessing. |
 
-The explicit feature-block grammar is registry-only today. Runtime still
-constructs matrices through the coarse bridge.
+The explicit feature-block grammar now participates in the first runtime
+dispatch decision: execution derives the raw-panel versus autoregressive model
+executor path from Layer 2 feature blocks and uses old `feature_builder` names
+only as compatibility fallback. Matrix composition still reuses the existing
+raw-panel/autoregressive builders.
 
 ## Revision Principles
 
@@ -430,7 +433,7 @@ For feature-block patches, also test:
 | Slice | Status | Notes |
 |---|---|---|
 | Terminology cleanup | done | `target` is canonical; legacy `y_*` artifacts remain compatible. |
-| Feature-block grammar | done, registry-only | Runtime still uses the coarse bridge. |
+| Feature-block grammar | done | Explicit blocks now drive the first raw-panel/autoregressive runtime dispatch decision. |
 | Compile-time provenance | done | Compiled and runtime manifests record `layer2_representation_spec`; runtime matrices are unchanged. |
 | Compatibility name cleanup | done, provenance-only | Added `target_lag_selection` and `target_lag_count` provenance while keeping legacy `y_lag_count` / `factor_ar_lags` accepted. |
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
@@ -438,5 +441,5 @@ For feature-block patches, also test:
 | Explicit target/X lag blocks | planned | First runtime block migration. |
 | Factor/selection blocks | planned | PCA/static factors and selection provenance. |
 | Level/rotation/temporal blocks | in progress | Level blocks, temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and cross-block composition remain gated. |
-| Bridge dispatch retirement | planned | Only after equivalence tests exist. |
+| Bridge dispatch retirement | in progress | First slice routes executor-family dispatch through explicit Layer 2 blocks; matrix composition still uses existing builders. |
 | Simple/public sweeps | blocked | Wait for fixed full support and compiler guards. |

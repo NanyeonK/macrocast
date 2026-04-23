@@ -16,6 +16,8 @@ from macrocast.execution.build import (
     _apply_tcode_preprocessing,
     _apply_x_lag_creation,
     _build_raw_panel_training_data,
+    _feature_runtime_builder,
+    _model_spec,
     _raw_panel_feature_names,
 )
 from macrocast.preprocessing.build import PreprocessContract
@@ -40,6 +42,59 @@ def _contract(**overrides) -> PreprocessContract:
     )
     base.update(overrides)
     return PreprocessContract(**base)
+
+
+def _dispatch_recipe(*, model_family: str, feature_recipes=(), blocks: dict | None = None):
+    return SimpleNamespace(
+        stage0=SimpleNamespace(
+            fixed_design=SimpleNamespace(sample_split="rolling_window_oos", benchmark="zero_change"),
+            varying_design=SimpleNamespace(
+                model_families=(model_family,),
+                feature_recipes=tuple(feature_recipes),
+            ),
+        ),
+        benchmark_config={},
+        data_task_spec={},
+        training_spec={},
+        layer2_representation_spec={"feature_blocks": dict(blocks or {})},
+        target="target",
+        horizons=(1,),
+    )
+
+
+def test_layer2_blocks_drive_raw_panel_runtime_dispatch_without_legacy_feature_recipe():
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "high_dimensional_x"},
+            "x_lag_feature_block": {"value": "fixed_x_lags"},
+        },
+    )
+
+    spec = _model_spec(recipe)
+
+    assert _feature_runtime_builder(recipe) == "raw_feature_panel"
+    assert spec["feature_builder"] == "autoreg_lagged_target"
+    assert spec["feature_runtime_builder"] == "raw_feature_panel"
+    assert spec["feature_runtime"] == "raw_panel_v1"
+    assert spec["executor_name"] == "ridge_raw_feature_panel_v0"
+
+
+def test_layer2_target_lag_block_drives_autoreg_runtime_dispatch():
+    recipe = _dispatch_recipe(
+        model_family="ar",
+        blocks={
+            "feature_block_set": {"value": "target_lags_only"},
+            "target_lag_block": {"value": "fixed_target_lags"},
+        },
+    )
+
+    spec = _model_spec(recipe)
+
+    assert _feature_runtime_builder(recipe) == "autoreg_lagged_target"
+    assert spec["feature_runtime_builder"] == "autoreg_lagged_target"
+    assert spec["feature_runtime"] == "autoreg_lagged_target_v1"
+    assert spec["executor_name"] == "ar_bic_autoreg_v0"
 
 
 def test_fixed_x_lags_adds_lag1_columns():
