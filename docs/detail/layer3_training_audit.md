@@ -123,6 +123,10 @@ The docs and runtime now mostly follow this split:
 - Built-in raw-panel factor-model adapters (`pcr`, `pls`, and
   `factor_augmented_linear`) also consume the same `Layer2Representation`
   bundle instead of rebuilding predictor frames beside Layer 2.
+- Factor-to-rotation choices such as `factor_rotation_order=factor_then_rotation`,
+  `factor_then_marx`, and MAF factor-score rotation are Layer 2 representation
+  decisions. Layer 3 receives only the final `Z` bundle, fit-state provenance,
+  and feature names.
 - Path-average target constructions are operational for point forecasts: Layer
   3 fits one supported generator per step, aggregates with equal weights,
   writes `path_average_steps.csv`, and records the aggregate row in

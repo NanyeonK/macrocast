@@ -352,12 +352,12 @@ Current lowered slice:
   `leaf_config.marx_max_lag`, builds the cumulative moving-average
   lag-polynomial basis, replaces the source X lag-polynomial basis in final
   `Z`, and now supports `marx_then_factor` with `pca_static_factors`.
-- `rotation_feature_block=maf_rotation` and `custom_rotation` remain
-  registry-only. The compiler still records explicit boundary metadata when
-  those values are selected: MAF requires factor-to-rotation composition, and
-  custom rotations require a block-local callable contract. These values should
-  not silently reuse `moving_average_rotation` or the broad `custom_preprocessor`
-  hook.
+- `rotation_feature_block=maf_rotation` is operational as a factor-score
+  rotation when paired with `pca_static_factors`; it records
+  `factor_score_history_contract_v1`, factor-score naming, and no-lookahead
+  provenance. `custom_rotation` remains registry-only unless the recipe names a
+  registered block-local callable. These values should not silently reuse
+  `moving_average_rotation` or the broad `custom_preprocessor` hook.
 - MARX now has an executable code-level contract,
   `lag_polynomial_rotation_contract_v1`. It fixes naming
   (`{predictor}_marx_ma_lag1_to_lag{p}` / `{predictor}__marx_ma_lag1_to_lag{p}`),
@@ -366,7 +366,8 @@ Current lowered slice:
   (`replace_lag_polynomial_basis`). MARX-to-factor composition is now explicit
   as `marx_then_factor`: the runtime first builds the MARX basis, then fits
   static PCA factors on that rotated basis. External X-lag append, temporal
-  append, and remaining MARX composition modes remain gated.
+  append, and `factor_then_marx` over factor-score histories are explicit
+  operational modes.
 
 Acceptance:
 
@@ -450,7 +451,7 @@ For feature-block patches, also test:
 | Path-average target constructions | done, executable for point forecasts | Layer 2 stepwise target protocol is recorded; Layer 3 executes stepwise fit/predict/aggregate and writes `path_average_steps.csv` plus aggregate `predictions.csv` rows. |
 | Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; fixed target-plus-X composition is executable in raw-panel direct runtimes. |
 | Factor/selection blocks | done for static PCA + explicit before/after semantics | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; `feature_selection_policy` can compose as `select_before_factor` or `select_after_factor` in the supported static-PCA slice. |
-| Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
+| Level/rotation/temporal blocks | done for built-ins and static-PCA factor rotations | Level blocks, deterministic temporal blocks, moving-average rotation, MARX lag-polynomial rotation, `marx_then_factor`, `factor_then_marx`, and MAF factor-score rotation are executable for supported raw-panel builders; unregistered custom rotation and broader custom semantic composition remain gated as future feature work. |
 | Bridge dispatch retirement | done for supported runtime slices | Executor-family dispatch, fixed target/X-lag matrix composition, PCA static-factor matrix composition, target-transformer gates, importance artifacts, custom hook contexts, and decomposition component naming now route through explicit Layer 2 block/runtime provenance. |
 | Representation handoff unification | done for supported runtime slices | Supported raw-panel and autoregressive target-lag runtimes now emit a canonical `Layer2Representation` bundle with `Z_train`, `y_train`, `Z_pred`, feature names, block roles, alignment, fit-state provenance, and leakage metadata before Layer 3 fit/predict. |
 | Simple/public sweeps | out of L2 cleanup scope | Fixed full recipes are closed under the supported runtime surface. Public sweep exposure is a separate API/governance step, not a Layer 2 boundary blocker. |
@@ -464,8 +465,7 @@ aliases remain intentionally accepted for old recipes and old manifests.
 
 The remaining items in this file are not cleanup blockers:
 
-- `factor_then_marx`;
-- MAF/custom rotations;
+- unregistered custom rotations;
 - unregistered custom temporal/rotation/factor blocks;
 - custom combiners and custom-block final-`Z` selection;
 - target-side custom inverse policies;

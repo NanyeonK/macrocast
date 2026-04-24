@@ -94,11 +94,12 @@ or a registered custom combiner.
 
 MARX and factor frontier:
 
-- `factor_then_marx`
-- `maf_rotation`
+- `factor_then_marx` and `maf_rotation` are operational for
+  `pca_static_factors` through `factor_rotation_order=factor_then_rotation`.
 - feature selection after custom append blocks
 
-These are represented as explicit gated composer modes, not silent aliases.
+Custom append-block selection remains represented as an explicit gated composer
+mode, not a silent alias.
 
 Layer 3 handoff:
 
@@ -153,13 +154,10 @@ Detailed interface contracts and acceptance tests for these items are fixed in
 `layer2_layer3_detailed_design.md`. That document should be updated before a
 future item moves from `contract-defined gated` to `operational`.
 
-1. `factor_then_marx` and MAF rotation.
-   These need factor-score history, rotation naming, alignment tests, and
-   block-level leakage metadata before they can be opened.
-2. Target-side `inverse_transform_policy=custom`.
+1. Target-side `inverse_transform_policy=custom`.
    This needs a callable inverse contract plus metric-scale and artifact
    guarantees.
-3. Extended path-average variants beyond the current point-forecast runtime.
+2. Extended path-average variants beyond the current point-forecast runtime.
    Stepwise point forecasts are executable; interval, density, and custom
    target-transformer variants still need their own payload contracts.
 4. Sequence/tensor representation handoff.

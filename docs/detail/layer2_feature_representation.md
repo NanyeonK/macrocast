@@ -167,9 +167,11 @@ Operational support is currently narrow:
   `feature_block_combination=append_to_base_x` /
   `concatenate_named_blocks`.
 - Advanced rotation values are explicit boundaries, not aliases for the generic
-  primitive. `maf_rotation` remains registry-only until factor-score fit/apply
-  state can compose with rotation blocks. `custom_rotation` remains registry-only
-  under the `custom_feature_block_callable_v1` contract.
+  primitive. `maf_rotation` is operational only as a factor-score rotation:
+  Layer 2 first fits `pca_static_factors`, then builds trailing 3- and 6-period
+  moving-average factor features under `factor_score_history_contract_v1`.
+  `custom_rotation` remains registry-only unless a registered
+  `custom_feature_block_callable_v1` rotation block is supplied.
 - The MARX composer is defined by `lag_polynomial_rotation_contract_v1`. Its
   naming contract is
   `{predictor}_marx_ma_lag1_to_lag{p}` for public feature names and
@@ -180,10 +182,11 @@ Operational support is currently narrow:
   lags follow the package lag convention and are zero-filled before the sample
   start. Source lag columns must not be appended a second time when the MARX
   basis-replacement mode is active. The current composer supports raw-panel MARX
-  basis replacement, `marx_then_factor` with static PCA factors, and named-block
-  append to base `X` for fixed X-lag or deterministic temporal compositions.
-  `factor_then_marx`, MAF rotation, and unregistered custom rotation remain
-  explicitly gated.
+  basis replacement, `marx_then_factor` with static PCA factors,
+  `factor_then_marx` on factor-score histories, and named-block append to base
+  `X` for fixed X-lag or deterministic temporal compositions. MAF rotation is
+  the corresponding factor-score moving-average composer. Unregistered custom
+  rotation remains explicitly gated.
 - `feature_block_combination=append_to_target_lags` is operational for supported
   raw-panel direct `Z` paths. Target lag columns become the anchor block, and
   selected factor/raw-panel blocks are concatenated after them with stable
@@ -328,8 +331,8 @@ slices:
    provenance for supported slices.
 
 Remaining work is semantic feature-composer work, not bridge cleanup:
-`factor_then_marx`, MAF rotation, custom combiners, feature selection over
-custom append blocks, and custom target inverse policies.
+custom combiners, feature selection over custom append blocks, custom target
+inverse policies, and sequence/tensor handoff.
 
 The detailed target contract for freely sweeping Layer 2 representations with
 Layer 3 forecast generators is documented in

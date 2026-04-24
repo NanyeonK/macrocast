@@ -24,7 +24,7 @@ AXIS_DEFINITION = AxisDefinition(
         EnumRegistryEntry(
             id="maf_rotation",
             description="moving average factor rotation",
-            status="registry_only",
+            status="operational",
             priority="A",
         ),
         EnumRegistryEntry(

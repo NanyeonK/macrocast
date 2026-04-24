@@ -99,12 +99,17 @@ _MARX_COMPOSITION_MODES = {
         "replace_lag_polynomial_basis",
         "marx_append_to_x",
         "marx_then_factor",
+        "factor_then_marx",
         "marx_with_external_x_lag_append",
         "marx_with_temporal_append",
     ],
-    "gated": [
-        "factor_then_marx",
+    "gated": [],
+}
+_MAF_COMPOSITION_MODES = {
+    "operational": [
+        "factor_then_maf",
     ],
+    "gated": [],
 }
 _TARGET_LAG_BLOCK_TO_SELECTION = {
     "none": "none",
@@ -1615,12 +1620,39 @@ def _rotation_block_from_selection(
             "scope_note": "MARX is a preset over lag-polynomial rotation; it replaces the X lag-polynomial basis rather than appending generic moving-average rotation features",
         }
     if block == "maf_rotation":
+        contract = {
+            "schema_version": "factor_score_rotation_contract_v1",
+            "runtime_status": "operational",
+            "runtime_builder": "build_factor_score_moving_average_rotation",
+            "source_block": "pca_static_factors",
+            "windows": [3, 6],
+            "source_feature_name_pattern": "factor_{k}",
+            "rotated_feature_name_pattern": "factor_{k}_maf_ma{window}",
+            "rotated_runtime_feature_name_pattern": "factor_{k}__maf_ma{window}",
+            "alignment": {
+                "train_row_t_uses": "factor scores estimated from X_t under train-window factor loadings",
+                "prediction_origin_uses": "factor scores estimated from X_origin under train-window factor loadings",
+                "lookahead": "forbidden",
+            },
+            "basis_policy": "factor_score_trailing_moving_average",
+        }
         return {
             "value": "maf_rotation",
             "source_axis": "rotation_feature_block",
             "source_value": "maf_rotation",
-            "runtime_status": "registry_only",
-            "required_runtime_contract": "factor_rotation_block_composer",
+            "runtime_status": "operational",
+            "windows": [3, 6],
+            "feature_name_patterns": ["factor_{k}_maf_ma3", "factor_{k}_maf_ma6"],
+            "runtime_feature_name_patterns": ["factor_{k}__maf_ma3", "factor_{k}__maf_ma6"],
+            "required_runtime_contract": contract["schema_version"],
+            "composer_contract": contract,
+            "alignment": contract["alignment"],
+            "basis_policy": contract["basis_policy"],
+            "composition_modes": _MAF_COMPOSITION_MODES,
+            "runtime_bridge": {
+                "raw_panel_rotation_features": "maf_rotation",
+                "source_block": "factor_scores",
+            },
             "required_semantics": [
                 "fit factor scores on the training window",
                 "rotate or smooth factor-score histories with explicit fit/apply provenance",
@@ -1656,6 +1688,27 @@ def _rotation_block_from_selection(
             "source_value": explicit_block,
         }
     return {"value": "none", "source": "not_wired"}
+
+
+def _factor_rotation_order_from_selection(
+    selection_map: dict[str, AxisSelection],
+) -> dict[str, Any]:
+    explicit_value = (
+        _selection_value(selection_map, "factor_rotation_order", default=None)
+        if "factor_rotation_order" in selection_map
+        else None
+    )
+    rotation_feature_block = _selection_value(selection_map, "rotation_feature_block", default="none")
+    value = str(explicit_value or ("factor_then_rotation" if rotation_feature_block == "maf_rotation" else "rotation_then_factor"))
+    return {
+        "value": value,
+        "source_axis": "factor_rotation_order" if explicit_value is not None else "default_by_rotation_feature_block",
+        "source_value": explicit_value if explicit_value is not None else value,
+        "rule": (
+            "Layer 2 owns whether factor and rotation blocks are composed as rotation-then-factor "
+            "or factor-then-rotation; Layer 3 consumes only the resulting Z matrix"
+        ),
+    }
 
 
 def _temporal_block_from_selection(selection_map: dict[str, AxisSelection], data_task_spec: dict[str, Any]) -> dict[str, Any]:
@@ -1753,6 +1806,7 @@ def _factor_block_from_bridge(
     preprocess_contract,
     explicit_block: str | None,
     rotation_feature_block: str = "none",
+    factor_rotation_order: str = "rotation_then_factor",
 ) -> dict[str, Any]:
     inferred = "pca_static_factors" if feature_builder in _FACTOR_BRIDGE_BUILDERS else _DIMRED_TO_FACTOR_FEATURE_BLOCK.get(dimred, "custom_factors")
     block = explicit_block or inferred
@@ -1762,6 +1816,32 @@ def _factor_block_from_bridge(
         runtime_bridge["feature_builder"] = feature_builder
     if dimred in _FACTOR_DIMRED_BRIDGES:
         runtime_bridge["dimensionality_reduction_policy"] = dimred
+    composition_modes = {"operational": [], "gated": []}
+    supported_rotation_semantics: list[str] = []
+    active_rotation_semantic = "none"
+    rotation_rule = "factor and rotation blocks are inactive or not composed"
+    if block == "pca_static_factors" and rotation_feature_block == "marx_rotation":
+        composition_modes = _MARX_COMPOSITION_MODES
+        supported_rotation_semantics = ["marx_then_factor", "factor_then_marx"]
+        active_rotation_semantic = (
+            "factor_then_marx"
+            if factor_rotation_order == "factor_then_rotation"
+            else "marx_then_factor"
+        )
+        rotation_rule = (
+            "when rotation_feature_block='marx_rotation' is active with pca_static_factors, "
+            "factor_rotation_order selects whether MARX replaces the X lag-polynomial basis before "
+            "static factors are fit, or static factor-score histories are rotated by the MARX basis"
+        )
+    elif block == "pca_static_factors" and rotation_feature_block == "maf_rotation":
+        composition_modes = _MAF_COMPOSITION_MODES
+        supported_rotation_semantics = ["factor_then_maf"]
+        active_rotation_semantic = "factor_then_maf"
+        rotation_rule = (
+            "maf_rotation is defined as a factor-score rotation: static factor-score histories are "
+            "estimated first and then smoothed by trailing moving-average factor rotations"
+        )
+
     payload: dict[str, Any] = {
         "value": block,
         "source_axis": "factor_feature_block" if explicit_block is not None else "feature_builder/dimensionality_reduction_policy",
@@ -1801,22 +1881,11 @@ def _factor_block_from_bridge(
         },
         "rotation_interaction": {
             "rotation_feature_block": rotation_feature_block,
-            "composition_modes": _MARX_COMPOSITION_MODES if rotation_feature_block == "marx_rotation" else {"operational": [], "gated": []},
-            "supported_semantics": (
-                ["marx_then_factor"]
-                if block == "pca_static_factors" and rotation_feature_block == "marx_rotation"
-                else []
-            ),
-            "active_semantic": (
-                "marx_then_factor"
-                if block == "pca_static_factors" and rotation_feature_block == "marx_rotation"
-                else "none"
-            ),
-            "rule": (
-                "when rotation_feature_block='marx_rotation' is active with pca_static_factors, "
-                "the runtime first replaces the X lag-polynomial basis with MARX features and then "
-                "fits static PCA factors on that rotated basis"
-            ),
+            "factor_rotation_order": factor_rotation_order,
+            "composition_modes": composition_modes,
+            "supported_semantics": supported_rotation_semantics,
+            "active_semantic": active_rotation_semantic,
+            "rule": rotation_rule,
         },
     }
     if block == "pca_static_factors":
@@ -2358,6 +2427,7 @@ def _layer2_representation_spec(
             "feature_block_set": _feature_block_set_from_bridge(str(feature_builder), str(data_richness_mode)),
             "target_lag_block": target_lag_block,
             "x_lag_feature_block": _x_lag_block_from_selection(selection_map, str(x_lag_creation)),
+            "factor_rotation_order": _factor_rotation_order_from_selection(selection_map),
             "factor_feature_block": _factor_block_from_bridge(
                 feature_builder=str(feature_builder),
                 dimred=str(dimred),
@@ -2368,6 +2438,7 @@ def _layer2_representation_spec(
                 preprocess_contract=preprocess_contract,
                 explicit_block=explicit_factor_feature_block,
                 rotation_feature_block=_selection_value(selection_map, "rotation_feature_block", default="none"),
+                factor_rotation_order=_factor_rotation_order_from_selection(selection_map)["value"],
             ),
             "level_feature_block": _level_block_from_selection(selection_map, data_task_spec),
             "deterministic_feature_block": _deterministic_block_from_selection(
@@ -2713,7 +2784,8 @@ def _execution_status(
             "custom_temporal_features",
         }
         rotation_feature_block = _selection_value(selection_map, "rotation_feature_block", default="none")
-        rotation_block_active = rotation_feature_block in {"moving_average_rotation", "marx_rotation", "custom_rotation"}
+        rotation_block_active = rotation_feature_block in {"moving_average_rotation", "marx_rotation", "maf_rotation", "custom_rotation"}
+        factor_rotation_order = _factor_rotation_order_from_selection(selection_map)["value"]
         feature_block_combination = _selection_value(selection_map, "feature_block_combination", default="replace_with_blocks")
         marx_append_mode = feature_block_combination in {"append_to_base_x", "concatenate_named_blocks"}
         custom_combiner_name = _custom_feature_combiner_name_from_leaf(leaf_config)
@@ -2794,8 +2866,60 @@ def _execution_status(
                 f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
                 "factor_feature_block or dimensionality_reduction_policy; temporal-to-factor composition requires a block composer"
             )
-        marx_then_factor_allowed = rotation_feature_block == "marx_rotation" and factor_block_active
-        if rotation_block_active and (factor_block_active or dimred != "none") and not marx_then_factor_allowed:
+        factor_then_rotation_requested = factor_rotation_order == "factor_then_rotation" or rotation_feature_block == "maf_rotation"
+        pca_static_factor_active = (
+            explicit_factor_block == "pca_static_factors"
+            or (
+                explicit_factor_block is None
+                and factor_bridge_active
+                and (dimred in {"pca", "static_factor"} or feature_builder in _FACTOR_BRIDGE_BUILDERS)
+            )
+        )
+        if factor_then_rotation_requested and rotation_feature_block not in {"marx_rotation", "maf_rotation"}:
+            not_supported.append(
+                "factor_rotation_order='factor_then_rotation' currently requires "
+                "rotation_feature_block='marx_rotation' or 'maf_rotation'"
+            )
+        if rotation_feature_block == "maf_rotation" and not pca_static_factor_active:
+            not_supported.append(
+                "rotation_feature_block='maf_rotation' requires factor_feature_block='pca_static_factors' "
+                "or an equivalent pca/static_factor bridge"
+            )
+        if (
+            factor_then_rotation_requested
+            and factor_block_active
+            and not pca_static_factor_active
+        ):
+            not_supported.append(
+                "factor_rotation_order='factor_then_rotation' is currently executable only with "
+                "pca_static_factors or an equivalent pca/static_factor bridge"
+            )
+        if factor_then_rotation_requested and getattr(preprocess_contract, "x_lag_creation", "no_x_lags") != "no_x_lags":
+            not_supported.append(
+                "factor_rotation_order='factor_then_rotation' currently requires x_lag_feature_block='none' "
+                "and x_lag_creation='no_x_lags'"
+            )
+        if factor_then_rotation_requested and level_block_active:
+            not_supported.append(
+                "factor_rotation_order='factor_then_rotation' currently cannot be combined with level_feature_block; "
+                "level addbacks remain available with rotation_then_factor or non-factor rotations"
+            )
+        marx_then_factor_allowed = (
+            rotation_feature_block == "marx_rotation"
+            and factor_block_active
+            and factor_rotation_order == "rotation_then_factor"
+        )
+        factor_then_rotation_allowed = (
+            rotation_feature_block in {"marx_rotation", "maf_rotation"}
+            and factor_block_active
+            and factor_then_rotation_requested
+            and pca_static_factor_active
+        )
+        if (
+            rotation_block_active
+            and (factor_block_active or dimred != "none")
+            and not (marx_then_factor_allowed or factor_then_rotation_allowed)
+        ):
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
                 "factor_feature_block or dimensionality_reduction_policy; rotation-to-factor composition requires a block composer"

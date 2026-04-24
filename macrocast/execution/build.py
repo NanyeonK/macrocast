@@ -1328,6 +1328,14 @@ def _feature_block_combination(recipe: RecipeSpec | None) -> str:
     return _layer2_block_value(_layer2_feature_blocks(recipe), "feature_block_combination", "replace_with_blocks")
 
 
+def _factor_rotation_active_semantic(recipe: RecipeSpec | None) -> str:
+    factor_block = _factor_feature_block_spec(recipe)
+    interaction = factor_block.get("rotation_interaction", {})
+    if isinstance(interaction, Mapping):
+        return str(interaction.get("active_semantic", "none"))
+    return "none"
+
+
 def _target_lag_feature_block(recipe: RecipeSpec | None) -> str:
     block = _target_lag_feature_block_spec(recipe)
     if not block:
@@ -2470,7 +2478,7 @@ def _record_post_factor_selection(
     if fit_state_sink is None:
         return
     for payload in reversed(fit_state_sink):
-        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors"}:
+        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors", "factor_then_marx", "maf_rotation"}:
             continue
         payload["feature_selection_policy"] = str(policy)
         payload["feature_selection_semantics"] = "select_after_factor"
@@ -2628,6 +2636,14 @@ def _moving_average_rotation_feature_name(column: str, window: int) -> str:
 
 def _moving_average_rotation_public_feature_name(column: str, window: int) -> str:
     return f"{column}_rotma{window}"
+
+
+def _maf_rotation_feature_name(column: str, window: int) -> str:
+    return f"{column}__maf_ma{window}"
+
+
+def _maf_rotation_public_feature_name(column: str, window: int) -> str:
+    return f"{column}_maf_ma{window}"
 
 
 def _volatility_feature_name(column: str) -> str:
@@ -3109,6 +3125,192 @@ def _apply_rotation_feature_block(
     return X_train, X_pred
 
 
+def _condition_raw_history_before_factor(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+    X_history: pd.DataFrame,
+    contract: PreprocessContract,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    feature_selection_policy = str(contract.feature_selection_policy)
+    feature_selection_semantics = _feature_selection_semantics(contract)
+    X_train, X_history = _apply_missing_policy(X_train, X_history, contract)
+    X_train, X_history = _apply_outlier_policy(X_train, X_history, contract)
+    X_train, X_history = _apply_additional_preprocessing(X_train, X_history, contract)
+    X_train, X_history = _apply_scaling_policy(X_train, X_history, contract)
+    if not (
+        feature_selection_policy != "none"
+        and feature_selection_semantics in {"select_after_factor", "select_after_custom_blocks"}
+    ):
+        X_train, X_history = _apply_feature_selection_policy(
+            X_train,
+            y_train,
+            X_history,
+            policy=feature_selection_policy,
+        )
+    return X_train, X_history
+
+
+def _build_maf_rotation_frame(factor_history: pd.DataFrame) -> pd.DataFrame:
+    pieces: list[pd.DataFrame] = []
+    for window in _MOVING_AVERAGE_ROTATION_WINDOWS:
+        rotated = factor_history.rolling(window=window, min_periods=1).mean()
+        renamed = rotated.rename(
+            columns={column: _maf_rotation_feature_name(str(column), window) for column in rotated.columns}
+        )
+        pieces.append(renamed)
+    if not pieces:
+        return pd.DataFrame(index=factor_history.index)
+    return pd.concat(pieces, axis=1)
+
+
+def _factor_rotation_fit_state(
+    *,
+    block: str,
+    active_semantic: str,
+    public_feature_names: Sequence[str],
+    runtime_feature_names: Sequence[str],
+    source_factor_state: Mapping[str, object],
+    factor_names: Sequence[str],
+    X_train: pd.DataFrame,
+    X_history: pd.DataFrame,
+    train_index: pd.Index,
+    pred_index: pd.Index,
+) -> dict[str, object]:
+    return {
+        "block": block,
+        "runtime_policy": active_semantic,
+        "feature_names": [str(name) for name in public_feature_names],
+        "runtime_feature_names": [str(name) for name in runtime_feature_names],
+        "source_block": str(source_factor_state.get("block", "pca_static_factors")),
+        "source_factor_names": [str(name) for name in factor_names],
+        "source_feature_names": [str(name) for name in X_train.columns],
+        "train_window_rows": int(X_train.shape[0]),
+        "history_rows": int(X_history.shape[0]),
+        "factor_score_history_contract": {
+            "schema_version": "factor_score_history_contract_v1",
+            "fit_scope": "train_window_only",
+            "history_scope": "start_to_prediction_origin",
+            "train_index_start": str(train_index[0]) if len(train_index) else None,
+            "train_index_end": str(train_index[-1]) if len(train_index) else None,
+            "history_index_start": str(X_history.index[0]) if len(X_history.index) else None,
+            "history_index_end": str(X_history.index[-1]) if len(X_history.index) else None,
+            "prediction_index": [str(value) for value in pred_index],
+            "lookahead": "forbidden",
+        },
+        "source_factor_fit_state": {
+            key: value
+            for key, value in source_factor_state.items()
+            if key
+            in {
+                "block",
+                "runtime_policy",
+                "n_components",
+                "feature_names",
+                "source_feature_names",
+                "center_mean",
+                "loadings",
+                "feature_selection_policy",
+                "feature_selection_semantics",
+                "selected_source_feature_names",
+                "selected_source_feature_count",
+            }
+        },
+    }
+
+
+def _apply_factor_then_rotation_feature_block(
+    X_train: pd.DataFrame,
+    X_pred: pd.DataFrame,
+    frame: pd.DataFrame,
+    predictors: Sequence[str],
+    y_train: np.ndarray,
+    contract: PreprocessContract,
+    *,
+    active_semantic: str,
+    start_idx: int,
+    pred_idx: int,
+    marx_max_lag: int | None,
+    fit_state_sink: list[dict[str, object]] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if active_semantic not in {"factor_then_marx", "factor_then_maf"}:
+        return X_train, X_pred
+    if str(contract.x_lag_creation) != "no_x_lags":
+        raise ExecutionError("factor-then-rotation requires x_lag_creation='no_x_lags'")
+    factor_policy = str(contract.dimensionality_reduction_policy)
+    if factor_policy not in {"pca", "static_factor"}:
+        raise ExecutionError(
+            "factor-then-rotation currently supports pca_static_factors via "
+            "dimensionality_reduction_policy='pca' or 'static_factor'"
+        )
+    history = frame[list(predictors)].iloc[start_idx : pred_idx + 1].astype(float).copy()
+    X_train_factor, history_factor = _condition_raw_history_before_factor(
+        X_train,
+        y_train,
+        history,
+        contract,
+    )
+    local_fit_state: list[dict[str, object]] = []
+    _train_scores, history_scores = _apply_dimensionality_reduction(
+        X_train_factor,
+        history_factor,
+        contract,
+        y_train=y_train,
+        feature_selection_policy=str(contract.feature_selection_policy),
+        feature_selection_semantics=_feature_selection_semantics(contract),
+        fit_state_sink=local_fit_state,
+    )
+    if not local_fit_state:
+        raise ExecutionError("factor-then-rotation failed to record source factor fit state")
+    source_factor_state = local_fit_state[-1]
+    factor_names_payload = source_factor_state.get("feature_names")
+    if isinstance(factor_names_payload, Sequence) and not isinstance(factor_names_payload, (str, bytes)):
+        factor_names = [str(name) for name in factor_names_payload]
+    else:
+        factor_names = [f"factor_{idx}" for idx in range(1, int(np.asarray(history_scores).shape[1]) + 1)]
+    factor_history = pd.DataFrame(
+        np.asarray(history_scores, dtype=float),
+        index=history_factor.index,
+        columns=factor_names,
+    )
+    if active_semantic == "factor_then_marx":
+        if marx_max_lag is None:
+            raise ExecutionError("factor_then_marx requires marx_max_lag")
+        rotated_history = _build_marx_rotation_frame(factor_history, max_lag=int(marx_max_lag))
+        public_feature_names = [
+            _marx_rotation_public_feature_name(str(factor), rotation_order)
+            for factor in factor_names
+            for rotation_order in range(1, int(marx_max_lag) + 1)
+        ]
+        fit_block = "factor_then_marx"
+    else:
+        rotated_history = _build_maf_rotation_frame(factor_history)
+        public_feature_names = [
+            _maf_rotation_public_feature_name(str(factor), window)
+            for window in _MOVING_AVERAGE_ROTATION_WINDOWS
+            for factor in factor_names
+        ]
+        fit_block = "maf_rotation"
+    rotated_train = rotated_history.loc[X_train.index].copy()
+    rotated_pred = rotated_history.loc[X_pred.index].copy()
+    if fit_state_sink is not None:
+        fit_state_sink.extend(local_fit_state)
+        fit_state_sink.append(
+            _factor_rotation_fit_state(
+                block=fit_block,
+                active_semantic=active_semantic,
+                public_feature_names=public_feature_names,
+                runtime_feature_names=[str(name) for name in rotated_history.columns],
+                source_factor_state=source_factor_state,
+                factor_names=factor_names,
+                X_train=X_train_factor,
+                X_history=history_factor,
+                train_index=X_train.index,
+                pred_index=X_pred.index,
+            )
+        )
+    return rotated_train, rotated_pred
+
+
 def _raw_panel_feature_names(
     frame: pd.DataFrame,
     target: str,
@@ -3174,7 +3376,7 @@ def _raw_panel_feature_names(
 
 def _factor_feature_names_from_fit_state(fit_state: Sequence[Mapping[str, object]]) -> list[str] | None:
     for payload in reversed(tuple(fit_state)):
-        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors"}:
+        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors", "factor_then_marx", "maf_rotation"}:
             continue
         names = payload.get("feature_names")
         if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
@@ -3249,7 +3451,7 @@ def _selected_final_feature_names_from_fit_state(
             names = payload.get("feature_names")
             if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
                 return [str(name) for name in names]
-        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors"}:
+        if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors", "factor_then_marx", "maf_rotation"}:
             continue
         names = payload.get("selected_final_feature_names")
         if isinstance(names, Sequence) and not isinstance(names, (str, bytes)):
@@ -3392,10 +3594,13 @@ def _raw_panel_alignment(
         alignment["level_timing"] = "observable_at_forecast_origin"
     if _factor_feature_names_from_fit_state(fit_state) is not None:
         alignment["factor_fit_scope"] = "train_window_only"
-        if _rotation_feature_block(recipe) == "marx_rotation":
+        active_rotation_semantic = _factor_rotation_active_semantic(recipe)
+        if active_rotation_semantic != "none":
+            alignment["rotation_factor_semantics"] = active_rotation_semantic
+        elif _rotation_feature_block(recipe) == "marx_rotation":
             alignment["rotation_factor_semantics"] = "marx_then_factor"
         for payload in reversed(tuple(fit_state)):
-            if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors"}:
+            if str(payload.get("block", "")) not in {"pca_static_factors", "pca_factor_lags", "supervised_factors", "factor_then_marx", "maf_rotation"}:
                 continue
             if str(payload.get("feature_selection_semantics", "none")) != "none":
                 alignment["factor_selection_semantics"] = str(payload["feature_selection_semantics"])
@@ -3524,7 +3729,7 @@ def _build_raw_panel_training_data(
     # allow uses X aligned to the target date (X_{t+h} with y_{t+h}) — the oracle / data-leak
     # benchmark variant.
     contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous")
-    if rotation_feature_block in {"moving_average_rotation", "marx_rotation"} and contemp_rule != "forbid_contemporaneous":
+    if rotation_feature_block in {"moving_average_rotation", "marx_rotation", "maf_rotation"} and contemp_rule != "forbid_contemporaneous":
         raise ExecutionError(
             f"rotation_feature_block={rotation_feature_block!r} requires "
             "contemporaneous_x_rule='forbid_contemporaneous'"
@@ -3567,6 +3772,19 @@ def _build_raw_panel_training_data(
             "rotation_feature_block='marx_rotation' requires feature_block_combination='append_to_base_x' "
             "or 'concatenate_named_blocks' when combined with x_lag_creation"
         )
+    factor_rotation_semantic = _factor_rotation_active_semantic(recipe)
+    factor_then_rotation_applied = factor_rotation_semantic in {"factor_then_marx", "factor_then_maf"}
+    if factor_then_rotation_applied:
+        if rotation_feature_block not in {"marx_rotation", "maf_rotation"}:
+            raise ExecutionError("factor-then-rotation requires marx_rotation or maf_rotation")
+        if factor_feature_block not in {None, "pca_static_factors"}:
+            raise ExecutionError("factor-then-rotation currently supports only pca_static_factors")
+        if temporal_feature_block != "none":
+            raise ExecutionError("factor-then-rotation cannot yet be combined with temporal_feature_block")
+        if level_feature_block != "none":
+            raise ExecutionError("factor-then-rotation cannot yet be combined with level_feature_block")
+        if x_lag_creation != "no_x_lags":
+            raise ExecutionError("factor-then-rotation currently requires x_lag_feature_block='none'")
     preprocessing_contract = contract
     if x_lag_creation == "fixed_x_lags":
         lag_source = frame[predictors].iloc[start_idx : pred_idx + 1].astype(float).copy()
@@ -3579,35 +3797,50 @@ def _build_raw_panel_training_data(
             preprocessing_contract,
             dimensionality_reduction_policy=dimensionality_reduction_policy,
         )
-    X_train, X_pred = _apply_temporal_feature_block(
-        X_train,
-        X_pred,
-        frame,
-        predictors,
-        y_train,
-        recipe,
-        horizon=horizon,
-        start_idx=start_idx,
-        pred_idx=pred_idx,
-        temporal_feature_block=temporal_feature_block,
-        fit_state_sink=fit_state_sink,
-    )
-    X_train, X_pred = _apply_rotation_feature_block(
-        X_train,
-        X_pred,
-        frame,
-        predictors,
-        y_train,
-        recipe,
-        horizon=horizon,
-        start_idx=start_idx,
-        pred_idx=pred_idx,
-        rotation_feature_block=rotation_feature_block,
-        marx_max_lag=marx_max_lag,
-        feature_block_combination=feature_block_combination,
-        fit_state_sink=fit_state_sink,
-    )
-    if factor_feature_block == "custom_factors":
+    if factor_then_rotation_applied:
+        X_train, X_pred = _apply_factor_then_rotation_feature_block(
+            X_train,
+            X_pred,
+            frame,
+            predictors,
+            y_train,
+            preprocessing_contract,
+            active_semantic=factor_rotation_semantic,
+            start_idx=start_idx,
+            pred_idx=pred_idx,
+            marx_max_lag=marx_max_lag,
+            fit_state_sink=fit_state_sink,
+        )
+    else:
+        X_train, X_pred = _apply_temporal_feature_block(
+            X_train,
+            X_pred,
+            frame,
+            predictors,
+            y_train,
+            recipe,
+            horizon=horizon,
+            start_idx=start_idx,
+            pred_idx=pred_idx,
+            temporal_feature_block=temporal_feature_block,
+            fit_state_sink=fit_state_sink,
+        )
+        X_train, X_pred = _apply_rotation_feature_block(
+            X_train,
+            X_pred,
+            frame,
+            predictors,
+            y_train,
+            recipe,
+            horizon=horizon,
+            start_idx=start_idx,
+            pred_idx=pred_idx,
+            rotation_feature_block=rotation_feature_block,
+            marx_max_lag=marx_max_lag,
+            feature_block_combination=feature_block_combination,
+            fit_state_sink=fit_state_sink,
+        )
+    if factor_feature_block == "custom_factors" and not factor_then_rotation_applied:
         X_train, X_pred = _apply_custom_feature_block(
             X_train,
             X_pred,
@@ -3639,13 +3872,17 @@ def _build_raw_panel_training_data(
         target_lag_pred = _fixed_target_lag_frame(lag_source, X_pred.index, lag_order)
     elif target_lag_block != "none":
         raise ExecutionError(f"target_lag_block {target_lag_block!r} is not executable in current runtime slice")
-    X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
-        X_train,
-        y_train,
-        X_pred,
-        preprocessing_contract,
-        fit_state_sink=fit_state_sink,
-    )
+    if factor_then_rotation_applied:
+        X_train_arr = X_train.to_numpy(dtype=float)
+        X_pred_arr = X_pred.to_numpy(dtype=float)
+    else:
+        X_train_arr, X_pred_arr = _apply_raw_panel_preprocessing(
+            X_train,
+            y_train,
+            X_pred,
+            preprocessing_contract,
+            fit_state_sink=fit_state_sink,
+        )
     if factor_feature_block == "pca_factor_lags":
         training_spec = _factor_runtime_training_spec(recipe)
         factor_lag_count = int(training_spec.get("factor_lag_count", training_spec.get("factor_ar_lags", 1)))

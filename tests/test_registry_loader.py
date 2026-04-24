@@ -5,7 +5,7 @@ from macrocast.registry.base import AxisDefinition, BaseRegistryEntry, EnumRegis
 from macrocast.registry.types import AxisRegistryEntry
 
 
-EXPECTED_AXIS_COUNT = 139
+EXPECTED_AXIS_COUNT = 140
 
 
 def test_registry_loader_discovers_existing_axes() -> None:
@@ -234,6 +234,7 @@ def test_registry_loader_discovers_stage2_governance_axes() -> None:
         "target_lag_selection",
         "x_lag_feature_block",
         "factor_feature_block",
+        "factor_rotation_order",
         "level_feature_block",
         "rotation_feature_block",
         "temporal_feature_block",
@@ -276,8 +277,10 @@ def test_registry_loader_defines_layer2_feature_block_grammar() -> None:
     assert registry["rotation_feature_block"].current_status["none"] == "operational"
     assert registry["rotation_feature_block"].current_status["moving_average_rotation"] == "operational"
     assert registry["rotation_feature_block"].current_status["marx_rotation"] == "operational"
-    assert registry["rotation_feature_block"].current_status["maf_rotation"] == "registry_only"
+    assert registry["rotation_feature_block"].current_status["maf_rotation"] == "operational"
     assert registry["rotation_feature_block"].current_status["custom_rotation"] == "registry_only"
+    assert registry["factor_rotation_order"].current_status["rotation_then_factor"] == "operational"
+    assert registry["factor_rotation_order"].current_status["factor_then_rotation"] == "operational"
     assert registry["factor_feature_block"].current_status["pca_static_factors"] == "operational"
     assert registry["level_feature_block"].current_status["none"] == "operational"
     assert registry["level_feature_block"].current_status["target_level_addback"] == "operational"

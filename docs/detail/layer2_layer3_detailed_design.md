@@ -222,13 +222,10 @@ built-ins.
 
 ### Factor-To-Rotation Composers
 
-The current runtime supports `marx_rotation` on raw-panel X and
-`marx_then_factor`. The remaining factor/rotation frontier is:
-
-- `factor_then_marx`;
-- `maf_rotation`.
-
-Both need factor-score history, not just one prediction-row factor score.
+The current runtime supports `marx_rotation` on raw-panel X,
+`marx_then_factor`, `factor_then_marx`, and `maf_rotation` with static PCA
+factors. The factor-to-rotation modes require factor-score history, not just
+one prediction-row factor score.
 
 Required factor-score history contract:
 
@@ -259,8 +256,9 @@ Required factor-score history contract:
 - keep MAF as a general factor-to-rotation primitive, not a paper-specific
   layer name.
 
-Both composers should remain gated until alignment tests prove prediction-row
-and training-row timing.
+Both composers are operational for `pca_static_factors`. Alignment tests must
+remain part of the acceptance suite before additional factor blocks or custom
+factor-score rotations are opened.
 
 ### Target-Side Custom Inverse
 
@@ -458,7 +456,8 @@ Acceptance:
 ### Phase 3: Factor-To-Rotation Composers
 
 Reason: `factor_then_marx` and MAF need factor-score history and alignment
-tests. They are valuable but more specialized than the custom-combiner surface.
+tests. They are Layer 2 representation composers; Layer 3 consumes their final
+`Z` bundle like any other tabular representation.
 
 Acceptance:
 

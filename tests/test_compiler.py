@@ -1910,11 +1910,6 @@ def test_layer2_explicit_moving_average_rotation_lowers_to_raw_panel_bridge() ->
     ("rotation_block", "required_contract", "scope_phrase"),
     [
         (
-            "maf_rotation",
-            "factor_rotation_block_composer",
-            "not a raw-X moving-average append",
-        ),
-        (
             "custom_rotation",
             "custom_feature_block_callable_v1",
             "custom_preprocessor hook is not enough",
@@ -1946,9 +1941,29 @@ def test_layer2_advanced_rotation_blocks_record_registry_only_boundary(
     assert block["required_runtime_contract"] == required_contract
     assert scope_phrase in block["scope_note"]
     assert "runtime_bridge" not in block
-    if rotation_block == "custom_rotation":
-        assert block["callable_contract"]["schema_version"] == "custom_feature_block_callable_v1"
-        assert block["callable_contract"]["block_kind"] == "rotation"
+    assert block["callable_contract"]["schema_version"] == "custom_feature_block_callable_v1"
+    assert block["callable_contract"]["block_kind"] == "rotation"
+
+
+def test_layer2_maf_rotation_requires_factor_scores() -> None:
+    result = compile_recipe_dict(
+        _layer2_temporal_block_recipe(
+            temporal_feature_block="none",
+            rotation_feature_block="maf_rotation",
+        )
+    )
+    assert result.compiled.execution_status == "not_supported"
+    assert any(
+        "rotation_feature_block='maf_rotation' requires factor_feature_block='pca_static_factors'"
+        in warning
+        for warning in result.compiled.warnings
+    )
+    block = result.manifest["layer2_representation_spec"]["feature_blocks"]["rotation_feature_block"]
+    assert block["value"] == "maf_rotation"
+    assert block["runtime_status"] == "operational"
+    assert block["required_runtime_contract"] == "factor_score_rotation_contract_v1"
+    assert block["composition_modes"]["operational"] == ["factor_then_maf"]
+    assert block["alignment"]["lookahead"] == "forbidden"
 
 
 def test_layer2_explicit_marx_rotation_requires_lag_order() -> None:
@@ -1986,10 +2001,11 @@ def test_layer2_explicit_marx_rotation_lowers_to_raw_panel_bridge() -> None:
         "replace_lag_polynomial_basis",
         "marx_append_to_x",
         "marx_then_factor",
+        "factor_then_marx",
         "marx_with_external_x_lag_append",
         "marx_with_temporal_append",
     ]
-    assert block["composition_modes"]["gated"] == ["factor_then_marx"]
+    assert block["composition_modes"]["gated"] == []
     assert block["alignment"]["lookahead"] == "forbidden"
     assert "replaces the X lag-polynomial basis" in block["scope_note"]
     composer = block["composer_contract"]
@@ -2048,9 +2064,9 @@ def test_layer2_explicit_marx_rotation_supports_static_factor_composition(tmp_pa
     factor_block = result.manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]
     rotation_interaction = factor_block["rotation_interaction"]
     assert rotation_interaction["rotation_feature_block"] == "marx_rotation"
-    assert rotation_interaction["supported_semantics"] == ["marx_then_factor"]
+    assert rotation_interaction["supported_semantics"] == ["marx_then_factor", "factor_then_marx"]
     assert rotation_interaction["active_semantic"] == "marx_then_factor"
-    assert "factor_then_marx" in rotation_interaction["composition_modes"]["gated"]
+    assert "factor_then_marx" in rotation_interaction["composition_modes"]["operational"]
 
     execution = run_compiled_recipe(
         result.compiled,
@@ -2063,6 +2079,82 @@ def test_layer2_explicit_marx_rotation_supports_static_factor_composition(tmp_pa
     assert manifest["layer2_representation_spec"]["feature_blocks"]["rotation_feature_block"]["value"] == "marx_rotation"
     assert fit_state["block"] == "pca_static_factors"
     assert all("__marx_ma_lag1_to_lag" in name for name in fit_state["source_feature_names"])
+
+
+def test_layer2_factor_then_marx_runs_factor_score_rotation(tmp_path: Path) -> None:
+    recipe = _layer2_temporal_block_recipe(
+        temporal_feature_block="none",
+        rotation_feature_block="marx_rotation",
+        marx_max_lag=3,
+    )
+    recipe["path"]["2_preprocessing"]["fixed_axes"].update(
+        {
+            "factor_feature_block": "pca_static_factors",
+            "factor_rotation_order": "factor_then_rotation",
+            "tcode_policy": "extra_preprocess_without_tcode",
+            "preprocess_order": "extra_only",
+            "preprocess_fit_scope": "train_only",
+            "scaling_policy": "standard",
+        }
+    )
+
+    result = compile_recipe_dict(recipe)
+
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["factor_rotation_order"]["value"] == "factor_then_rotation"
+    rotation_interaction = blocks["factor_feature_block"]["rotation_interaction"]
+    assert rotation_interaction["active_semantic"] == "factor_then_marx"
+    assert rotation_interaction["factor_rotation_order"] == "factor_then_rotation"
+
+    execution = run_compiled_recipe(
+        result.compiled,
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+    )
+    manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
+    fit_state = json.loads((Path(execution.artifact_dir) / "feature_representation_fit_state.json").read_text())
+
+    assert manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]["rotation_interaction"]["active_semantic"] == "factor_then_marx"
+    assert fit_state["block"] == "factor_then_marx"
+    assert fit_state["runtime_policy"] == "factor_then_marx"
+    assert fit_state["factor_score_history_contract"]["lookahead"] == "forbidden"
+    assert all("_marx_ma_lag1_to_lag" in name for name in fit_state["feature_names"])
+
+
+def test_layer2_maf_rotation_runs_factor_score_rotation(tmp_path: Path) -> None:
+    recipe = _layer2_temporal_block_recipe(
+        temporal_feature_block="none",
+        rotation_feature_block="maf_rotation",
+    )
+    recipe["path"]["2_preprocessing"]["fixed_axes"].update(
+        {
+            "factor_feature_block": "pca_static_factors",
+            "tcode_policy": "extra_preprocess_without_tcode",
+            "preprocess_order": "extra_only",
+            "preprocess_fit_scope": "train_only",
+            "scaling_policy": "standard",
+        }
+    )
+
+    result = compile_recipe_dict(recipe)
+
+    assert result.compiled.execution_status == "executable"
+    blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
+    assert blocks["factor_rotation_order"]["value"] == "factor_then_rotation"
+    assert blocks["factor_feature_block"]["rotation_interaction"]["active_semantic"] == "factor_then_maf"
+
+    execution = run_compiled_recipe(
+        result.compiled,
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+    )
+    fit_state = json.loads((Path(execution.artifact_dir) / "feature_representation_fit_state.json").read_text())
+
+    assert fit_state["block"] == "maf_rotation"
+    assert fit_state["runtime_policy"] == "factor_then_maf"
+    assert fit_state["factor_score_history_contract"]["lookahead"] == "forbidden"
+    assert all("_maf_ma" in name for name in fit_state["feature_names"])
 
 
 def test_layer2_pca_factor_lags_run_as_factor_block(tmp_path: Path) -> None:

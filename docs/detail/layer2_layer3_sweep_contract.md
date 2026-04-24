@@ -249,7 +249,7 @@ distinguish:
 - `marx_then_factor`;
 - `factor_then_marx`.
 
-The current runtime opens the first, second, and third modes:
+The current runtime opens all four modes:
 
 - `marx_replace_x_basis`: raw-panel `Z` is the MARX basis itself;
 - `marx_append_to_x`: MARX features are concatenated as named blocks with base
@@ -259,9 +259,15 @@ The current runtime opens the first, second, and third modes:
 - `marx_then_factor`: replace the X lag-polynomial basis with MARX features,
   then fit `pca_static_factors` on that rotated basis. Target lags may still
   be concatenated after factor scores through the existing target-lag path.
+- `factor_then_marx`: fit `pca_static_factors` on the X-side panel, transform
+  the full start-to-origin factor-score history with train-window loadings,
+  then apply the MARX lag-polynomial basis to those factor scores.
 
-`factor_then_marx` remains gated until the runtime has an explicit factor-score
-history contract for applying lag-polynomial rotations after factor extraction.
+`maf_rotation` is also operational when paired with `pca_static_factors`. It is
+not a raw-X moving-average append; it is a factor-score rotation that first
+fits static factor histories and then builds trailing moving-average factor
+features. Layer 2 records this choice through `factor_rotation_order` and the
+`factor_score_history_contract_v1` fit-state metadata.
 
 ### Custom Blocks
 
@@ -352,6 +358,8 @@ This patch opens the first previously gated composition class:
   columns.
 - MARX basis replacement followed by static PCA factors
   (`marx_then_factor`) in supported raw-panel runtimes.
+- static PCA factors followed by MARX factor-score rotations
+  (`factor_then_marx`) or moving-average factor rotations (`factor_then_maf`).
 
 ## Still Gated
 
@@ -360,8 +368,6 @@ These are the next semantic composer tasks:
 | Area | Why gated |
 |---|---|
 | Broader factor plus feature selection | Built-in factor blocks support `select_before_factor` and `select_after_factor`. Custom-block final-`Z` selection still needs explicit contracts. |
-| `factor_then_marx` | Need factor-score history and lag-polynomial rotation semantics after factor extraction. |
-| MAF rotation | Need factor-to-rotation composer and leakage metadata. |
 | Custom combiners | Need a contract for arbitrary final-block composition and stable feature naming. |
 | Custom-block final-`Z` selection | Need explicit selection provenance over user-created columns. |
 | Custom inverse policies | Need extension contracts beyond built-in target-scale and target-transformer policies. |
@@ -396,7 +402,6 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
    contracts are implemented.
 4. Add full recipe examples for Layer 2 x Layer 3 grids.
 5. Execute remaining semantic composer contracts:
-   `factor_then_marx`, MAF rotation, custom inverse policies, and the
-   sequence/tensor representation handoff.
+   custom inverse policies and the sequence/tensor representation handoff.
 6. Expose safe simple-API representation sweeps only after the full-route
    naming, result-summary, and invalid-cell reporting contracts are stable.
