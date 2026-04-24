@@ -490,7 +490,8 @@ def test_custom_preprocessor_runs_as_x_only_extension(tmp_path: Path) -> None:
     )
 
     manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
-    assert manifest["training_spec"]["custom_preprocessor"] == "center_x"
+    assert "custom_preprocessor" not in manifest["training_spec"]
+    assert manifest["layer2_representation_spec"]["frame_conditioning"]["custom_preprocessor"] == "center_x"
     assert "custom_preprocessor_transforms_y" not in manifest["training_spec"]
     assert "custom_preprocessor_prediction_scale" not in manifest["training_spec"]
 
@@ -539,7 +540,8 @@ def test_target_transformer_runs_autoreg_path_on_raw_forecast_scale(tmp_path: Pa
         .run(output_root=tmp_path, local_raw_source=FIXTURE_RAW)
     )
     manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
-    assert manifest["training_spec"]["target_transformer"] == "standardize_target"
+    assert "target_transformer" not in manifest["training_spec"]
+    assert manifest["layer2_representation_spec"]["target_representation"]["target_transformer"] == "standardize_target"
     assert manifest["target_transformer"]["name"] == "standardize_target"
     assert manifest["target_transformer"]["forecast_scale"] == "raw"
     assert manifest["target_transformer"]["evaluation_scale"] == "raw"
@@ -595,7 +597,8 @@ def test_target_transformer_runs_raw_panel_on_raw_forecast_scale(tmp_path: Path)
         .run(output_root=tmp_path, local_raw_source=FIXTURE_RAW)
     )
     manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
-    assert manifest["training_spec"]["target_transformer"] == "identity_target"
+    assert "target_transformer" not in manifest["training_spec"]
+    assert manifest["layer2_representation_spec"]["target_representation"]["target_transformer"] == "identity_target"
     assert manifest["target_transformer"]["runtime"] == "raw_panel_v1"
     predictions = pd.read_csv(Path(result.artifact_dir) / "predictions.csv")
     assert set(predictions["target_transformer"]) == {"identity_target"}

@@ -38,7 +38,7 @@ describes the registry layer after migration.
 | `preprocess_order=tcode_only` | 2_preprocessing | compatibility bridge | Official-only order is represented by Layer 1 `official_transform_policy=dataset_tcode`; extra orders remain Layer 2. |
 | `y_lag_count` | 3_training | split in provenance | AR model-order selection remains Layer 3 for now; fixed target-lag feature construction is recorded with Layer 2 `target_lag_selection` / `target_lag_block` provenance and now executes through the explicit target-lag block path when available. |
 | `factor_ar_lags` leaf/training config | 3_training config | split in provenance | Legacy runtime key remains accepted; target-lag feature count next to factor blocks is recorded as Layer 2 `target_lag_count` provenance. |
-| Layer 2 fields still emitted in `training_spec` | 3_training-shaped compatibility payload | 2_preprocessing / compatibility aliases | New generated specs should prefer `layer2_representation_spec` for `data_richness_mode`, `factor_count`, `target_lag_selection`, `target_lag_count`, `custom_preprocessor`, and `target_transformer`; old `training_spec` fields remain accepted until runtime readers are fully block-first. |
+| Layer 2 fields still emitted in `training_spec` | 3_training-shaped compatibility payload | 2_preprocessing / compatibility aliases | First cleanup pass moved `data_richness_mode`, `target_lag_selection`, `target_lag_count`, `custom_preprocessor`, and `target_transformer` into `layer2_representation_spec` for newly compiled specs. `factor_count` and `factor_ar_lags` remain in `training_spec` until factor runtimes read Layer 2 metadata first. |
 | Layer 3 fields still mirrored in `data_task_spec` | 1_data_task-shaped compatibility payload | 3_training | `forecast_type` and `forecast_object` are forecast-generator choices; generated recipes should keep them in Layer 3 while compiled specs may mirror them for old runtime paths. |
 
 ## Feature-Block Grammar Introduced
@@ -91,6 +91,9 @@ tests.
 - Layer 2 cleanup is closed for supported fixed full/runtime slices. Generic
   `Z` unification is a Layer 2 representation-handoff task, while Layer 3 stays
   a forecast-generator consumer. The current cleanup frontier is making that
-  Layer 3 boundary explicit: new code should keep estimator/training/tuning in
-  Layer 3 and keep representation choices in Layer 2, with old `training_spec`
-  fields retained only as compatibility aliases.
+  Layer 3 boundary explicit. The first implementation pass now writes
+  target-lag and custom-hook Layer 2 choices into
+  `layer2_representation_spec`; old `training_spec` readers remain as
+  compatibility fallbacks. Remaining implementation debt is
+  `factor_count` / `factor_ar_lags` runtime migration and the Layer 3
+  capability matrix.

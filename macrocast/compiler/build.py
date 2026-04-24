@@ -1129,7 +1129,6 @@ def _target_lag_selection_value(
 
 def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     framework = _first_selected_value(selection_map, "framework", "expanding")
-    feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     model_family = _first_selected_value(selection_map, "model_family", "ar")
     training_cfg = dict(leaf_config.get("training_config", {}))
     custom_preprocessor = _selection_value(selection_map, "custom_preprocessor", default="none")
@@ -1143,7 +1142,7 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
         "y_lag_count",
         default=_legacy_y_lag_count_default(selection_map, model_family=model_family),
     )
-    target_lag_selection = _target_lag_selection_value(
+    _target_lag_selection_value(
         selection_map,
         legacy_y_lag_count=str(legacy_y_lag_count),
     )
@@ -1153,11 +1152,10 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
                 "training_config.target_lag_count and legacy training_config.factor_ar_lags "
                 "must match when both are supplied"
             )
-    target_lag_count = training_cfg.get("target_lag_count", training_cfg.get("factor_ar_lags", 1))
+    legacy_factor_ar_lags = training_cfg.get("factor_ar_lags", training_cfg.get("target_lag_count", 1))
     return {
         "outer_window": _selection_value(selection_map, "outer_window", default=framework),
         "refit_policy": _selection_value(selection_map, "refit_policy", default="refit_every_step"),
-        "data_richness_mode": _selection_value(selection_map, "data_richness_mode", default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "full_high_dimensional_X")),
         "sequence_framework": _selection_value(selection_map, "sequence_framework", default="not_sequence"),
         "horizon_modelization": _selection_value(selection_map, "horizon_modelization", default="separate_model_per_h"),
         "validation_size_rule": _selection_value(selection_map, "validation_size_rule", default="ratio"),
@@ -1174,8 +1172,6 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
         "early_stopping": _selection_value(selection_map, "early_stopping", default="none"),
         "convergence_handling": _selection_value(selection_map, "convergence_handling", default="mark_fail"),
         "y_lag_count": legacy_y_lag_count,
-        "target_lag_selection": target_lag_selection,
-        "target_lag_count": target_lag_count,
         "factor_count": _selection_value(selection_map, "factor_count", default="fixed"),
         "lookback": _selection_value(selection_map, "lookback", default="fixed_lookback"),
         "logging_level": _selection_value(selection_map, "logging_level", default="silent"),
@@ -1195,14 +1191,9 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
         "embargo_gap_size": training_cfg.get("embargo_gap_size", 0),
         "fixed_factor_count": training_cfg.get("fixed_factor_count", 3),
         "max_factors": training_cfg.get("max_factors", 5),
-        "factor_ar_lags": training_cfg.get("factor_ar_lags", target_lag_count),
+        "factor_ar_lags": legacy_factor_ar_lags,
         "refit_k_steps": training_cfg.get("refit_k_steps", 3),
         "anchored_max_window_size": training_cfg.get("anchored_max_window_size", 60),
-        "custom_preprocessor": custom_preprocessor,
-        "target_transformer": target_transformer,
-        "target_transformer_model_scale": "transformed" if target_transformer != "none" else "raw",
-        "target_transformer_forecast_scale": "raw",
-        "target_transformer_evaluation_scale": "raw",
         "random_seed": leaf_config.get("random_seed", 42),
     }
 
@@ -1865,9 +1856,16 @@ def _layer2_representation_spec(
 ) -> dict[str, Any]:
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     predictor_family = data_task_spec.get("predictor_family", "target_lags_only")
-    data_richness_mode = training_spec.get("data_richness_mode", "target_lags_only")
+    data_richness_mode = _selection_value(
+        selection_map,
+        "data_richness_mode",
+        default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "full_high_dimensional_X"),
+    )
     y_lag_count = training_spec.get("y_lag_count", "fixed")
-    target_lag_selection = training_spec.get("target_lag_selection", _target_lag_selection_from_legacy_y_lag_count(str(y_lag_count)))
+    target_lag_selection = _target_lag_selection_value(
+        selection_map,
+        legacy_y_lag_count=str(y_lag_count),
+    )
     if "target_lag_selection" in selection_map:
         target_lag_selection_source_axis = "target_lag_selection"
         target_lag_selection_source_value = target_lag_selection
@@ -1877,11 +1875,14 @@ def _layer2_representation_spec(
     else:
         target_lag_selection_source_axis = "y_lag_count"
         target_lag_selection_source_value = y_lag_count
-    target_lag_count = training_spec.get("target_lag_count", training_spec.get("factor_ar_lags", 1))
-    target_lag_count_source = "target_lag_count" if "target_lag_count" in dict(leaf_config.get("training_config", {})) else "factor_ar_lags"
+    training_cfg = dict(leaf_config.get("training_config", {}) or {})
+    target_lag_count = training_cfg.get("target_lag_count", training_cfg.get("factor_ar_lags", training_spec.get("factor_ar_lags", 1)))
+    target_lag_count_source = "target_lag_count" if "target_lag_count" in training_cfg else "factor_ar_lags"
     x_lag_creation = getattr(preprocess_contract, "x_lag_creation", "no_x_lags")
     dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
     horizon_target_construction = data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h")
+    custom_preprocessor = _selection_value(selection_map, "custom_preprocessor", default="none")
+    target_transformer = _selection_value(selection_map, "target_transformer", default="none")
     horizons = tuple(int(h) for h in leaf_config.get("horizons", [1]))
     path_average_protocol = _path_average_protocols_for_horizons(str(horizon_target_construction), horizons)
     explicit_factor_feature_block = _factor_feature_block_value(selection_map)
@@ -1930,12 +1931,12 @@ def _layer2_representation_spec(
             "target_domain": getattr(preprocess_contract, "target_domain", "unconstrained"),
             "target_missing_policy": getattr(preprocess_contract, "target_missing_policy", "none"),
             "target_outlier_policy": getattr(preprocess_contract, "target_outlier_policy", "none"),
-            "target_transformer": training_spec.get("target_transformer", "none"),
+            "target_transformer": target_transformer,
             "inverse_transform_policy": getattr(preprocess_contract, "inverse_transform_policy", "none"),
             "evaluation_scale": getattr(preprocess_contract, "evaluation_scale", "raw_level"),
             "target_scale_contract": build_target_scale_contract(
                 preprocess_contract,
-                target_transformer=str(training_spec.get("target_transformer", "none")),
+                target_transformer=str(target_transformer),
             ),
         },
         "feature_blocks": {
@@ -1973,6 +1974,7 @@ def _layer2_representation_spec(
             "dimensionality_reduction_policy": dimred,
             "feature_selection_policy": getattr(preprocess_contract, "feature_selection_policy", "none"),
             "feature_grouping": getattr(preprocess_contract, "feature_grouping", "none"),
+            "custom_preprocessor": custom_preprocessor,
             "preprocess_order": getattr(preprocess_contract, "preprocess_order", "none"),
             "preprocess_fit_scope": getattr(preprocess_contract, "preprocess_fit_scope", "not_applicable"),
             "separation_rule": _selection_value(selection_map, "separation_rule", default="strict_separation"),

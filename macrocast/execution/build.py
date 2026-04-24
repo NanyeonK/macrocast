@@ -3373,6 +3373,11 @@ def _run_ar_model_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, c
 def _target_transformer_name(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
+    layer2 = getattr(recipe, "layer2_representation_spec", {}) or {}
+    if isinstance(layer2, dict):
+        target_representation = layer2.get("target_representation", {})
+        if isinstance(target_representation, dict) and "target_transformer" in target_representation:
+            return str(target_representation.get("target_transformer", "none"))
     return str(recipe.training_spec.get("target_transformer", "none"))
 
 
@@ -3507,6 +3512,11 @@ def _inverse_target_transformer_prediction(
 def _custom_preprocessor_name(recipe: RecipeSpec | None) -> str:
     if recipe is None:
         return "none"
+    layer2 = getattr(recipe, "layer2_representation_spec", {}) or {}
+    if isinstance(layer2, dict):
+        frame_conditioning = layer2.get("frame_conditioning", {})
+        if isinstance(frame_conditioning, dict) and "custom_preprocessor" in frame_conditioning:
+            return str(frame_conditioning.get("custom_preprocessor", "none"))
     return str(recipe.training_spec.get("custom_preprocessor", "none"))
 
 

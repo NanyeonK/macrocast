@@ -125,11 +125,15 @@ The docs and runtime now mostly follow this split:
 
 The boundary is defined, but these cleanup items remain:
 
-- `training_spec` still carries Layer 2 compatibility fields such as
-  `data_richness_mode`, `factor_count`, `target_lag_selection`,
-  `target_lag_count`, `factor_ar_lags`, `custom_preprocessor`, and
-  `target_transformer`. New code should read canonical Layer 2 provenance
-  first and keep these only as legacy aliases.
+- The first `training_spec` cleanup pass moved `data_richness_mode`,
+  `target_lag_selection`, `target_lag_count`, `custom_preprocessor`, and
+  `target_transformer` out of newly generated `training_spec` and into
+  `layer2_representation_spec`. Runtime readers for custom preprocessors and
+  target transformers read Layer 2 metadata first, falling back to legacy
+  `training_spec` only for old recipes.
+- `factor_count` and `factor_ar_lags` still remain in `training_spec` as
+  runtime compatibility debt because factor runtimes still consume those keys
+  directly.
 - `data_task_spec` still carries some migrated fields for compatibility, such
   as `forecast_type`, `forecast_object`, and
   `horizon_target_construction`. Compiler and docs should keep moving new

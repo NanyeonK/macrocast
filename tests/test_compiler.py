@@ -1391,8 +1391,8 @@ def test_layer2_target_lag_selection_axis_records_target_language_provenance() -
     }
     result = compile_recipe_dict(recipe)
     spec = result.manifest["layer2_representation_spec"]
-    assert result.manifest["training_spec"]["target_lag_selection"] == "fixed"
-    assert result.manifest["training_spec"]["target_lag_count"] == 2
+    assert "target_lag_selection" not in result.manifest["training_spec"]
+    assert "target_lag_count" not in result.manifest["training_spec"]
     assert result.manifest["training_spec"]["factor_ar_lags"] == 2
     assert spec["target_lag_config"] == {
         "selection": "fixed",
@@ -1457,8 +1457,10 @@ def test_layer2_explicit_target_lag_block_lowers_to_ar_bridge() -> None:
     result = compile_recipe_dict(recipe)
     assert result.compiled.execution_status == "executable"
     assert result.manifest["preprocess_contract"]["x_lag_creation"] == "no_x_lags"
-    assert result.manifest["training_spec"]["target_lag_selection"] == "fixed"
-    assert result.manifest["training_spec"]["target_lag_count"] == 2
+    assert "target_lag_selection" not in result.manifest["training_spec"]
+    assert "target_lag_count" not in result.manifest["training_spec"]
+    assert result.manifest["layer2_representation_spec"]["target_lag_config"]["selection"] == "fixed"
+    assert result.manifest["layer2_representation_spec"]["target_lag_config"]["count"] == 2
     assert result.manifest["benchmark_spec"]["max_ar_lag"] == 2
     blocks = result.manifest["layer2_representation_spec"]["feature_blocks"]
     assert blocks["target_lag_block"]["source_axis"] == "target_lag_block"
