@@ -267,6 +267,10 @@ runtime slice. Today that bundle is `Layer2Representation`, which carries:
 Supported direct raw-panel paths and supported autoregressive target-lag paths
 already enter Layer 3 through this same handoff shape. Sequence/tensor-style
 representations are future work and remain outside the current Layer 2 closure.
+The built-in raw-panel factor-model adapters (`pcr`, `pls`, and
+`factor_augmented_linear`) now also consume that handoff, so factor, rotation,
+level, temporal, and target-lag block composition is resolved before those
+models fit.
 
 The consumer contract is:
 

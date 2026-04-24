@@ -105,6 +105,9 @@ The docs and runtime now mostly follow this split:
   legacy `feature_builder` kept as fallback/provenance.
 - Supported raw-panel and autoregressive tabular paths now use the
   `Layer2Representation` handoff.
+- Built-in raw-panel factor-model adapters (`pcr`, `pls`, and
+  `factor_augmented_linear`) also consume the same `Layer2Representation`
+  bundle instead of rebuilding predictor frames beside Layer 2.
 - Registered custom Layer 3 models receive `custom_model_v1` context and Layer
   2 provenance.
 - The compiler validates important Layer 2 x Layer 3 incompatibilities, such
@@ -155,10 +158,10 @@ The boundary is defined, but these cleanup items remain:
   support is now represented in `layer3_capability_matrix`. The current matrix
   covers the operational tabular cells: target-lag-only iterated point models,
   raw-panel direct point models, and quantile-linear median/quantile outputs.
-- Built-in model executors still have separate autoreg/raw-panel wrappers.
-  They should gradually converge toward the same
-  `Layer2Representation -> forecast_payload` adapter shape used by custom
-  models.
+- Built-in model executors still have separate autoreg/raw-panel wrappers, but
+  supported sklearn, custom, and factor-model paths now attach
+  `Layer2Representation` metadata to their tuning payloads. Sequence/tensor
+  adapters remain outside this tabular handoff.
 
 ## Full Versus Simple
 

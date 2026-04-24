@@ -3685,6 +3685,7 @@ def _fit_autoreg_sklearn(train: pd.Series, recipe: RecipeSpec, model_family: str
         context_extra=representation.runtime_context(mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
+    tuning_payload = _merge_layer2_representation_payload(tuning_payload, representation)
     if _custom_preprocessor_spec(recipe) is not None:
         setattr(fitted, "_macrocast_custom_preprocessor_recipe", recipe)
         setattr(fitted, "_macrocast_custom_preprocessor_X_train", representation.Z_train)
@@ -3705,14 +3706,8 @@ def _as_scalar_prediction(value, *, model_name: str) -> float:
     return float(flat[0])
 
 
-def _custom_model_tuning_payload(
-    representation: Layer2Representation,
-    *,
-    model_name: str,
-) -> dict[str, object]:
+def _layer2_representation_tuning_payload(representation: Layer2Representation) -> dict[str, object]:
     payload: dict[str, object] = {
-        "custom_model": model_name,
-        "custom_model_contract": CUSTOM_MODEL_CONTRACT_VERSION,
         "feature_runtime_builder": representation.feature_runtime_builder,
         "legacy_feature_builder": representation.legacy_feature_builder,
         "feature_dispatch_source": representation.feature_dispatch_source,
@@ -3724,6 +3719,30 @@ def _custom_model_tuning_payload(
     }
     if representation.latest_fit_state is not None:
         payload["feature_representation_fit_state"] = representation.latest_fit_state
+    return payload
+
+
+def _merge_layer2_representation_payload(
+    tuning_payload: Mapping[str, object] | None,
+    representation: Layer2Representation,
+) -> dict[str, object]:
+    payload = dict(tuning_payload or {})
+    payload.update(_layer2_representation_tuning_payload(representation))
+    return payload
+
+
+def _custom_model_tuning_payload(
+    representation: Layer2Representation,
+    *,
+    model_name: str,
+) -> dict[str, object]:
+    payload = _layer2_representation_tuning_payload(representation)
+    payload.update(
+        {
+            "custom_model": model_name,
+            "custom_model_contract": CUSTOM_MODEL_CONTRACT_VERSION,
+        }
+    )
     return payload
 
 
@@ -3966,9 +3985,7 @@ def _fit_raw_panel_model(
         context_extra=representation.runtime_context(mode="fit"),
     )
     fitted, tuning_payload = fit_with_optional_tuning(model_family, X_fit, y_fit, recipe.training_spec)
-    tuning_payload = dict(tuning_payload or {})
-    if representation.latest_fit_state is not None:
-        tuning_payload["feature_representation_fit_state"] = representation.latest_fit_state
+    tuning_payload = _merge_layer2_representation_payload(tuning_payload, representation)
     return representation, X_fit, y_fit, X_pred_fit, fitted, tuning_payload
 
 
@@ -4171,6 +4188,7 @@ def _run_pcr_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec
         _factor_runtime_training_spec(recipe),
         include_ar_lags=False,
     )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4185,6 +4203,7 @@ def _run_pls_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec
         _factor_runtime_training_spec(recipe),
         include_ar_lags=False,
     )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4199,6 +4218,7 @@ def _run_factor_augmented_linear_autoreg_executor(train: pd.Series, horizon: int
         _factor_runtime_training_spec(recipe),
         include_ar_lags=True,
     )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": lag_order, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4228,31 +4248,70 @@ def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recip
 
 def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
-    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
-    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
-    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
-    pred, _tp = fit_factor_model("pcr", X_train, y_train, X_pred, _factor_runtime_training_spec(recipe), include_ar_lags=False)
+    representation = _build_raw_panel_representation(
+        raw_frame,
+        recipe,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        target_window=train,
+    )
+    pred, _tp = fit_factor_model(
+        "pcr",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        _factor_runtime_training_spec(recipe),
+        include_ar_lags=False,
+    )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
-    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
-    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
-    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
-    pred, _tp = fit_factor_model("pls", X_train, y_train, X_pred, _factor_runtime_training_spec(recipe), include_ar_lags=False)
+    representation = _build_raw_panel_representation(
+        raw_frame,
+        recipe,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        target_window=train,
+    )
+    pred, _tp = fit_factor_model(
+        "pls",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        _factor_runtime_training_spec(recipe),
+        include_ar_lags=False,
+    )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
-    X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
-    y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
-    X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
-    pred, _tp = fit_factor_model("factor_augmented_linear", X_train, y_train, X_pred, _factor_runtime_training_spec(recipe), include_ar_lags=True)
+    representation = _build_raw_panel_representation(
+        raw_frame,
+        recipe,
+        horizon,
+        start_idx,
+        origin_idx,
+        contract,
+        target_window=train,
+    )
+    pred, _tp = fit_factor_model(
+        "factor_augmented_linear",
+        pd.DataFrame(representation.Z_train, columns=representation.feature_names),
+        representation.y_train,
+        pd.DataFrame(representation.Z_pred, columns=representation.feature_names),
+        _factor_runtime_training_spec(recipe),
+        include_ar_lags=True,
+    )
+    _tp = _merge_layer2_representation_payload(_tp, representation)
     return {"y_pred": pred, "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 

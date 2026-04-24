@@ -27,6 +27,7 @@ from macrocast.execution.build import (
     _lag_order,
     _model_spec,
     _raw_panel_feature_names,
+    _run_pcr_raw_panel_executor,
 )
 from macrocast.preprocessing.build import PreprocessContract
 
@@ -562,6 +563,42 @@ def test_raw_panel_representation_bundle_records_marx_then_factor_alignment():
     assert bundle.alignment["rotation_factor_semantics"] == "marx_then_factor"
     assert bundle.latest_fit_state["block"] == "pca_static_factors"
     assert all("__marx_ma_lag1_to_lag" in name for name in bundle.latest_fit_state["source_feature_names"])
+
+
+def test_factor_model_raw_panel_executor_uses_layer2_representation_bundle():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0, 17.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0, 5.5],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="pcr",
+        blocks={
+            "feature_block_set": {"value": "factor_blocks_only"},
+            "factor_feature_block": {"value": "pca_static_factors"},
+        },
+    )
+    recipe.data_task_spec = {"predictor_family": "all_macro_vars"}
+    recipe.training_spec = {"fixed_factor_count": 2}
+
+    output = _run_pcr_raw_panel_executor(
+        frame["target"].iloc[:5],
+        horizon=1,
+        recipe=recipe,
+        contract=_contract(),
+        raw_frame=frame,
+        origin_idx=4,
+        start_idx=0,
+    )
+
+    payload = output["tuning_payload"]
+    assert payload["feature_runtime_builder"] == "raw_feature_panel"
+    assert payload["feature_names"] == ["factor_1", "factor_2", "factor_3"]
+    assert payload["layer2_block_order"] == ["factor"]
+    assert payload["feature_representation_fit_state"]["block"] == "pca_static_factors"
 
 
 def test_importance_feature_names_use_representation_bundle_for_factor_path():
