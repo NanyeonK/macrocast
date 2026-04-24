@@ -72,13 +72,15 @@ def _recipe(**data_task_axes) -> dict:
 def test_contemporaneous_x_forbid_default_compiles() -> None:
     r = compile_recipe_dict(_recipe())
     assert r.compiled.execution_status == "executable"
-    assert r.manifest["data_task_spec"]["contemporaneous_x_rule"] == "forbid_contemporaneous"
+    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "forbid_contemporaneous"
+    assert "contemporaneous_x_rule" not in r.manifest["data_task_spec"]
 
 
 def test_contemporaneous_x_allow_compiles() -> None:
     r = compile_recipe_dict(_recipe(contemporaneous_x_rule="allow_contemporaneous"))
     assert r.compiled.execution_status == "executable"
-    assert r.manifest["data_task_spec"]["contemporaneous_x_rule"] == "allow_contemporaneous"
+    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "allow_contemporaneous"
+    assert "contemporaneous_x_rule" not in r.manifest["data_task_spec"]
 
 
 # ---------- release_lag_rule ----------
@@ -144,7 +146,9 @@ def test_raw_outlier_policy_compiles_with_optional_column_subset() -> None:
 def test_structural_break_presets_compile(value: str) -> None:
     r = compile_recipe_dict(_recipe(structural_break_segmentation=value))
     assert r.compiled.execution_status == "executable"
-    assert r.manifest["data_task_spec"]["structural_break_segmentation"] == value
+    block = r.manifest["layer2_representation_spec"]["feature_blocks"]["deterministic_feature_block"]
+    assert block["structural_break_segmentation"] == value
+    assert "structural_break_segmentation" not in r.manifest["data_task_spec"]
 
 
 

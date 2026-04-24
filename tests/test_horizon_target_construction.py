@@ -104,8 +104,8 @@ def _predictions(execution) -> pd.DataFrame:
 def test_horizon_target_construction_executes(construction: str, tmp_path: Path) -> None:
     execution = _run(construction, tmp_path)
     manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
-    # Compiler records the construction in the data_task spec
-    assert manifest["data_task_spec"]["horizon_target_construction"] == construction
+    assert manifest["layer2_representation_spec"]["target_representation"]["horizon_target_construction"] == construction
+    assert "horizon_target_construction" not in manifest["data_task_spec"]
 
 
 def test_build_direct_average_targets_aligns_to_origin_and_trails_missing() -> None:
@@ -291,6 +291,7 @@ def test_future_logdiff_changes_error_scale(tmp_path: Path) -> None:
 def test_legacy_future_level_y_alias_canonicalizes(tmp_path: Path) -> None:
     execution = _run("future_level_y_t_plus_h", tmp_path)
     manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
-    assert manifest["data_task_spec"]["horizon_target_construction"] == "future_target_level_t_plus_h"
+    assert manifest["layer2_representation_spec"]["target_representation"]["horizon_target_construction"] == "future_target_level_t_plus_h"
+    assert "horizon_target_construction" not in manifest["data_task_spec"]
     predictions = _predictions(execution)
     assert (predictions["horizon_target_construction"] == "future_target_level_t_plus_h").all()

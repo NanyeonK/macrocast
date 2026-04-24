@@ -35,7 +35,6 @@ registry axes are:
 - `raw_missing_policy`
 - `raw_outlier_policy`
 - `release_lag_rule`
-- `contemporaneous_x_rule`
 - `variable_universe`
 
 Target, targets, horizons, sample start/end, data vintage, and official
@@ -103,7 +102,8 @@ The following axes were moved out of Layer 1 ownership:
 - New compiled specs write `min_train_size`, `training_start_rule`, and
   `training_start_date` under `training_spec`; execution keeps old
   `data_task_spec` fallback for compatibility.
-- No Layer 1 change was needed in this pass.
+- New compiled specs write `horizon_target_construction` under
+  `layer2_representation_spec.target_representation`, not `data_task_spec`.
 
 ### 1.4 Benchmark & Predictor Universe
 
@@ -120,6 +120,11 @@ Kept values that require extra user inputs are now compile-time contracts:
 - `predictor_family=handpicked_set` requires `leaf_config.handpicked_columns`.
 - `predictor_family=category_based` requires `leaf_config.predictor_category_columns` and `leaf_config.predictor_category`.
 - `deterministic_components=break_dummies` requires `leaf_config.break_dates`.
+- New compiled specs write `predictor_family` and `contemporaneous_x_rule`
+  under `layer2_representation_spec.input_panel`.
+- New compiled specs write `deterministic_components` and
+  `structural_break_segmentation` under
+  `layer2_representation_spec.feature_blocks.deterministic_feature_block`.
 
 ### 1.5 Data Handling Policies
 

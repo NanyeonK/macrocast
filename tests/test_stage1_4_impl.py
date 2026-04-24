@@ -132,6 +132,8 @@ def test_predictor_family_compiles(value: str) -> None:
         recipe["path"]["1_data_task"]["leaf_config"]["handpicked_columns"] = ["RPI", "UNRATE"]
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable", f"{value}: blocked={r.manifest.get('blocked_reasons')}"
+    assert r.manifest["layer2_representation_spec"]["input_panel"]["predictor_family"] == value
+    assert "predictor_family" not in r.manifest["data_task_spec"]
 
 
 # ---------- variable_universe ----------
@@ -172,7 +174,9 @@ def test_deterministic_components_compile(value: str) -> None:
         recipe["path"]["1_data_task"]["leaf_config"]["break_dates"] = ["2008-09-01", "2020-03-01"]
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable", f"{value}: blocked={r.manifest.get('blocked_reasons')}"
-    assert r.manifest["data_task_spec"]["deterministic_components"] == value
+    block = r.manifest["layer2_representation_spec"]["feature_blocks"]["deterministic_feature_block"]
+    assert block["deterministic_components"] == value
+    assert "deterministic_components" not in r.manifest["data_task_spec"]
 
 
 def test_deterministic_augment_module_adds_expected_columns() -> None:

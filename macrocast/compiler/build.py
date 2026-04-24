@@ -1006,7 +1006,6 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     target_structure = _first_selected_value(selection_map, "target_structure", "single_target_point_forecast")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     information_set_type = _first_selected_value(selection_map, "information_set_type", "revised")
-    predictor_family_default = "target_lags_only" if feature_builder == "autoreg_lagged_target" else "all_macro_vars"
     custom_blocks = leaf_config.get("custom_feature_blocks") or {}
     if not isinstance(custom_blocks, dict):
         custom_blocks = {}
@@ -1019,11 +1018,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "official_transform_source": _official_transform_source_payload(selection_map),
         "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
         "information_set_type": information_set_type,
-        "horizon_target_construction": _selection_value(selection_map, "horizon_target_construction", default="future_target_level_t_plus_h"),
         "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
-        "predictor_family": _selection_value(selection_map, "predictor_family", default=predictor_family_default),
-        "contemporaneous_x_rule": _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous"),
-        "deterministic_components": _selection_value(selection_map, "deterministic_components", default="none"),
         "sample_start_date": leaf_config.get("sample_start_date"),
         "sample_end_date": leaf_config.get("sample_end_date"),
         # 1.4 variable_universe input channels
@@ -1061,7 +1056,6 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "sd_tcode_map_version": leaf_config.get("sd_tcode_map_version"),
         "sd_tcode_allowed_statuses": leaf_config.get("sd_tcode_allowed_statuses"),
         "oos_period": _selection_value(selection_map, "oos_period", default="all_oos_data"),
-        "structural_break_segmentation": _selection_value(selection_map, "structural_break_segmentation", default="none"),
         "missing_availability": _selection_value(selection_map, "missing_availability", default="zero_fill_before_start"),
         "raw_missing_policy": _selection_value(selection_map, "raw_missing_policy", default="preserve_raw_missing"),
         "raw_outlier_policy": _selection_value(selection_map, "raw_outlier_policy", default="preserve_raw_outliers"),
@@ -1853,6 +1847,23 @@ def _feature_block_combination_from_bridge(
     }
 
 
+def _deterministic_block_from_selection(
+    *,
+    deterministic_components: str,
+    structural_break_segmentation: str,
+    data_task_spec: Mapping[str, Any],
+) -> dict[str, Any]:
+    active = deterministic_components != "none" or structural_break_segmentation != "none"
+    return {
+        "value": "deterministic_features" if active else "none",
+        "deterministic_components": deterministic_components,
+        "structural_break_segmentation": structural_break_segmentation,
+        "break_dates": data_task_spec.get("break_dates"),
+        "runtime_status": "operational",
+        "source_axes": ["deterministic_components", "structural_break_segmentation"],
+    }
+
+
 def _feature_runtime_for_validation(
     selection_map: dict[str, AxisSelection],
     *,
@@ -1938,12 +1949,17 @@ def _layer2_representation_spec(
     training_spec: dict[str, Any],
 ) -> dict[str, Any]:
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
-    predictor_family = data_task_spec.get("predictor_family", "target_lags_only")
     data_richness_mode = _selection_value(
         selection_map,
         "data_richness_mode",
         default=("target_lags_only" if feature_builder == "autoreg_lagged_target" else "full_high_dimensional_X"),
     )
+    feature_runtime = _feature_runtime_for_validation(selection_map, fallback_feature_builder=str(feature_builder))
+    predictor_family_default = "target_lags_only" if feature_runtime == "autoreg_lagged_target" else "all_macro_vars"
+    predictor_family = _selection_value(selection_map, "predictor_family", default=predictor_family_default)
+    contemporaneous_x_rule = _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
+    deterministic_components = _selection_value(selection_map, "deterministic_components", default="none")
+    structural_break_segmentation = _selection_value(selection_map, "structural_break_segmentation", default="none")
     y_lag_count = training_spec.get("y_lag_count", "fixed")
     target_lag_selection = _target_lag_selection_value(
         selection_map,
@@ -1963,7 +1979,7 @@ def _layer2_representation_spec(
     factor_count_config = _factor_count_config(selection_map, leaf_config, training_spec)
     x_lag_creation = getattr(preprocess_contract, "x_lag_creation", "no_x_lags")
     dimred = getattr(preprocess_contract, "dimensionality_reduction_policy", "none")
-    horizon_target_construction = data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h")
+    horizon_target_construction = _selection_value(selection_map, "horizon_target_construction", default="future_target_level_t_plus_h")
     custom_preprocessor = _selection_value(selection_map, "custom_preprocessor", default="none")
     target_transformer = _selection_value(selection_map, "target_transformer", default="none")
     horizons = tuple(int(h) for h in leaf_config.get("horizons", [1]))
@@ -2023,6 +2039,10 @@ def _layer2_representation_spec(
                 target_transformer=str(target_transformer),
             ),
         },
+        "input_panel": {
+            "predictor_family": predictor_family,
+            "contemporaneous_x_rule": contemporaneous_x_rule,
+        },
         "feature_blocks": {
             "feature_block_set": _feature_block_set_from_bridge(str(feature_builder), str(data_richness_mode)),
             "target_lag_block": target_lag_block,
@@ -2039,6 +2059,11 @@ def _layer2_representation_spec(
                 rotation_feature_block=_selection_value(selection_map, "rotation_feature_block", default="none"),
             ),
             "level_feature_block": _level_block_from_selection(selection_map, data_task_spec),
+            "deterministic_feature_block": _deterministic_block_from_selection(
+                deterministic_components=str(deterministic_components),
+                structural_break_segmentation=str(structural_break_segmentation),
+                data_task_spec=data_task_spec,
+            ),
             "rotation_feature_block": _rotation_block_from_selection(selection_map, data_task_spec),
             "temporal_feature_block": _temporal_block_from_selection(selection_map, data_task_spec),
             "feature_block_combination": _feature_block_combination_from_bridge(
@@ -2052,6 +2077,7 @@ def _layer2_representation_spec(
             ),
         },
         "frame_conditioning": {
+            "contemporaneous_x_rule": contemporaneous_x_rule,
             "x_missing_policy": getattr(preprocess_contract, "x_missing_policy", "none"),
             "x_outlier_policy": getattr(preprocess_contract, "x_outlier_policy", "none"),
             "scaling_policy": getattr(preprocess_contract, "scaling_policy", "none"),

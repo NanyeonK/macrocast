@@ -142,8 +142,12 @@ The boundary is defined, but these cleanup items remain:
   `training_spec`: `forecast_type`, `forecast_object`, `min_train_size`,
   `training_start_rule`, and `training_start_date`. Runtime readers still
   fall back to old `data_task_spec` locations for compatibility.
-- `data_task_spec` still carries non-Layer-1 fields that belong to Layer 2 or
-  later cleanup passes, such as `horizon_target_construction`.
+- New compiled specs now emit the main Layer 2 target/input/deterministic
+  representation fields in `layer2_representation_spec`:
+  `horizon_target_construction`, `predictor_family`,
+  `contemporaneous_x_rule`, `deterministic_components`, and
+  `structural_break_segmentation`. Runtime readers still fall back to old
+  `data_task_spec` locations for compatibility.
 - `model_family` status is still value-level in the registry. The true
   capability is a matrix over `model_family`, Layer 2 feature runtime,
   `forecast_type`, and `forecast_object`.

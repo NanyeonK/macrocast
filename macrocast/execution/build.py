@@ -102,7 +102,6 @@ _PHASE3_DEFAULTS = {
     "raw_missing_policy": "preserve_raw_missing",
     "raw_outlier_policy": "preserve_raw_outliers",
     "variable_universe": "all_variables",
-    "structural_break_segmentation": "none",
     "separation_rule": "strict_separation",
 }
 _TRAINING_AXIS_DEFAULTS = {
@@ -1067,8 +1066,49 @@ def _benchmark_family(recipe: RecipeSpec) -> str:
     return str(_benchmark_spec(recipe)["benchmark_family"])
 
 
+def _layer2_spec(recipe: RecipeSpec | None) -> dict[str, object]:
+    if recipe is None:
+        return {}
+    spec = getattr(recipe, "layer2_representation_spec", {}) or {}
+    return dict(spec) if isinstance(spec, Mapping) else {}
+
+
+def _layer2_input_panel(recipe: RecipeSpec | None) -> dict[str, object]:
+    spec = _layer2_spec(recipe)
+    panel = spec.get("input_panel", {})
+    return dict(panel) if isinstance(panel, Mapping) else {}
+
+
+def _layer2_target_representation(recipe: RecipeSpec | None) -> dict[str, object]:
+    spec = _layer2_spec(recipe)
+    target = spec.get("target_representation", {})
+    return dict(target) if isinstance(target, Mapping) else {}
+
+
+def _layer2_deterministic_feature_block(recipe: RecipeSpec | None) -> dict[str, object]:
+    blocks = _layer2_feature_blocks(recipe)
+    block = blocks.get("deterministic_feature_block", {})
+    return dict(block) if isinstance(block, Mapping) else {}
+
+
+def _layer2_runtime_spec(recipe: RecipeSpec | None) -> dict[str, object]:
+    data_task_spec = dict(getattr(recipe, "data_task_spec", {}) or {}) if recipe is not None else {}
+    input_panel = _layer2_input_panel(recipe)
+    target_representation = _layer2_target_representation(recipe)
+    deterministic_block = _layer2_deterministic_feature_block(recipe)
+    for key in ("predictor_family", "contemporaneous_x_rule"):
+        if key in input_panel:
+            data_task_spec[key] = input_panel[key]
+    if "horizon_target_construction" in target_representation:
+        data_task_spec["horizon_target_construction"] = target_representation["horizon_target_construction"]
+    for key in ("deterministic_components", "structural_break_segmentation"):
+        if key in deterministic_block:
+            data_task_spec[key] = deterministic_block[key]
+    return data_task_spec
+
+
 def _predictor_family(recipe: RecipeSpec) -> str:
-    return str(recipe.data_task_spec.get("predictor_family", "all_macro_vars"))
+    return str(_layer2_runtime_spec(recipe).get("predictor_family", "all_macro_vars"))
 
 
 _STRUCTURAL_BREAK_PRESETS = {
@@ -2861,7 +2901,7 @@ def _raw_panel_feature_names(
         frame,
         target,
         predictor_family=_predictor_family(recipe),
-        spec=dict(recipe.data_task_spec),
+        spec=_layer2_runtime_spec(recipe),
     )
     base_names = tuple(names)
     if _x_lag_creation_for_feature_names(recipe) == "fixed_x_lags":
@@ -3104,7 +3144,7 @@ def _build_raw_panel_representation(
     target_window: pd.Series | None = None,
 ) -> Layer2Representation:
     fit_state: list[dict[str, object]] = []
-    spec = dict(recipe.data_task_spec)
+    spec = _layer2_runtime_spec(recipe)
     X_train, y_train, X_pred = _build_raw_panel_training_data(
         frame,
         recipe.target,
@@ -4188,7 +4228,7 @@ def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recip
 
 def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -4198,7 +4238,7 @@ def _run_pcr_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -4208,7 +4248,7 @@ def _run_pls_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSp
 
 def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=dict(recipe.data_task_spec))
+    predictors = _raw_panel_columns(raw_frame, recipe.target, predictor_family=_predictor_family(recipe), spec=_layer2_runtime_spec(recipe))
     X_train = raw_frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()
     y_train = raw_frame[recipe.target].iloc[start_idx + horizon : origin_idx + 1].to_numpy(dtype=float)
     X_pred = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
@@ -5873,7 +5913,7 @@ def _build_predictions(
     anchored_max_window_size = int(recipe.training_spec.get("anchored_max_window_size", rolling_window_size))
     refit_k_steps = int(recipe.training_spec.get("refit_k_steps", 3))
     _horizon_construction = _canonicalize_horizon_target_construction(
-        str(recipe.data_task_spec.get("horizon_target_construction", "future_target_level_t_plus_h"))
+        str(_layer2_runtime_spec(recipe).get("horizon_target_construction", "future_target_level_t_plus_h"))
     )
     _oos_period = str(recipe.data_task_spec.get("oos_period", "all_oos_data"))
 
@@ -6474,7 +6514,7 @@ def execute_recipe(
     _missing_avail = _data_task_axis(recipe, "missing_availability")
     _var_universe = _data_task_axis(recipe, "variable_universe")
     _min_train_axis = _training_axis(recipe, "min_train_size")
-    _break_seg = _data_task_axis(recipe, "structural_break_segmentation")
+    _break_seg = str(_layer2_runtime_spec(recipe).get("structural_break_segmentation", "none"))
     _separation = _data_task_axis(recipe, "separation_rule")
     raw_result = _apply_release_lag(raw_result, _release_lag, spec=dict(recipe.data_task_spec))
     raw_result = _apply_missing_availability(raw_result, _missing_avail, target=str(recipe.target) if getattr(recipe, 'target', None) else None, spec=dict(recipe.data_task_spec))

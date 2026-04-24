@@ -1133,7 +1133,15 @@ def test_compiled_manifest_records_stage1_data_task_defaults() -> None:
     assert "task" not in spec
     assert spec["information_set_type"] == "revised"
     assert "forecast_type" not in spec
+    assert "horizon_target_construction" not in spec
+    assert "predictor_family" not in spec
+    assert "contemporaneous_x_rule" not in spec
+    assert "deterministic_components" not in spec
+    assert "structural_break_segmentation" not in spec
     assert compile_result.manifest["training_spec"]["forecast_type"] == "iterated"  # dynamic default for autoreg_lagged_target
+    layer2 = compile_result.manifest["layer2_representation_spec"]
+    assert layer2["target_representation"]["horizon_target_construction"] == "future_target_level_t_plus_h"
+    assert layer2["input_panel"]["predictor_family"] == "target_lags_only"
 
 
 

@@ -49,8 +49,9 @@ Layer 2 owns four types of decisions.
 |---|---|---|
 | Frame conditioning | How are post-official-frame missing values, outliers, scaling, filters, and target transforms handled? | `x_missing_policy`, `x_outlier_policy`, `scaling_policy`, `additional_preprocessing`, `target_transform`, `target_transformer` |
 | Target representation | Which target scale or horizon target is handed to the forecast generator? | `horizon_target_construction`, `target_transform`, `target_normalization`, `target_transformer` |
+| Input panel | Which source columns and information timing feed `Z`? | `predictor_family`, `contemporaneous_x_rule` |
 | Feature-block construction | Which blocks are built from `H`, `X`, and target history before forecasting? | `feature_builder`, `x_lag_creation`, `dimensionality_reduction_policy`, `feature_selection_policy` |
-| Block composition | Which blocks are included in `Z`, and how are they concatenated or substituted? | `predictor_family`, `data_richness_mode`, `feature_grouping` |
+| Block composition | Which blocks are included in `Z`, and how are they concatenated or substituted? | `data_richness_mode`, `feature_grouping`, deterministic feature blocks |
 | Representation dimensions and leakage discipline | How many factors/lags/features are used, and where are transforms fit? | `factor_count`, `preprocess_fit_scope`, `separation_rule` |
 
 Layer 2 does not own model family, benchmark family, direct/iterated forecast
@@ -230,6 +231,12 @@ Layer 2 therefore owns the target representation choice:
 |---|---|---|
 | `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff`, `average_growth_1_to_h`, `average_difference_1_to_h`, `average_log_growth_1_to_h` | operational |
 | `horizon_target_construction` | `path_average_growth_1_to_h`, `path_average_difference_1_to_h`, `path_average_log_growth_1_to_h` | registry-only |
+
+New compiled specs record target construction in
+`layer2_representation_spec.target_representation`, input timing/column-family
+choices in `layer2_representation_spec.input_panel`, and deterministic feature
+choices in
+`layer2_representation_spec.feature_blocks.deterministic_feature_block`.
 
 Path-average target construction also requires Layer 3 support because the
 forecast generator must fit multiple stepwise models and aggregate their

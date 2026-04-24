@@ -9,6 +9,7 @@ from macrocast.execution.build import (
     _PHASE3_DEFAULTS,
     _TRAINING_AXIS_DEFAULTS,
     _data_task_axis,
+    _layer2_runtime_spec,
     _training_axis,
     _phase3_axis_consumption,
     _apply_release_lag,
@@ -251,7 +252,7 @@ def test_min_train_size_round_trip():
 
 def test_structural_break_segmentation_round_trip():
     r = _recipe_with(structural_break_segmentation='pre_post_covid')
-    assert _data_task_axis(r, 'structural_break_segmentation') == 'pre_post_covid'
+    assert _layer2_runtime_spec(r)['structural_break_segmentation'] == 'pre_post_covid'
 
 
 
