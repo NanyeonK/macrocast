@@ -88,7 +88,9 @@ tests.
 - Runtime dispatch reads explicit Layer 2 feature blocks first and keeps
   `feature_builder`, `predictor_family`, `data_richness_mode`, and
   `factor_count` from compiled specs as compatibility/provenance fields. The
-  registry layer records their canonical ownership as Layer 2.
+  registry layer records their canonical ownership as Layer 2. Explicit Layer 2
+  block recipes can omit the legacy `feature_builder` input; the compiler
+  derives the bridge internally for Stage 0 and old runtime dispatch.
 - Layer 2 cleanup is closed for supported fixed full/runtime slices. Generic
   `Z` unification is a Layer 2 representation-handoff task, while Layer 3 stays
   a forecast-generator consumer. The current cleanup frontier is making that

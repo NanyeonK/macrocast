@@ -272,6 +272,9 @@ provenance.
 Compiled manifests write `compatibility_source` as the preferred provenance key
 for old bridge values that were accepted as input. The older `source_bridge`
 manifest key remains as a compatibility alias for existing downstream readers.
+When explicit Layer 2 blocks are sufficient, new recipes may omit
+`feature_builder`; the compiler derives the old bridge value internally for
+Stage 0 route metadata and existing executor dispatch.
 
 ## Boundary Cases
 
@@ -301,7 +304,8 @@ The Layer 2 cleanup migration is complete for supported fixed full/runtime
 slices:
 
 1. The legacy `feature_builder` bridge remains operational as input
-   compatibility and provenance.
+   compatibility and provenance, but it is no longer required when explicit
+   Layer 2 blocks imply a supported runtime family.
 2. Compiled specs record feature-block provenance without changing unsupported
    runtime matrices.
 3. Fixed `target_lag_block` and fixed `x_lag_feature_block` execute through

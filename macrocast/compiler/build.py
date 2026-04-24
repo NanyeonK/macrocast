@@ -330,6 +330,74 @@ def _selection_map(selections: tuple[AxisSelection, ...]) -> dict[str, AxisSelec
     return {selection.axis_name: selection for selection in selections}
 
 
+def _selected_value_or_none(selection_map: dict[str, AxisSelection], axis_name: str) -> str | None:
+    selection = selection_map.get(axis_name)
+    if selection is None or len(selection.selected_values) != 1:
+        return None
+    return selection.selected_values[0]
+
+
+def _infer_feature_builder_bridge(selection_map: dict[str, AxisSelection]) -> str | None:
+    if "feature_builder" in selection_map:
+        return None
+    block_set = _selected_value_or_none(selection_map, "feature_block_set")
+    if block_set in {"target_lags_only"}:
+        return "autoreg_lagged_target"
+    if block_set in {"factors_plus_target_lags"}:
+        return "factors_plus_AR"
+    if block_set in {"factor_blocks_only"}:
+        return "factor_pca"
+    if block_set in {
+        "transformed_x",
+        "transformed_x_lags",
+        "high_dimensional_x",
+        "selected_sparse_x",
+        "level_augmented_x",
+        "rotation_augmented_x",
+        "mixed_blocks",
+        "custom_blocks",
+    }:
+        return "raw_feature_panel"
+
+    target_lag_block = _selected_value_or_none(selection_map, "target_lag_block")
+    factor_block = _selected_value_or_none(selection_map, "factor_feature_block")
+    raw_block_values = [
+        _selected_value_or_none(selection_map, "x_lag_feature_block"),
+        _selected_value_or_none(selection_map, "level_feature_block"),
+        _selected_value_or_none(selection_map, "temporal_feature_block"),
+        _selected_value_or_none(selection_map, "rotation_feature_block"),
+    ]
+    has_raw_block = any(value not in {None, "none"} for value in raw_block_values)
+    if factor_block not in {None, "none"} and target_lag_block not in {None, "none"}:
+        return "factors_plus_AR"
+    if factor_block not in {None, "none"}:
+        return "factor_pca"
+    if has_raw_block:
+        return "raw_feature_panel"
+    if target_lag_block not in {None, "none"}:
+        return "autoreg_lagged_target"
+    return None
+
+
+def _append_feature_builder_bridge_if_needed(
+    selections: tuple[AxisSelection, ...],
+    selection_map: dict[str, AxisSelection],
+) -> tuple[AxisSelection, ...]:
+    inferred = _infer_feature_builder_bridge(selection_map)
+    if inferred is None:
+        return selections
+    entry = get_axis_registry()["feature_builder"]
+    return selections + (
+        AxisSelection(
+            axis_name="feature_builder",
+            layer=entry.layer,
+            selection_mode="derived",
+            selected_values=(inferred,),
+            selected_status={inferred: entry.current_status.get(inferred, "operational")},
+        ),
+    )
+
+
 def _selection_value(selection_map: dict[str, AxisSelection], axis_name: str, default: str | None = None) -> str:
     if axis_name not in selection_map:
         if default is None:
@@ -2598,6 +2666,9 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     selections = _build_axis_selections(recipe_dict)
     _ensure_unique_axis_selections(selections)
     selection_map = _selection_map(selections)
+    selections = _append_feature_builder_bridge_if_needed(selections, selection_map)
+    _ensure_unique_axis_selections(selections)
+    selection_map = _selection_map(selections)
     required_axes = {"research_design", "dataset", "information_set_type", "target_structure", "framework", "benchmark_family", "model_family", "feature_builder"}
     missing_axes = sorted(axis for axis in required_axes if axis not in selection_map)
     if missing_axes:
@@ -2611,6 +2682,9 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
     derived_additions = _resolve_derived_axes(recipe_dict, selection_map, leaf_config)
     if derived_additions:
         selections = selections + tuple(derived_additions)
+        _ensure_unique_axis_selections(selections)
+        selection_map = _selection_map(selections)
+        selections = _append_feature_builder_bridge_if_needed(selections, selection_map)
         _ensure_unique_axis_selections(selections)
         selection_map = _selection_map(selections)
     target_structure_value = _target_structure(selection_map)
