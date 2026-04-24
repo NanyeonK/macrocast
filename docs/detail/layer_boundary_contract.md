@@ -103,6 +103,7 @@ accepted as a decomposition-plan alias.
 Owns all choices that generate forecasts:
 
 - model family
+- registered custom model
 - benchmark family
 - direct vs iterated forecast generation
 - forecast object, including mean/median/quantile
@@ -114,11 +115,32 @@ Owns all choices that generate forecasts:
 Benchmarks belong here because they produce forecasts.
 
 Layer 3 consumes `Z_train`/`Z_pred` from Layer 2 and fits/predicts with a model
-or benchmark. During migration, legacy recipe paths may still place
-`feature_builder`, `predictor_family`, `data_richness_mode`, and `factor_count`
-near training settings, but runtime dispatch should prefer the Layer 2 block
-spec when it is present. Their canonical ownership is Layer 2 because they
-define feature representation, not estimator behavior.
+or benchmark. Its canonical contract is:
+
+```text
+fit_predict(forecast_generator, Layer2Representation, training_spec) -> forecast_payload
+```
+
+Layer 3 may validate that a selected forecast generator can consume the Layer 2
+handoff, but it must not decide how `Z` was built. The following remain Layer 2
+facts even when old recipes pass them through training-shaped fields:
+
+- `feature_builder`, `predictor_family`, `data_richness_mode`, and
+  `factor_count`;
+- `target_lag_block`, `x_lag_feature_block`, `factor_feature_block`,
+  `level_feature_block`, `temporal_feature_block`, `rotation_feature_block`,
+  and `feature_block_combination`;
+- missing/outlier/scaling/selection/normalization choices that change model
+  inputs;
+- custom feature blocks and custom matrix preprocessors.
+
+The main split is fixed target-lag features versus AR order selection.
+`target_lag_block=fixed_target_lags` is Layer 2 feature construction. AR BIC
+lag selection is Layer 3 estimator behavior.
+
+During migration, legacy recipe paths may still place Layer 2 axes near
+training settings. Runtime dispatch should prefer the Layer 2 block spec when
+it is present, and keep old fields only as compatibility/provenance aliases.
 
 ## Layer 4: Evaluation
 

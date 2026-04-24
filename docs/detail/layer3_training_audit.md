@@ -1,134 +1,159 @@
-# Layer 3 Training Audit
+# Layer 3 Forecast Generator Boundary Audit
 
 Date: 2026-04-24
 
-Layer 3 is the forecast-generator layer. It consumes the feature matrix created
-by Layer 2 and produces forecasts.
+Layer 3 is the forecast-generator layer. It consumes the Layer 2
+representation handoff and produces forecasts. The Layer 0/1/2 migration makes
+this boundary stricter: Layer 3 no longer owns feature representation choices,
+target construction, official data treatment, or researcher preprocessing.
 
 ## Canonical Role
 
-Layer 3 owns estimator and training protocol choices:
+Layer 3 owns choices that determine how forecasts are generated after Layer 2
+has produced `Z_train`, `y_train`, and `Z_pred`:
 
-- model family;
-- benchmark family;
+- model family and registered custom model;
+- benchmark family and benchmark plugin execution;
 - direct versus iterated forecast generation;
-- forecast object, such as mean, median, or quantile;
-- training window, minimum training size, training-start rule, and refit policy;
-- model-order choices that are estimator behavior, such as AR lag selection;
+- forecast object, such as point mean, point median, or quantile;
+- training window, minimum training size, training-start rule, refit policy,
+  and lookback;
+- model-order choices that are estimator behavior, such as AR BIC lag
+  selection;
 - validation split, hyperparameter search, tuning objective, and tuning budget;
 - model seed, early stopping, convergence handling, cache, checkpointing, and
   execution backend.
 
-Layer 3 does not own the research feature representation grammar. It should
-receive the Layer 2 representation payload, then fit and predict.
-
-## Boundary With Layer 2
-
-Canonical Layer 2 ownership now includes:
-
-- `feature_builder`;
-- `predictor_family`;
-- `data_richness_mode`;
-- `factor_count`;
-- `feature_block_set`;
-- `target_lag_block`;
-- `x_lag_feature_block`;
-- `factor_feature_block`;
-- `level_feature_block`;
-- `rotation_feature_block`;
-- `temporal_feature_block`;
-- `feature_block_combination`.
-
-These axes decide how `H`, `X`, and target history become `Z`; they are not
-model estimator choices.
-
-Legacy runtime code still uses these names for executor dispatch. That is a
-compatibility shape, not the canonical boundary. Future implementation should
-split the current coarse names into explicit Layer 2 feature blocks, lower
-generic `Z` unification into Layer 2, and leave Layer 3 with only
-model/training execution.
-
-The detailed Layer 2 x Layer 3 sweep contract is in
-`layer2_layer3_sweep_contract.md`. That document is the operational reference
-for freely sweeping research representations with forecast generators.
-
-## Consumption Contract
-
-Layer 3 should consume the output of Layer 2 through the unified Layer 2
-representation interface:
+Layer 3's canonical consumer contract is:
 
 ```text
-fit(model_family, Z_train, y_train, Z_pred, training_spec) -> y_pred
+fit_predict(forecast_generator, layer2_representation, training_spec) -> forecast_payload
 ```
 
-The unification itself is not a Layer 3 ownership item. Layer 3 may validate
-that the selected forecast type and model family can consume the shape of `Z`,
-but it must not decide how `Z` was built. The following are Layer 2 facts, not
-Layer 3 facts:
+The current tabular runtime handoff is `Layer2Representation`, with
+`Z_train`, `y_train`, `Z_pred`, feature names, block order, block roles,
+alignment, leakage contract, fit state, and runtime provenance.
 
-- whether target lags are included;
-- whether X lags are included;
-- whether PCA/static factors are included;
-- whether level add-backs are included;
-- whether temporal or rotation blocks are included;
-- whether X-side scaling, missing handling, outlier handling, or feature
-  selection was applied.
+## Non-Ownership
 
-Layer 3 owns how the estimator is fit on the supplied matrix:
+Layer 3 must not decide how the data or representation was built. These are
+not Layer 3 responsibilities:
 
-- direct versus iterated forecast-generation logic;
-- estimator family and estimator-specific hyperparameters;
-- validation split and search;
-- training window and refit policy;
-- convergence and failure handling;
-- model-order selection when the order is part of estimator behavior.
+- dataset/source/frequency/information-set decisions;
+- official transform policy, release-lag policy, raw-source missing/outlier
+  policy, or variable-universe selection;
+- horizon target construction formulas, such as future level, growth, or
+  path-average target formulas;
+- target/X post-frame transforms, missing imputation, outlier handling,
+  scaling, normalization, smoothing, feature selection, or dimensionality
+  reduction;
+- target-lag, X-lag, factor, level, temporal, rotation, deterministic, or
+  custom feature-block construction;
+- factor count when it is a representation dimension;
+- final `Z` block combination.
 
-The important split is target-lag feature construction versus AR model-order
-selection. `target_lag_block=fixed_target_lags` is a Layer 2 feature block. AR
-BIC lag selection is a Layer 3 estimator behavior. A direct ridge model with
-`target_lag_block=fixed_target_lags` is not an AR-BIC model; it is a direct
-ridge model whose `Z` contains target-history columns.
+Layer 3 may reject a selected representation when the chosen forecast generator
+cannot consume it. That is compatibility validation, not ownership of the
+representation.
 
-## Layer 2 x Layer 3 Sweeps
+## Boundary Splits
 
-The full grammar may sweep Layer 2 representation axes and Layer 3 training
-axes in the same study. The sweep runner expands the Cartesian product, then
-compiles each cell as a concrete recipe. This means all compatibility decisions
-are made after expansion, when both the representation and the forecast
-generator are known.
+### Target Lags Versus AR Order
 
-Layer 3 must therefore provide clear cell-level outcomes:
+`target_lag_block=fixed_target_lags` is Layer 2 feature construction. It means
+the final `Z` contains target-history columns. A direct ridge, lasso, or custom
+model can consume those columns without becoming an AR-BIC model.
 
-- `executable` when the selected model can consume the selected `Z`;
-- `not_supported` when the required runtime composer or forecast generator is
-  not implemented;
-- `blocked_by_incompatibility` when the combination is semantically invalid,
-  such as iterated raw-panel forecasting without an exogenous-X path contract.
+AR BIC lag selection is Layer 3 estimator behavior. It chooses model order
+inside the autoregressive forecast generator.
 
-The current important operational path is direct raw-panel forecasting over a
-generic 2-D `Z`. This now includes fixed target lags concatenated with raw X,
-fixed X lags, and static PCA factor scores. Autoregressive target-lag-only
-forecasting remains a separate iterated path until Layer 2 finishes unifying
-the representation handoff contract.
+### Target Construction Versus Forecast Generation
+
+Layer 2 owns the supervised target representation, including level, difference,
+growth, log growth, and path-average target formulas. Layer 3 owns the
+forecast-generation protocol used to estimate and predict that target. If a
+path-average target needs a multi-step execution protocol, the formula remains
+Layer 2 and the multi-step fit/prediction rule is Layer 3.
+
+### Target Scale Versus Forecast Object
+
+Layer 2 owns target transforms, target normalization, target transformer
+contracts, inverse-transform policy, and evaluation-scale provenance. Layer 3
+owns what the model is asked to output: point mean, point median, quantile, or
+future density/interval objects.
+
+### Feature Selection Versus Hyperparameter Search
+
+Layer 2 owns feature selection because it changes `Z`. Layer 3 owns
+hyperparameter search because it chooses estimator settings conditional on the
+given `Z`.
+
+### Benchmarks
+
+Benchmarks are Layer 3 because they generate forecasts. The official data frame
+and feature representation are still supplied by Layers 1 and 2. Benchmark
+scope and benchmark-window scoring details are evaluated later, but benchmark
+forecast generation belongs here.
+
+## Current Design State
+
+The docs and runtime now mostly follow this split:
+
+- Layer 2 owns `feature_builder`, `predictor_family`, `data_richness_mode`,
+  `factor_count`, and all feature-block axes.
+- Execution derives the runtime feature family from Layer 2 blocks first, with
+  legacy `feature_builder` kept as fallback/provenance.
+- Supported raw-panel and autoregressive tabular paths now use the
+  `Layer2Representation` handoff.
+- Registered custom Layer 3 models receive `custom_model_v1` context and Layer
+  2 provenance.
+- The compiler validates important Layer 2 x Layer 3 incompatibilities, such
+  as raw-panel `Z` with `model_family='ar'`, raw-panel iterated forecasting,
+  and quantile forecast objects with non-quantile models.
 
 ## Current Layer 3 Axes
-
-The canonical Layer 3 registry surface is:
 
 | Group | Axes |
 |---|---|
 | Forecast generator | `model_family`, `benchmark_family`, `forecast_type`, `forecast_object`, `horizon_modelization` |
 | Training window | `min_train_size`, `training_start_rule`, `outer_window`, `refit_policy`, `lookback` |
-| Model order | legacy `y_lag_count` for AR/model-order selection; target-lag feature construction is Layer 2 `target_lag_selection` / `target_lag_block` provenance |
+| Model order | `y_lag_count` for AR/model-order selection; fixed target-lag feature construction is Layer 2 provenance |
 | Validation/search | `validation_size_rule`, `validation_location`, `embargo_gap`, `split_family`, `shuffle_rule`, `alignment_fairness`, `search_algorithm`, `tuning_objective`, `tuning_budget`, `hp_space_style` |
 | Runtime discipline | `seed_policy`, `early_stopping`, `convergence_handling`, `logging_level`, `checkpointing`, `cache_policy`, `execution_backend` |
 
-## Compatibility Items
+## Compatibility Debt
 
-- `feature_builder`, `predictor_family`, `data_richness_mode`, and
-  `factor_count`: canonical Layer 2 feature-representation axes. Legacy paths
-  remain accepted as recipe/manifest compatibility and provenance, while
-  runtime dispatch uses Layer 2 block-derived feature runtime where supported.
-- `factor_ar_lags`: legacy runtime key remains accepted; target-lag feature
-  count next to factor blocks is recorded as Layer 2 `target_lag_count`
-  provenance, while model-specific lag-order selection remains Layer 3.
+The boundary is defined, but these cleanup items remain:
+
+- `training_spec` still carries Layer 2 compatibility fields such as
+  `data_richness_mode`, `factor_count`, `target_lag_selection`,
+  `target_lag_count`, `factor_ar_lags`, `custom_preprocessor`, and
+  `target_transformer`. New code should read canonical Layer 2 provenance
+  first and keep these only as legacy aliases.
+- `data_task_spec` still carries some migrated fields for compatibility, such
+  as `forecast_type`, `forecast_object`, and
+  `horizon_target_construction`. Compiler and docs should keep moving new
+  generated recipes toward the canonical owners.
+- `model_family` status is still value-level in the registry. The true
+  capability is a matrix over `model_family`, Layer 2 feature runtime,
+  `forecast_type`, and `forecast_object`.
+- Built-in model executors still have separate autoreg/raw-panel wrappers.
+  They should gradually converge toward the same
+  `Layer2Representation -> forecast_payload` adapter shape used by custom
+  models.
+
+## Full Versus Simple
+
+Full recipes may sweep Layer 2 representation axes and Layer 3 generator axes
+together. The full route is the right place to expose representation x model
+grids, invalid-cell pruning, and detailed per-cell provenance.
+
+The simple API remains narrower:
+
+- default single run;
+- model comparison over `model_family`;
+- fixed custom model;
+- fixed custom preprocessor or target transformer where runtime support exists.
+
+Simple representation/preprocessing sweeps should remain closed until full
+route naming, result summaries, and invalid-cell reporting are stable.

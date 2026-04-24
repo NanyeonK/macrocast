@@ -37,9 +37,11 @@ The directory names are legacy-compatible. The semantic ownership is:
 - Layer 2 changes the representation of the official frame for a study. It owns
   extra preprocessing after official dataset transforms and the construction of
   `Z_train`/`Z_pred` feature matrices.
-- Layer 3 generates forecasts. Benchmarks belong here because they are forecast
-  generators, not data definitions. It consumes feature matrices from Layer 2;
-  it does not own the feature representation grammar.
+- Layer 3 generates forecasts. Benchmarks and registered custom models belong
+  here because they are forecast generators, not data definitions. It consumes
+  the Layer 2 representation handoff (`Z_train`, `y_train`, `Z_pred`, feature
+  names, block metadata, and fit state); it does not own the feature
+  representation grammar.
 - Layer 4 scores forecasts. It should not fit models or transform data.
 - Layer 6 performs statistical inference over already-computed forecast errors.
 

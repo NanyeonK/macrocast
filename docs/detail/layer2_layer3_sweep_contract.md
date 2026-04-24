@@ -244,11 +244,16 @@ history contract for applying lag-polynomial rotations after factor extraction.
 
 ### Custom Blocks
 
-Custom blocks require a stricter contract than the existing broad
-`custom_preprocessor` hook. A custom block must return named train/pred frames,
-fit-state provenance, and leakage metadata. The broad custom preprocessor may
-remain as a fixed hook, but it should not be treated as a freely composable
-feature block until it satisfies the block contract.
+Custom feature blocks use `custom_feature_block_callable_v1`. A registered
+custom block must return named train/pred frames, feature names, runtime feature
+names, fit-state provenance, leakage metadata, and block provenance. Registered
+custom temporal, rotation, and factor blocks are executable through the Layer 2
+custom-block slots.
+
+The broad `custom_preprocessor` hook remains a post-representation matrix hook.
+It can be fixed in a recipe, but it should not be treated as a freely
+composable feature block unless it is expressed through the custom feature
+block contract.
 
 ## Layer 3 Obligations
 
@@ -317,10 +322,11 @@ These are the next semantic composer tasks:
 | Area | Why gated |
 |---|---|
 | Broader factor plus feature selection | Built-in factor blocks support `select_before_factor` and `select_after_factor`. Custom-block final-`Z` selection still needs explicit contracts. |
-| MARX plus X-lag/temporal append modes | Open for named-block append / concatenate. |
+| `factor_then_marx` | Need factor-score history and lag-polynomial rotation semantics after factor extraction. |
 | MAF rotation | Need factor-to-rotation composer and leakage metadata. |
-| Custom temporal/rotation blocks | Need block-local callable contract. |
-| Target normalization and inverse/evaluation scale | Need recursive fit/inverse state and metric-scale contract. |
+| Custom combiners | Need a contract for arbitrary final-block composition and stable feature naming. |
+| Custom-block final-`Z` selection | Need explicit selection provenance over user-created columns. |
+| Custom inverse policies | Need extension contracts beyond built-in target-scale and target-transformer policies. |
 | Iterated raw-panel forecasting | Need exogenous-X forecasting or scenario path contract. |
 
 ## Acceptance Tests
@@ -338,17 +344,16 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
 
 ## Implementation Roadmap
 
-1. Lower generic `Z` unification into Layer 2 by introducing one representation
-   payload contract for raw-panel, factor-panel, and target-lag-only builders.
-2. Keep Layer 3 as a thin consumer of that Layer 2 payload, with compatibility
-   checks limited to model family and forecast type.
-3. Open fixed target-lag composition with raw-panel and factor-panel direct
-   models. This is the current patch.
-4. Add feature-name and block-role artifacts for every `Z` column.
-5. Add full recipe examples for Layer 2 x Layer 3 grids.
-6. Add broader factor/selection composition semantics beyond static PCA.
-7. Execute remaining MARX composition modes beyond `marx_then_factor`; they are
-   already represented as gated composer modes in Layer 2 metadata.
-8. Add custom block callable contracts.
-9. Expose a safe simple-API representation sweep after the full-route contract
-   is stable.
+1. Keep Layer 3 as a thin consumer of the Layer 2 representation payload, with
+   compatibility checks limited to model family, forecast type, forecast
+   object, and runtime support.
+2. Remove Layer 2 compatibility fields from new `training_spec` generation
+   while preserving legacy aliases for old recipes and manifests.
+3. Add a capability matrix for `model_family x feature_runtime x forecast_type
+   x forecast_object`.
+4. Add full recipe examples for Layer 2 x Layer 3 grids.
+5. Execute remaining semantic composer contracts:
+   `factor_then_marx`, MAF rotation, custom combiners, custom-block final-`Z`
+   selection, and custom inverse policies.
+6. Expose safe simple-API representation sweeps only after the full-route
+   naming, result-summary, and invalid-cell reporting contracts are stable.

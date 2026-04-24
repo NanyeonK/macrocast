@@ -38,6 +38,8 @@ describes the registry layer after migration.
 | `preprocess_order=tcode_only` | 2_preprocessing | compatibility bridge | Official-only order is represented by Layer 1 `official_transform_policy=dataset_tcode`; extra orders remain Layer 2. |
 | `y_lag_count` | 3_training | split in provenance | AR model-order selection remains Layer 3 for now; fixed target-lag feature construction is recorded with Layer 2 `target_lag_selection` / `target_lag_block` provenance and now executes through the explicit target-lag block path when available. |
 | `factor_ar_lags` leaf/training config | 3_training config | split in provenance | Legacy runtime key remains accepted; target-lag feature count next to factor blocks is recorded as Layer 2 `target_lag_count` provenance. |
+| Layer 2 fields still emitted in `training_spec` | 3_training-shaped compatibility payload | 2_preprocessing / compatibility aliases | New generated specs should prefer `layer2_representation_spec` for `data_richness_mode`, `factor_count`, `target_lag_selection`, `target_lag_count`, `custom_preprocessor`, and `target_transformer`; old `training_spec` fields remain accepted until runtime readers are fully block-first. |
+| Layer 3 fields still mirrored in `data_task_spec` | 1_data_task-shaped compatibility payload | 3_training | `forecast_type` and `forecast_object` are forecast-generator choices; generated recipes should keep them in Layer 3 while compiled specs may mirror them for old runtime paths. |
 
 ## Feature-Block Grammar Introduced
 
@@ -52,10 +54,10 @@ tests.
 | `target_lag_block`, `target_lag_selection`, `x_lag_feature_block` | 2_preprocessing | `none` and fixed-lag values operational from explicit blocks first; fixed target lags can compose with raw-panel X blocks, fixed X lags, and static PCA factor blocks |
 | `factor_feature_block` | 2_preprocessing | `none` and `pca_static_factors` operational from explicit blocks first; `feature_selection_policy` can compose as `select_before_factor` or `select_after_factor` for the static-PCA slice |
 | `level_feature_block` | 2_preprocessing | all built-in values operational in raw-panel feature runtimes: `none`, `target_level_addback`, `x_level_addback`, `selected_level_addbacks`, and `level_growth_pairs` |
-| `temporal_feature_block` | 2_preprocessing | `none`, `moving_average_features`, `rolling_moments`, `local_temporal_factors`, and `volatility_features` operational in raw-panel feature runtimes; these deterministic append blocks can compose with fixed X lags and `moving_average_rotation`; supported static PCA factor composition is open through explicit composers; non-PCA or factor-of-augmented-panel semantics remain gated; `custom_temporal_features` remains registry-only under `custom_feature_block_callable_v1` |
-| `feature_block_set` | 2_preprocessing | `target_lags_only`, `transformed_x`, `transformed_x_lags`, `factor_blocks_only`, `factors_plus_target_lags`, `high_dimensional_x`, `selected_sparse_x`, `level_augmented_x`, and `rotation_augmented_x` are supported as provenance/runtime-dispatch inputs where their component blocks are executable; broader explicit joint/custom composition remains gated. |
-| `rotation_feature_block` | 2_preprocessing | `none`, `moving_average_rotation`, and `marx_rotation` operational in raw-panel feature runtimes; `moving_average_rotation` composes with fixed X lags and deterministic temporal append blocks; MARX replaces the X lag-polynomial basis and also supports `marx_then_factor` with static PCA factors, while X-lag/temporal append modes remain gated; MAF/custom rotations remain registry-only |
-| `feature_block_combination` | 2_preprocessing | registry-only |
+| `temporal_feature_block` | 2_preprocessing | `none`, `moving_average_features`, `rolling_moments`, `local_temporal_factors`, and `volatility_features` operational in raw-panel feature runtimes; these deterministic append blocks can compose with fixed X lags and `moving_average_rotation`; supported static PCA factor composition is open through explicit composers; registered `custom_temporal_features` are executable under `custom_feature_block_callable_v1`; custom-block final-`Z` selection remains gated. |
+| `feature_block_set` | 2_preprocessing | `target_lags_only`, `transformed_x`, `transformed_x_lags`, `factor_blocks_only`, `factors_plus_target_lags`, `high_dimensional_x`, `selected_sparse_x`, `level_augmented_x`, `rotation_augmented_x`, `mixed_blocks`, and `custom_blocks` are supported as provenance/runtime-dispatch inputs where their component blocks are executable; arbitrary custom combiners remain gated. |
+| `rotation_feature_block` | 2_preprocessing | `none`, `moving_average_rotation`, and `marx_rotation` operational in raw-panel feature runtimes; `moving_average_rotation` composes with fixed X lags and deterministic temporal append blocks; MARX replaces the X lag-polynomial basis, supports named-block append/concatenate with fixed X-lag and temporal blocks, and supports `marx_then_factor` with static PCA factors; `factor_then_marx`, MAF rotation, and unregistered custom rotations remain gated. |
+| `feature_block_combination` | 2_preprocessing | `replace_with_blocks`, `append_to_base_x`, `append_to_target_lags`, and `concatenate_named_blocks` are operational with compiler/runtime pruning; `custom_combiner` remains gated. |
 
 ## Compatibility Policy
 
@@ -86,9 +88,9 @@ tests.
   `feature_builder`, `predictor_family`, `data_richness_mode`, and
   `factor_count` from compiled specs as compatibility/provenance fields. The
   registry layer records their canonical ownership as Layer 2.
-- Layer 2 cleanup is closed for supported fixed full/runtime slices. The next
-  frontier is free Layer 2 x Layer 3 representation sweep support under
-  `layer2_layer3_sweep_contract.md`. Generic `Z` unification is treated as a
-  Layer 2 representation-handoff task, while Layer 3 stays a thin consumer;
-  remaining custom/sweep items are semantic feature-composer or API-governance
-  tasks, not bridge migration blockers.
+- Layer 2 cleanup is closed for supported fixed full/runtime slices. Generic
+  `Z` unification is a Layer 2 representation-handoff task, while Layer 3 stays
+  a forecast-generator consumer. The current cleanup frontier is making that
+  Layer 3 boundary explicit: new code should keep estimator/training/tuning in
+  Layer 3 and keep representation choices in Layer 2, with old `training_spec`
+  fields retained only as compatibility aliases.
