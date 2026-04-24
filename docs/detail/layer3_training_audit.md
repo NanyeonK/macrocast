@@ -30,6 +30,15 @@ Layer 3's canonical consumer contract is:
 fit_predict(forecast_generator, layer2_representation, training_spec) -> forecast_payload
 ```
 
+The runtime forecast payload contract is `forecast_payload_v1`:
+
+| Field | Meaning |
+|---|---|
+| `y_pred` | Scalar forecast on the model target scale. Inversion and metric-scale conversion happen after the payload is returned. |
+| `selected_lag` | Estimator-side lag/order selected or fixed by the forecast generator. Fixed target-lag columns already present in `Z` remain Layer 2 provenance. |
+| `selected_bic` | BIC value when BIC order selection is used; `NaN` for fixed-order or non-BIC generators. |
+| `tuning_payload` | Optional estimator/runtime metadata. Runtime coercion adds `forecast_payload_contract=forecast_payload_v1`. |
+
 The current tabular runtime handoff is `Layer2Representation`, with
 `Z_train`, `y_train`, `Z_pred`, feature names, block order, block roles,
 alignment, leakage contract, fit state, and runtime provenance.

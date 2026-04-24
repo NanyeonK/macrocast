@@ -48,7 +48,13 @@ from .lag_polynomial_rotation import (
 from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as _resolve_min_train_obs
 from .nber import filter_origins_by_regime as _filter_origins_by_regime
 from .deterministic import augment_array as _augment_deterministic_array
-from .types import ExecutionResult, ExecutionSpec, Layer2Representation
+from .types import (
+    FORECAST_PAYLOAD_CONTRACT_VERSION,
+    ExecutionResult,
+    ExecutionSpec,
+    ForecastPayload,
+    Layer2Representation,
+)
 from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
 from ..preprocessing import (
     PreprocessContract,
@@ -1487,6 +1493,39 @@ def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
         "max_ar_lag": _max_ar_lag(recipe),
         "custom_model": is_custom_model(model_family),
     }
+
+
+def _coerce_forecast_payload(output: Mapping[str, object] | ForecastPayload, *, executor_name: str) -> ForecastPayload:
+    if isinstance(output, ForecastPayload):
+        tuning_payload = dict(output.tuning_payload)
+        tuning_payload.setdefault("forecast_payload_contract", output.contract_version)
+        return ForecastPayload(
+            y_pred=float(output.y_pred),
+            selected_lag=int(output.selected_lag),
+            selected_bic=float(output.selected_bic),
+            tuning_payload=tuning_payload,
+            contract_version=output.contract_version,
+        )
+    if not isinstance(output, Mapping):
+        raise ExecutionError(
+            f"{executor_name} must return a {FORECAST_PAYLOAD_CONTRACT_VERSION} mapping or ForecastPayload; "
+            f"got {type(output).__name__}"
+        )
+    required = {"y_pred", "selected_lag", "selected_bic"}
+    missing = sorted(required.difference(output))
+    if missing:
+        raise ExecutionError(f"{executor_name} {FORECAST_PAYLOAD_CONTRACT_VERSION} missing required fields: {missing}")
+    tuning_payload = output.get("tuning_payload") or {}
+    if not isinstance(tuning_payload, Mapping):
+        raise ExecutionError(f"{executor_name} {FORECAST_PAYLOAD_CONTRACT_VERSION} tuning_payload must be a mapping")
+    tuning_payload = dict(tuning_payload)
+    tuning_payload.setdefault("forecast_payload_contract", FORECAST_PAYLOAD_CONTRACT_VERSION)
+    return ForecastPayload(
+        y_pred=float(output["y_pred"]),
+        selected_lag=int(output["selected_lag"]),
+        selected_bic=float(output["selected_bic"]),
+        tuning_payload=tuning_payload,
+    )
 
 
 def _get_model_executor(recipe: RecipeSpec):
@@ -6050,9 +6089,12 @@ def _build_predictions(
                 )
             else:
                 train_for_model, target_scale_state = _fit_target_normalization_for_window(train, contract)
-            model_output = model_executor(train_for_model, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx)
-            tuning_payload = model_output.get("tuning_payload") or None
-            y_pred_model_scale = float(model_output["y_pred"])
+            model_output = _coerce_forecast_payload(
+                model_executor(train_for_model, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx),
+                executor_name=str(model_spec["executor_name"]),
+            )
+            tuning_payload = model_output.tuning_payload or None
+            y_pred_model_scale = model_output.y_pred
             benchmark_pred_model_scale = float(benchmark_executor(train_for_model, horizon, recipe))
             y_true_transformed_scale = float(target_series.iloc[origin_idx + horizon])
             y_true_model_scale = (
@@ -6129,8 +6171,8 @@ def _build_predictions(
                 "origin_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
                 "target_date": target_series.index[origin_idx + horizon].strftime("%Y-%m-%d"),
                 "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
-                "selected_lag": int(model_output["selected_lag"]),
-                "selected_bic": float(model_output["selected_bic"]),
+                "selected_lag": model_output.selected_lag,
+                "selected_bic": model_output.selected_bic,
                 "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),
                 "train_end_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
                 "training_window_size": int(len(train)),
@@ -6682,6 +6724,9 @@ def execute_recipe(
     if provenance_payload:
         manifest.update(provenance_payload)
     feature_fit_state = _last_tp.get("feature_representation_fit_state") if isinstance(_last_tp, dict) else None
+    forecast_payload_contract = _last_tp.get("forecast_payload_contract") if isinstance(_last_tp, dict) else None
+    if forecast_payload_contract:
+        manifest["forecast_payload_contract"] = forecast_payload_contract
     if feature_fit_state:
         _write_json(run_dir / "feature_representation_fit_state.json", feature_fit_state)
         manifest["feature_representation_fit_state_file"] = "feature_representation_fit_state.json"

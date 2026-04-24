@@ -121,6 +121,11 @@ or benchmark. Its canonical contract is:
 fit_predict(forecast_generator, Layer2Representation, training_spec) -> forecast_payload
 ```
 
+`forecast_payload_v1` contains `y_pred`, `selected_lag`, `selected_bic`, and
+optional `tuning_payload`. The runtime coerces legacy executor dictionaries into
+this contract and records `forecast_payload_contract=forecast_payload_v1` in
+forecast metadata when available.
+
 Layer 3 may validate that a selected forecast generator can consume the Layer 2
 handoff, but it must not decide how `Z` was built. The following remain Layer 2
 facts even when old recipes pass them through training-shaped fields:

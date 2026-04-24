@@ -14,8 +14,11 @@ from macrocast import (
     custom_feature_block,
     custom_model,
     execute_recipe,
+    ExecutionError,
+    ForecastPayload,
 )
 from macrocast.preprocessing import FeatureBlockCallableResult
+from macrocast.execution.build import _coerce_forecast_payload
 
 
 def _stage0(
@@ -148,6 +151,31 @@ def test_build_execution_spec_with_importance_context() -> None:
     assert execution.recipe.stage0.fixed_design.sample_split == "rolling_window_oos"
 
 
+def test_forecast_payload_contract_coerces_executor_mapping() -> None:
+    payload = _coerce_forecast_payload(
+        {
+            "y_pred": "1.25",
+            "selected_lag": "2",
+            "selected_bic": "3.5",
+            "tuning_payload": {"source": "unit"},
+        },
+        executor_name="unit_executor",
+    )
+
+    assert isinstance(payload, ForecastPayload)
+    assert payload.y_pred == 1.25
+    assert payload.selected_lag == 2
+    assert payload.selected_bic == 3.5
+    assert payload.tuning_payload["source"] == "unit"
+    assert payload.tuning_payload["forecast_payload_contract"] == "forecast_payload_v1"
+    assert payload.to_dict()["contract_version"] == "forecast_payload_v1"
+
+
+def test_forecast_payload_contract_rejects_missing_fields() -> None:
+    with __import__("pytest").raises(ExecutionError, match="missing required fields"):
+        _coerce_forecast_payload({"y_pred": 1.0, "selected_lag": 1}, executor_name="bad_executor")
+
+
 def test_execute_recipe_writes_minimal_importance_artifact_for_ridge(tmp_path: Path) -> None:
     fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
     recipe = _recipe(benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5})
@@ -166,6 +194,7 @@ def test_execute_recipe_writes_minimal_importance_artifact_for_ridge(tmp_path: P
     importance = json.loads((run_dir / "importance_minimal.json").read_text())
 
     assert manifest["importance_spec"]["importance_method"] == "minimal_importance"
+    assert manifest["forecast_payload_contract"] == "forecast_payload_v1"
     assert manifest["importance_file"] == "importance_minimal.json"
     assert importance["importance_method"] == "minimal_importance"
     assert importance["model_family"] == "ridge"
