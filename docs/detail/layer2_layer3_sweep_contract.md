@@ -283,6 +283,13 @@ automatically make iterated exogenous-X forecasting possible. Direct raw-panel
 forecasting is operational; iterated raw-panel forecasting remains gated until
 there is an exogenous-X path forecast contract.
 
+The compiler now records these gates as `layer3_capability_matrix` in every
+new manifest. The matrix is not a Layer 2 representation spec. It is a Layer 3
+runtime support table over `model_family`, resolved Layer 2 `feature_runtime`,
+`forecast_type`, and `forecast_object`, plus an `active_cell` for the current
+recipe. Full sweep runners should use the same matrix to report or prune
+invalid Layer 2 x Layer 3 cells.
+
 ## Current Operational Sweep Surface
 
 The current runtime can sweep these Layer 2 choices in full recipes, subject to
@@ -353,8 +360,9 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
    factor-count configuration into `layer2_representation_spec`. The latest
    pass split legacy `factor_ar_lags` into explicit Layer 2 `target_lag_count`
    and factor-block `factor_lag_count` metadata for new compiled specs.
-3. Add a capability matrix for `model_family x feature_runtime x forecast_type
-   x forecast_object`.
+3. Extend the manifest `layer3_capability_matrix` from the current point and
+   quantile tabular cells to future direction, interval, density, and
+   sequence/tensor runtimes as those become executable.
 4. Add full recipe examples for Layer 2 x Layer 3 grids.
 5. Execute remaining semantic composer contracts:
    `factor_then_marx`, MAF rotation, custom combiners, custom-block final-`Z`

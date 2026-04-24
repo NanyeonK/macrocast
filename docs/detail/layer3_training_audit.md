@@ -110,6 +110,9 @@ The docs and runtime now mostly follow this split:
 - The compiler validates important Layer 2 x Layer 3 incompatibilities, such
   as raw-panel `Z` with `model_family='ar'`, raw-panel iterated forecasting,
   and quantile forecast objects with non-quantile models.
+- New compiled manifests include `layer3_capability_matrix`, which records the
+  active `model_family x feature_runtime x forecast_type x forecast_object`
+  cell and the same blocking reasons used by the compiler gate.
 
 ## Current Layer 3 Axes
 
@@ -148,9 +151,10 @@ The boundary is defined, but these cleanup items remain:
   `contemporaneous_x_rule`, `deterministic_components`, and
   `structural_break_segmentation`. Runtime readers still fall back to old
   `data_task_spec` locations for compatibility.
-- `model_family` status is still value-level in the registry. The true
-  capability is a matrix over `model_family`, Layer 2 feature runtime,
-  `forecast_type`, and `forecast_object`.
+- `model_family` status is still value-level in the registry, but runtime
+  support is now represented in `layer3_capability_matrix`. The current matrix
+  covers the operational tabular cells: target-lag-only iterated point models,
+  raw-panel direct point models, and quantile-linear median/quantile outputs.
 - Built-in model executors still have separate autoreg/raw-panel wrappers.
   They should gradually converge toward the same
   `Layer2Representation -> forecast_payload` adapter shape used by custom

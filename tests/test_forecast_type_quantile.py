@@ -89,6 +89,27 @@ def test_forecast_type_default_is_direct_for_raw_panel() -> None:
     assert r.manifest["training_spec"]["forecast_type"] == "direct"
     assert "forecast_type" not in r.manifest["data_task_spec"]
     assert r.compiled.execution_status == "executable"
+    matrix = r.manifest["layer3_capability_matrix"]
+    assert matrix["schema_version"] == "layer3_capability_matrix_v1"
+    assert matrix["active_cell"] == {
+        "model_family": "ridge",
+        "feature_builder": "raw_feature_panel",
+        "feature_runtime": "raw_feature_panel",
+        "forecast_type": "direct",
+        "forecast_object": "point_mean",
+        "runtime_status": "operational",
+        "blocked_reasons": [],
+    }
+
+
+def test_layer3_capability_matrix_records_model_runtime_block() -> None:
+    r = compile_recipe_dict(_recipe(feature_builder="raw_feature_panel", model_family="ar"))
+    assert r.compiled.execution_status == "blocked_by_incompatibility"
+    cell = r.manifest["layer3_capability_matrix"]["active_cell"]
+    assert cell["model_family"] == "ar"
+    assert cell["feature_runtime"] == "raw_feature_panel"
+    assert cell["runtime_status"] == "blocked_by_incompatibility"
+    assert cell["blocked_reasons"] == r.manifest["blocked_reasons"]
 
 
 def test_forecast_type_iterated_autoreg_executes(tmp_path: Path) -> None:
@@ -116,6 +137,8 @@ def test_forecast_type_iterated_raw_panel_blocked() -> None:
         "forecast_type='iterated' is not implemented for the raw-panel feature runtime" in r_msg
         for r_msg in r.manifest.get("blocked_reasons", [])
     )
+    assert r.manifest["layer3_capability_matrix"]["active_cell"]["runtime_status"] == "blocked_by_incompatibility"
+    assert r.manifest["layer3_capability_matrix"]["active_cell"]["blocked_reasons"] == r.manifest["blocked_reasons"]
 
 
 def test_forecast_type_direct_autoreg_blocked() -> None:

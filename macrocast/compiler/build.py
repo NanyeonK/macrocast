@@ -1189,7 +1189,7 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
     model_family = _first_selected_value(selection_map, "model_family", "ar")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
     feature_runtime = _feature_runtime_for_validation(selection_map, fallback_feature_builder=str(feature_builder))
-    forecast_type_default = "iterated" if feature_runtime == "autoreg_lagged_target" else "direct"
+    forecast_type_default = _layer3_forecast_type_default(feature_runtime)
     training_cfg = dict(leaf_config.get("training_config", {}))
     custom_preprocessor = _selection_value(selection_map, "custom_preprocessor", default="none")
     if custom_preprocessor != "none":
@@ -1968,6 +1968,111 @@ def _feature_runtime_for_validation(
     return fallback_feature_builder
 
 
+def _layer3_forecast_type_default(feature_runtime: str | None) -> str:
+    return "iterated" if feature_runtime == "autoreg_lagged_target" else "direct"
+
+
+def _layer3_capability_rejections(
+    *,
+    model_family: str | None,
+    feature_runtime: str | None,
+    forecast_type: str,
+    forecast_object: str,
+) -> tuple[str, ...]:
+    blocked: list[str] = []
+    if model_family == "ar" and feature_runtime == "raw_feature_panel":
+        blocked.append("raw_feature_panel is not compatible with model_family='ar' in the current runtime slice")
+    if model_family == "quantile_linear" and forecast_object not in {"point_median", "quantile"}:
+        blocked.append("model_family='quantile_linear' requires forecast_object='point_median' or 'quantile'")
+    if forecast_object in {"point_median", "quantile"} and model_family != "quantile_linear":
+        blocked.append(
+            f"forecast_object={forecast_object!r} requires model_family='quantile_linear' in the current runtime slice"
+        )
+    if feature_runtime == "raw_feature_panel" and forecast_type == "iterated":
+        blocked.append(
+            "forecast_type='iterated' is not implemented for the raw-panel feature runtime in v1.0 "
+            "(requires exogenous X forecasting)"
+        )
+    if feature_runtime == "autoreg_lagged_target" and forecast_type == "direct":
+        blocked.append(
+            "forecast_type='direct' is not implemented for the target-lag-only feature runtime in v1.0 "
+            "(the operational path is iterated); use forecast_type='iterated' or leave unset to take the dynamic default"
+        )
+    return tuple(blocked)
+
+
+def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
+    feature_builder = _selected_value_or_none(selection_map, "feature_builder")
+    model_family = _selected_value_or_none(selection_map, "model_family")
+    feature_runtime = _feature_runtime_for_validation(
+        selection_map,
+        fallback_feature_builder=feature_builder,
+    )
+    forecast_type = _selection_value(
+        selection_map,
+        "forecast_type",
+        default=_layer3_forecast_type_default(feature_runtime),
+    )
+    forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
+    blocked = _layer3_capability_rejections(
+        model_family=model_family,
+        feature_runtime=feature_runtime,
+        forecast_type=forecast_type,
+        forecast_object=forecast_object,
+    )
+    return {
+        "schema_version": "layer3_capability_matrix_v1",
+        "dimensions": ["model_family", "feature_runtime", "forecast_type", "forecast_object"],
+        "rules": {
+            "feature_runtime": {
+                "ar": {
+                    "operational": ["autoreg_lagged_target"],
+                    "blocked": {"raw_feature_panel": "AR runtime consumes target-lag-only representation"},
+                },
+                "default_non_ar": {
+                    "operational": ["raw_feature_panel", "autoreg_lagged_target"],
+                    "blocked": {},
+                },
+            },
+            "forecast_type": {
+                "autoreg_lagged_target": {
+                    "default": "iterated",
+                    "operational": ["iterated"],
+                    "blocked": {"direct": "direct target-lag-only runtime is not implemented"},
+                },
+                "raw_feature_panel": {
+                    "default": "direct",
+                    "operational": ["direct"],
+                    "blocked": {"iterated": "raw-panel iterated runtime requires exogenous X forecasting"},
+                },
+            },
+            "forecast_object": {
+                "point_mean": {
+                    "model_family": "any_non_quantile_linear",
+                    "runtime_status": "operational",
+                },
+                "point_median": {
+                    "model_family": "quantile_linear",
+                    "runtime_status": "operational",
+                },
+                "quantile": {
+                    "model_family": "quantile_linear",
+                    "runtime_status": "operational",
+                },
+            },
+        },
+        "active_cell": {
+            "model_family": model_family,
+            "feature_builder": feature_builder,
+            "feature_runtime": feature_runtime,
+            "forecast_type": forecast_type,
+            "forecast_object": forecast_object,
+            "runtime_status": "blocked_by_incompatibility" if blocked else "operational",
+            "blocked_reasons": list(blocked),
+        },
+    }
+
+
 def _compatibility_source_payload(
     *,
     feature_builder: str,
@@ -2364,30 +2469,26 @@ def _execution_status(
         selection_map,
         fallback_feature_builder=feature_builder,
     )
-    if model_family == "ar" and feature_runtime == "raw_feature_panel":
-        blocked.append("raw_feature_panel is not compatible with model_family='ar' in the current runtime slice")
+    forecast_type = _selection_value(
+        selection_map,
+        "forecast_type",
+        default=_layer3_forecast_type_default(feature_runtime),
+    )
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
-    if model_family == "quantile_linear" and forecast_object not in {"point_median", "quantile"}:
-        blocked.append("model_family='quantile_linear' requires forecast_object='point_median' or 'quantile'")
-    if forecast_object in {"point_median", "quantile"} and model_family != "quantile_linear":
-        blocked.append(
-            f"forecast_object={forecast_object!r} requires model_family='quantile_linear' in the current runtime slice"
+    blocked.extend(
+        _layer3_capability_rejections(
+            model_family=model_family,
+            feature_runtime=feature_runtime,
+            forecast_type=forecast_type,
+            forecast_object=forecast_object,
         )
+    )
 
     # 1.3 training_start_rule=fixed_start requires leaf_config.training_start_date
     if feature_builder is not None:
         _ts_rule = _selection_value(selection_map, "training_start_rule", default="earliest_possible")
         if _ts_rule == "fixed_start" and not leaf_config.get("training_start_date"):
             blocked.append("training_start_rule='fixed_start' requires leaf_config.training_start_date (ISO date string)")
-
-        # 1.2.2 forecast_type × feature_builder compatibility (v1.0)
-    if feature_runtime is not None:
-        forecast_type_default = "iterated" if feature_runtime == "autoreg_lagged_target" else "direct"
-        forecast_type = _selection_value(selection_map, "forecast_type", default=forecast_type_default)
-        if feature_runtime == "raw_feature_panel" and forecast_type == "iterated":
-            blocked.append("forecast_type='iterated' is not implemented for the raw-panel feature runtime in v1.0 (requires exogenous X forecasting)")
-        if feature_runtime == "autoreg_lagged_target" and forecast_type == "direct":
-            blocked.append("forecast_type='direct' is not implemented for the target-lag-only feature runtime in v1.0 (the operational path is iterated); use forecast_type='iterated' or leave unset to take the dynamic default")
 
     # 1.3 overlap_handling=evaluate_with_hac compatibility (v1.0)
     _overlap = _selection_value(selection_map, "overlap_handling", default="allow_overlap")
@@ -2791,6 +2892,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
         "data_task_spec": _data_task_spec(selection_map, compiled.leaf_config),
         "training_spec": _training_spec(selection_map, compiled.leaf_config),
         "layer2_representation_spec": dict(compiled.recipe_spec.layer2_representation_spec),
+        "layer3_capability_matrix": _layer3_capability_matrix(selection_map),
         "evaluation_spec": _evaluation_spec(selection_map, compiled.leaf_config),
         "stat_test_spec": {
             "stat_test": _selection_value(selection_map, "stat_test", default="none"),
