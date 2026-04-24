@@ -86,20 +86,19 @@ def test_dropped_value_is_rejected(axis: str, value: str) -> None:
         compile_recipe_dict(_base_recipe({axis: value}))
 
 
-# Values demoted to registry_only — compile succeeds but execution is gated.
-DEMOTED: tuple[tuple[str, str], ...] = (
+# Values promoted to operational Layer 3 stepwise execution.
+PROMOTED: tuple[tuple[str, str], ...] = (
     ("horizon_target_construction", "path_average_growth_1_to_h"),
     ("horizon_target_construction", "path_average_difference_1_to_h"),
     ("horizon_target_construction", "path_average_log_growth_1_to_h"),
 )
 
 
-@pytest.mark.parametrize("axis,value", DEMOTED)
-def test_demoted_value_is_not_supported(axis: str, value: str) -> None:
+@pytest.mark.parametrize("axis,value", PROMOTED)
+def test_promoted_value_is_executable(axis: str, value: str) -> None:
     recipe = _base_recipe({axis: value})
     result = compile_recipe_dict(recipe)
-    assert result.compiled.execution_status == "not_supported"
-    assert any("Layer 3 multi-step fit/aggregation" in warning for warning in result.compiled.warnings)
+    assert result.compiled.execution_status == "executable"
 
 
 @pytest.mark.parametrize(

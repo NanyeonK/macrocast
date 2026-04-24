@@ -236,7 +236,7 @@ Layer 2 therefore owns the target representation choice:
 | Axis | Values | Runtime status |
 |---|---|---|
 | `horizon_target_construction` | `future_target_level_t_plus_h`, `future_diff`, `future_logdiff`, `average_growth_1_to_h`, `average_difference_1_to_h`, `average_log_growth_1_to_h` | operational |
-| `horizon_target_construction` | `path_average_growth_1_to_h`, `path_average_difference_1_to_h`, `path_average_log_growth_1_to_h` | registry-only |
+| `horizon_target_construction` | `path_average_growth_1_to_h`, `path_average_difference_1_to_h`, `path_average_log_growth_1_to_h` | operational through Layer 3 stepwise execution |
 
 New compiled specs record target construction in
 `layer2_representation_spec.target_representation`, input timing/column-family
@@ -244,14 +244,12 @@ choices in `layer2_representation_spec.input_panel`, and deterministic feature
 choices in
 `layer2_representation_spec.feature_blocks.deterministic_feature_block`.
 
-Path-average target construction also requires Layer 3 support because the
-forecast generator must fit multiple stepwise models and aggregate their
-predictions. The target formula remains Layer 2; the multi-model forecast
-execution protocol remains Layer 3. The package therefore records a
-protocol-only `path_average_target_protocol_v1` payload for these choices:
-Layer 2 lists the stepwise target formulas and equal-weight aggregation rule,
-while the compiler keeps execution gated until Layer 3 can write per-step and
-aggregate forecast artifacts.
+Path-average target construction is split across Layer 2 and Layer 3. The
+target formula remains Layer 2: compiled specs record
+`path_average_target_protocol_v1`, including the stepwise target formulas and
+equal-weight aggregation rule. The multi-model execution protocol is Layer 3:
+runtime fits one forecast generator per step, writes `path_average_steps.csv`,
+and writes the horizon aggregate row to `predictions.csv`.
 
 ## Mapping From Existing Bridge Names
 

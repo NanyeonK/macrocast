@@ -310,8 +310,8 @@ executors and artifacts exist.
 
 ### Path-Average Execution
 
-Layer 2 already records `path_average_target_protocol_v1`. Layer 3 must add the
-multi-step execution runtime.
+Layer 2 records `path_average_target_protocol_v1`. Layer 3 executes that
+protocol for point forecasts through `path_average_stepwise_execution_v1`.
 
 Layer 2 responsibilities:
 
@@ -328,17 +328,19 @@ Layer 3 responsibilities:
 - aggregate step predictions into the horizon-level forecast object;
 - write per-step and aggregate artifacts.
 
-Proposed artifacts:
+Current artifacts:
 
 | Artifact | Meaning |
 |---|---|
 | `path_average_steps.csv` | One row per origin, step, model, and payload value. |
-| `path_average_summary.csv` | Horizon-level aggregate predictions. |
-| `path_average_manifest.json` | Step target specs, aggregation rule, payload contracts, and failures. |
-| `path_average_metrics.csv` | Metrics on requested transformed/original scales. |
+| `predictions.csv` | Horizon-level aggregate prediction rows with `path_average_runtime`, step count, aggregation rule, construction-scale metrics, and level-scale provenance. |
+| `manifest.json` | `path_average_step_rows`, optional `path_average_steps_file`, target protocol metadata, payload contract, and standard failure/provenance fields. |
+| `metrics.json` | Standard metrics computed on the aggregate path-average target scale plus original-level scale metrics. |
 
-Path-average execution should be implemented before raw-panel iterated
-forecasting because the Layer 2 target protocol already exists.
+Current point-forecast support covers autoregressive target-lag generators and
+supported tabular/raw-panel generators. It currently requires deterministic
+target scale contracts: `target_transform_policy='raw_level'`,
+`target_normalization='none'`, and no custom target transformer.
 
 ### Raw-Panel Iterated Forecasting
 
@@ -450,6 +452,7 @@ Acceptance:
 - path-average target constructions execute for supported tabular generators;
 - per-step payloads and aggregate payloads are recorded;
 - metrics are emitted on requested scales;
+- compiler registry marks path-average constructions operational;
 - failed step cells are auditable.
 
 ### Phase 3: Factor-To-Rotation Composers

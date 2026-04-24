@@ -219,13 +219,13 @@ Layer 3 responsibilities:
 
 Acceptance:
 
-- path-average values remain `registry_only` until both Layer 2 target specs and
-  Layer 3 multi-step execution are wired;
-- tests prove that Layer 2 can build the stepwise target specs without fitting
-  models;
-- compiler tests prove that manifests record the Layer 2 protocol and the Layer
-  3 execution gate. Runtime tests for per-step and aggregate artifacts belong to
-  the later Layer 3 implementation patch.
+- path-average values are operational once both Layer 2 target specs and Layer
+  3 stepwise execution are wired;
+- tests prove that Layer 2 can build the stepwise target specs;
+- compiler tests prove that manifests record the Layer 2 protocol and Layer 3
+  runtime contract;
+- runtime tests prove that per-step and aggregate artifacts are emitted for
+  autoregressive and raw-panel generators.
 
 ### Patch L2-E: Target-Lag And X-Lag Blocks
 
@@ -447,7 +447,7 @@ For feature-block patches, also test:
 | Compile-time provenance | done | Compiled and runtime manifests record `layer2_representation_spec`; runtime matrices are unchanged. |
 | Compatibility name cleanup | done | Added `target_lag_selection`, `target_lag_count`, and `factor_lag_count` metadata while keeping legacy `y_lag_count` / `factor_ar_lags` accepted for old recipes. New compiled specs no longer emit `factor_ar_lags` in `training_spec`. |
 | Direct target constructions | done | Direct average growth/difference/log-growth values compile and execute with construction-scale metrics plus level-scale preservation columns. |
-| Path-average target constructions | done, protocol-only | Layer 2 stepwise target protocol is recorded; execution remains gated until Layer 3 multi-step fit/aggregation lands. |
+| Path-average target constructions | done, executable for point forecasts | Layer 2 stepwise target protocol is recorded; Layer 3 executes stepwise fit/predict/aggregate and writes `path_average_steps.csv` plus aggregate `predictions.csv` rows. |
 | Explicit target/X lag blocks | done for fixed blocks | Fixed target-lag and fixed X-lag matrix composition now read `target_lag_block` / `x_lag_feature_block` before old bridge fields; fixed target-plus-X composition is executable in raw-panel direct runtimes. |
 | Factor/selection blocks | done for static PCA + explicit before/after semantics | PCA static-factor matrix composition now reads `factor_feature_block` before old factor/dimred bridges; `feature_selection_policy` can compose as `select_before_factor` or `select_after_factor` in the supported static-PCA slice. |
 | Level/rotation/temporal blocks | done for built-ins | Level blocks, deterministic temporal blocks, moving-average rotation, and MARX lag-polynomial rotation are executable for raw-panel builders; MAF/custom and semantic cross-block composition remain gated as future feature work. |
@@ -469,7 +469,7 @@ The remaining items in this file are not cleanup blockers:
 - unregistered custom temporal/rotation/factor blocks;
 - custom combiners and custom-block final-`Z` selection;
 - target-side custom inverse policies;
-- Layer 3 path-average multi-step execution;
+- interval/density/custom-transformer extensions for path-average execution;
 - sequence/tensor representation handoff;
 - public Layer 2 sweep exposure.
 

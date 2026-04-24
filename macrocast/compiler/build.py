@@ -94,10 +94,6 @@ _RAW_PANEL_FEATURE_BLOCK_SETS = {
     "mixed_blocks",
     "custom_blocks",
 }
-_PATH_AVERAGE_LAYER3_GATE = (
-    "path-average target construction has Layer 2 protocol metadata but requires "
-    "Layer 3 multi-step fit/aggregation runtime"
-)
 _MARX_COMPOSITION_MODES = {
     "operational": [
         "replace_lag_polynomial_basis",
@@ -2243,10 +2239,11 @@ def _path_average_protocols_for_horizons(construction: str, horizons: Sequence[i
     if not _is_path_average_construction(construction):
         return None
     return {
-        "runtime_effect": "protocol_only",
+        "runtime_effect": "layer3_stepwise_execution",
         "formula_owner": "2_preprocessing",
         "execution_owner": "3_training",
-        "layer3_gate": _PATH_AVERAGE_LAYER3_GATE,
+        "layer3_runtime": "operational",
+        "layer3_runtime_contract": "path_average_stepwise_execution_v1",
         "protocols_by_horizon": {
             str(int(horizon)): _build_path_average_target_protocol(construction, int(horizon))
             for horizon in horizons
@@ -2610,7 +2607,19 @@ def _execution_status(
         default="future_target_level_t_plus_h",
     )
     if _is_path_average_construction(str(horizon_target_construction)):
-        not_supported.append(_PATH_AVERAGE_LAYER3_GATE)
+        if str(getattr(preprocess_contract, "target_transform", "level")) != "level":
+            not_supported.append(
+                "path-average target construction currently requires target_transform_policy='raw_level'"
+            )
+        if str(getattr(preprocess_contract, "target_normalization", "none")) != "none":
+            not_supported.append(
+                "path-average target construction currently requires target_normalization='none'"
+            )
+        target_transformer = _selection_value(selection_map, "target_transformer", default="none")
+        if str(target_transformer) != "none":
+            not_supported.append(
+                "path-average target construction currently does not support custom target_transformer"
+            )
 
     if not is_operational_preprocess_contract(preprocess_contract):
         not_supported.append("preprocessing contract is not supported by the current runtime slice")

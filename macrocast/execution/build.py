@@ -37,9 +37,12 @@ from .seed_policy import (
     set_context,
 )
 from .horizon_target import (
+    build_path_average_step_target as _build_path_average_step_target,
     canonicalize_horizon_target_construction as _canonicalize_horizon_target_construction,
     construction_scale as _horizon_construction_scale,
     forward_scalar as _horizon_forward_scalar,
+    is_path_average_construction as _is_path_average_construction,
+    path_average_level_from_steps as _path_average_level_from_steps,
 )
 from .lag_polynomial_rotation import (
     build_marx_rotation_frame as _build_marx_rotation_frame,
@@ -4401,73 +4404,73 @@ def _run_elasticnet_raw_panel_executor(train: pd.Series, horizon: int, recipe: R
 
 def _run_randomforest_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "randomforest", RandomForestRegressor(n_estimators=200, random_state=current_seed(model_family="randomforest")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_bayesianridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "bayesianridge", BayesianRidge())
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "bayesianridge", BayesianRidge(), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_huber_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "huber", HuberRegressor())
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "huber", HuberRegressor(), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_adaptivelasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "adaptivelasso", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "adaptivelasso", None, target_window=train)
     return {"y_pred": float(predict_adaptive_lasso(model, X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_linear", LinearSVR(C=1.0, epsilon=0.01, max_iter=50000, random_state=current_seed(model_family="svr_linear")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_svr_rbf_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "svr_rbf", SVR(kernel="rbf", C=1.0, epsilon=0.01, gamma="scale"), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_extratrees_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "extratrees", ExtraTreesRegressor(n_estimators=200, random_state=current_seed(model_family="extratrees")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_gbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "gbm", GradientBoostingRegressor(random_state=current_seed(model_family="gbm")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_xgboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "xgboost", XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.05, subsample=1.0, colsample_bytree=1.0, random_state=current_seed(model_family="xgboost"), verbosity=0), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_lightgbm_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "lightgbm", LGBMRegressor(n_estimators=100, learning_rate=0.05, random_state=current_seed(model_family="lightgbm"), verbosity=-1), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_catboost_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "catboost", CatBoostRegressor(iterations=100, learning_rate=0.05, depth=4, verbose=False, random_seed=current_seed(model_family="catboost")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_mlp_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")))
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "mlp", MLPRegressor(hidden_layer_sizes=(32,), max_iter=500, random_state=current_seed(model_family="mlp")), target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4571,19 +4574,19 @@ def _run_quantile_linear_autoreg_executor(train: pd.Series, horizon: int, recipe
 
 def _run_componentwise_boosting_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "componentwise_boosting", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "componentwise_boosting", None, target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_ridge_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_ridge", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_ridge", None, target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
 def _run_boosting_lasso_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_lasso", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "boosting_lasso", None, target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -4658,7 +4661,7 @@ def _run_factor_augmented_linear_raw_panel_executor(train: pd.Series, horizon: i
 
 def _run_quantile_linear_raw_panel_executor(train: pd.Series, horizon: int, recipe: RecipeSpec, contract: PreprocessContract, raw_frame: pd.DataFrame | None = None, origin_idx: int | None = None, start_idx: int = 0) -> dict[str, float | int]:
     assert raw_frame is not None and origin_idx is not None
-    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "quantile_linear", None)
+    _, _, _, X_pred, model, _tp = _fit_raw_panel_model(raw_frame, recipe, horizon, start_idx, origin_idx, contract, "quantile_linear", None, target_window=train)
     return {"y_pred": float(model.predict(X_pred)[0]), "selected_lag": 0, "selected_bic": math.nan, "tuning_payload": _tp}
 
 
@@ -6315,6 +6318,20 @@ def _build_predictions(
     _horizon_construction = _canonicalize_horizon_target_construction(
         str(_layer2_runtime_spec(recipe).get("horizon_target_construction", "future_target_level_t_plus_h"))
     )
+    _is_path_average_target = _is_path_average_construction(_horizon_construction)
+    if _is_path_average_target and target_transformer_spec is not None:
+        raise ExecutionError(
+            "path-average target construction does not yet support custom target_transformer; "
+            "run it on deterministic target_transform_policy/target_normalization contracts"
+        )
+    if _is_path_average_target and str(getattr(contract, "target_transform", "level")) != "level":
+        raise ExecutionError(
+            "path-average target construction currently requires target_transform_policy='raw_level'"
+        )
+    if _is_path_average_target and str(getattr(contract, "target_normalization", "none")) != "none":
+        raise ExecutionError(
+            "path-average target construction currently requires target_normalization='none'"
+        )
     _oos_period = str(recipe.data_task_spec.get("oos_period", "all_oos_data"))
 
     # 1.3 training_start_rule=fixed_start: resolve the calendar date to an index floor
@@ -6372,7 +6389,177 @@ def _build_predictions(
             origin_plan = _filter_origins_by_regime(origin_plan, index=target_series.index, regime=_oos_period)
 
         # Stage 2 — compute each origin's row. Thread-pool when requested.
-        def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None]:
+        path_step_target = (
+            _build_path_average_step_target(target_series, 1, _horizon_construction)
+            if _is_path_average_target
+            else None
+        )
+
+        def _step_model_train_window(step: int, start_idx: int, effective_origin_idx: int) -> pd.Series:
+            assert path_step_target is not None
+            if feature_runtime_builder == "autoreg_lagged_target":
+                return path_step_target.iloc[start_idx + 1 : effective_origin_idx + 1].dropna()
+            return path_step_target.iloc[start_idx : effective_origin_idx + 1]
+
+        def _step_benchmark_train_window(start_idx: int, effective_origin_idx: int) -> pd.Series:
+            assert path_step_target is not None
+            return path_step_target.iloc[start_idx + 1 : effective_origin_idx + 1].dropna()
+
+        def _compute_path_average_origin(
+            origin_idx: int,
+            start_idx: int,
+            effective_origin_idx: int,
+        ) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]]]:
+            assert path_step_target is not None
+            origin_date = target_series.index[origin_idx]
+            target_date = target_series.index[origin_idx + horizon]
+            y_anchor = float(target_series.iloc[origin_idx])
+            selected_lags: list[int] = []
+            selected_bics: list[float] = []
+            y_pred_steps: list[float] = []
+            benchmark_steps: list[float] = []
+            y_true_steps: list[float] = []
+            step_rows: list[dict[str, object]] = []
+            tuning_payload: dict[str, object] | None = None
+            for step in range(1, horizon + 1):
+                train_for_model = _step_model_train_window(step, start_idx, effective_origin_idx)
+                train_for_benchmark = _step_benchmark_train_window(start_idx, effective_origin_idx)
+                if len(train_for_benchmark) < 2:
+                    raise ExecutionError("path-average step target has insufficient history for benchmark execution")
+                model_output = _coerce_forecast_payload(
+                    model_executor(train_for_model, step, recipe, contract, aligned_frame, effective_origin_idx, start_idx),
+                    executor_name=str(model_spec["executor_name"]),
+                )
+                if model_output.tuning_payload:
+                    tuning_payload = model_output.tuning_payload
+                y_pred_step = float(model_output.y_pred)
+                benchmark_step = float(benchmark_executor(train_for_benchmark, step, recipe))
+                y_true_step = float(path_step_target.iloc[origin_idx + step])
+                if not all(math.isfinite(value) for value in (y_pred_step, benchmark_step, y_true_step)):
+                    raise ExecutionError(
+                        "path-average step target produced non-finite prediction or realized value"
+                    )
+                y_pred_steps.append(y_pred_step)
+                benchmark_steps.append(benchmark_step)
+                y_true_steps.append(y_true_step)
+                selected_lags.append(int(model_output.selected_lag))
+                selected_bics.append(float(model_output.selected_bic))
+                step_rows.append(
+                    {
+                        "target": target_series.name,
+                        "model_name": model_spec["executor_name"],
+                        "benchmark_name": benchmark_family,
+                        "horizon": horizon,
+                        "step": step,
+                        "origin_date": origin_date.strftime("%Y-%m-%d"),
+                        "step_target_date": target_series.index[origin_idx + step].strftime("%Y-%m-%d"),
+                        "target_date": target_date.strftime("%Y-%m-%d"),
+                        "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
+                        "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),
+                        "train_end_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
+                        "training_window_size": int(len(train_for_benchmark)),
+                        "selected_lag": int(model_output.selected_lag),
+                        "selected_bic": float(model_output.selected_bic),
+                        "y_true_step": y_true_step,
+                        "y_pred_step": y_pred_step,
+                        "benchmark_pred_step": benchmark_step,
+                        "step_error": y_true_step - y_pred_step,
+                        "step_benchmark_error": y_true_step - benchmark_step,
+                        "horizon_target_construction": _horizon_construction,
+                        "target_construction_scale": _horizon_construction_scale(_horizon_construction),
+                        "path_average_runtime": "layer3_stepwise_equal_weight_v1",
+                    }
+                )
+            y_true = float(np.mean(y_true_steps))
+            y_pred = float(np.mean(y_pred_steps))
+            benchmark_pred = float(np.mean(benchmark_steps))
+            finite_bics = [value for value in selected_bics if math.isfinite(value)]
+            y_true_level = _path_average_level_from_steps(y_true_steps, y_anchor, _horizon_construction)
+            y_pred_level = _path_average_level_from_steps(y_pred_steps, y_anchor, _horizon_construction)
+            benchmark_pred_level = _path_average_level_from_steps(benchmark_steps, y_anchor, _horizon_construction)
+            y_true_original_scale = float(raw_target_series.loc[target_date])
+            y_pred_original_scale = _inverse_target_transform_scalar(
+                y_pred_level,
+                contract=contract,
+                raw_target_series=raw_target_series,
+                origin_date=origin_date,
+                target_date=target_date,
+                horizon=horizon,
+            )
+            benchmark_pred_original_scale = _inverse_target_transform_scalar(
+                benchmark_pred_level,
+                contract=contract,
+                raw_target_series=raw_target_series,
+                origin_date=origin_date,
+                target_date=target_date,
+                horizon=horizon,
+            )
+            error = y_true - y_pred
+            benchmark_error = y_true - benchmark_pred
+            row = {
+                "target": target_series.name,
+                "model_name": model_spec["executor_name"],
+                "benchmark_name": benchmark_family,
+                "horizon": horizon,
+                "origin_date": origin_date.strftime("%Y-%m-%d"),
+                "target_date": target_date.strftime("%Y-%m-%d"),
+                "fit_origin_date": target_series.index[effective_origin_idx].strftime("%Y-%m-%d"),
+                "selected_lag": int(max(selected_lags) if selected_lags else 0),
+                "selected_bic": float(np.mean(finite_bics)) if finite_bics else math.nan,
+                "train_start_date": target_series.index[start_idx].strftime("%Y-%m-%d"),
+                "train_end_date": target_series.index[origin_idx].strftime("%Y-%m-%d"),
+                "training_window_size": int(len(_step_benchmark_train_window(start_idx, effective_origin_idx))),
+                "y_true": y_true,
+                "y_pred": y_pred,
+                "benchmark_pred": benchmark_pred,
+                "y_true_model_scale": y_true,
+                "y_pred_model_scale": y_pred,
+                "benchmark_pred_model_scale": benchmark_pred,
+                "y_true_transformed_scale": y_true,
+                "y_pred_transformed_scale": y_pred,
+                "benchmark_pred_transformed_scale": benchmark_pred,
+                "y_true_original_scale": y_true_original_scale,
+                "y_pred_original_scale": y_pred_original_scale,
+                "benchmark_pred_original_scale": benchmark_pred_original_scale,
+                "target_transformer": "none",
+                "target_normalization": str(getattr(contract, "target_normalization", "none")),
+                "target_normalization_fit_scope": "not_applicable",
+                "target_normalization_params": json.dumps({}, sort_keys=True),
+                "model_target_scale": "path_average_step_target_scale",
+                "forecast_scale": _horizon_construction_scale(_horizon_construction),
+                "evaluation_scale": evaluation_scale,
+                "target_construction_scale": _horizon_construction_scale(_horizon_construction),
+                "error": error,
+                "abs_error": abs(error),
+                "squared_error": error**2,
+                "benchmark_error": benchmark_error,
+                "benchmark_abs_error": abs(benchmark_error),
+                "benchmark_squared_error": benchmark_error**2,
+                "model_scale_error": error,
+                "model_scale_benchmark_error": benchmark_error,
+                "transformed_scale_error": error,
+                "transformed_scale_benchmark_error": benchmark_error,
+                "transformed_scale_squared_error": error**2,
+                "transformed_scale_benchmark_squared_error": benchmark_error**2,
+                "original_scale_error": y_true_original_scale - y_pred_original_scale,
+                "original_scale_benchmark_error": y_true_original_scale - benchmark_pred_original_scale,
+                "original_scale_squared_error": (y_true_original_scale - y_pred_original_scale) ** 2,
+                "original_scale_benchmark_squared_error": (
+                    y_true_original_scale - benchmark_pred_original_scale
+                ) ** 2,
+                "horizon_target_construction": _horizon_construction,
+                "y_true_level": y_true_level,
+                "y_pred_level": y_pred_level,
+                "benchmark_pred_level": benchmark_pred_level,
+                "path_average_runtime": "layer3_stepwise_equal_weight_v1",
+                "path_average_step_count": horizon,
+                "path_average_aggregation_rule": "equal_weight_mean",
+            }
+            return row, tuning_payload, step_rows
+
+        def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]]]:
+            if _is_path_average_target:
+                return _compute_path_average_origin(origin_idx, start_idx, effective_origin_idx)
             train = target_series.iloc[start_idx : effective_origin_idx + 1]
             train_for_model = train
             target_scale_state: dict[str, object] = {
@@ -6529,39 +6716,50 @@ def _build_predictions(
                 "y_pred_level": y_pred_level,
                 "benchmark_pred_level": benchmark_pred_level,
             }
-            return row, tuning_payload
+            return row, tuning_payload, []
 
         horizon_rows: list[dict[str, object]] = []
+        horizon_step_rows: list[dict[str, object]] = []
         if compute_mode == "parallel_by_oos_date" and len(origin_plan) > 1:
             with ThreadPoolExecutor(max_workers=min(len(origin_plan), 4)) as ex:
                 futures = [ex.submit(_compute_origin, *item) for item in origin_plan]
                 for future in futures:
-                    row, tuning_payload = future.result()
+                    row, tuning_payload, step_rows = future.result()
                     horizon_rows.append(row)
+                    horizon_step_rows.extend(step_rows)
                     if tuning_payload:
                         last_tuning_payload = tuning_payload
         else:
             for item in origin_plan:
-                row, tuning_payload = _compute_origin(*item)
+                row, tuning_payload, step_rows = _compute_origin(*item)
                 horizon_rows.append(row)
+                horizon_step_rows.extend(step_rows)
                 if tuning_payload:
                     last_tuning_payload = tuning_payload
-        return horizon_rows
+        return horizon_rows, horizon_step_rows
 
     rows: list[dict[str, object]] = []
+    step_rows_all: list[dict[str, object]] = []
     if compute_mode == "parallel_by_horizon" and len(recipe.horizons) > 1:
         with ThreadPoolExecutor(max_workers=min(len(recipe.horizons), 4)) as ex:
             futures = [ex.submit(_rows_for_horizon, horizon) for horizon in recipe.horizons]
             for future in futures:
-                rows.extend(future.result())
+                horizon_rows, horizon_step_rows = future.result()
+                rows.extend(horizon_rows)
+                step_rows_all.extend(horizon_step_rows)
     else:
         for horizon in recipe.horizons:
-            rows.extend(_rows_for_horizon(horizon))
+            horizon_rows, horizon_step_rows = _rows_for_horizon(horizon)
+            rows.extend(horizon_rows)
+            step_rows_all.extend(horizon_step_rows)
 
     if not rows:
         raise ExecutionError("no forecast rows were produced for the requested horizons")
 
-    return pd.DataFrame(rows), last_tuning_payload
+    predictions = pd.DataFrame(rows)
+    if step_rows_all:
+        predictions.attrs["path_average_steps"] = pd.DataFrame(step_rows_all)
+    return predictions, last_tuning_payload
 
 
 def _scale_metric_summary(
@@ -6924,6 +7122,7 @@ def execute_recipe(
     raw_result = _apply_variable_universe(raw_result, _var_universe, spec=dict(recipe.data_task_spec), target=str(recipe.target) if getattr(recipe, 'target', None) else None)
     targets = _recipe_targets(recipe)
     prediction_frames = []
+    path_average_step_frames = []
     failed_components: list[dict[str, object]] = []
     successful_targets: list[str] = []
     target_series = None
@@ -6933,16 +7132,19 @@ def execute_recipe(
         target_series_local = _get_target_series(raw_result.data, target, _minimum_train_size(target_recipe))
         target_series_local = _apply_target_transform_and_normalization(target_series_local, preprocess)
         frame, tp = _build_predictions(raw_result.data, target_series_local, target_recipe, preprocess, compute_mode=compute_mode)
-        return target, target_series_local, frame, tp
+        path_step_frame = frame.attrs.pop("path_average_steps", None)
+        return target, target_series_local, frame, tp, path_step_frame
 
     if compute_mode == "parallel_by_target" and len(targets) > 1:
         with ThreadPoolExecutor(max_workers=min(len(targets), 4)) as ex:
             futures = [ex.submit(contextvars.copy_context().run, _target_job, target) for target in targets]
             for future in futures:
                 try:
-                    target, target_series_local, frame, _last_tp = future.result()
+                    target, target_series_local, frame, _last_tp, path_step_frame = future.result()
                     target_series = target_series_local
                     prediction_frames.append(frame)
+                    if path_step_frame is not None and not path_step_frame.empty:
+                        path_average_step_frames.append(path_step_frame)
                     successful_targets.append(target)
                 except Exception as exc:
                     err = str(exc)
@@ -6958,9 +7160,11 @@ def execute_recipe(
     else:
         for target in targets:
             try:
-                target, target_series_local, frame, _last_tp = _target_job(target)
+                target, target_series_local, frame, _last_tp, path_step_frame = _target_job(target)
                 target_series = target_series_local
                 prediction_frames.append(frame)
+                if path_step_frame is not None and not path_step_frame.empty:
+                    path_average_step_frames.append(path_step_frame)
                 successful_targets.append(target)
             except Exception as exc:
                 if failure_policy in {"skip_failed_model", "save_partial_results", "warn_only"}:
@@ -6972,6 +7176,11 @@ def execute_recipe(
     if not prediction_frames:
         raise ExecutionError("all target/model executions failed; no predictions available to save")
     predictions = pd.concat(prediction_frames, ignore_index=True)
+    path_average_steps = (
+        pd.concat(path_average_step_frames, ignore_index=True)
+        if path_average_step_frames
+        else None
+    )
     if recipe.targets:
         metrics = _compute_multi_target_metrics(predictions, recipe)
         comparison_summary = _build_multi_target_comparison_summary(predictions, recipe)
@@ -7016,6 +7225,7 @@ def execute_recipe(
         "max_lag": _max_ar_lag(recipe),
         "minimum_train_size": _minimum_train_size(recipe),
         "prediction_rows": int(len(predictions)),
+        "path_average_step_rows": int(len(path_average_steps)) if path_average_steps is not None else 0,
         "metrics_file": "metrics.json",
         "comparison_file": "comparison_summary.json",
         "regime_file": "regime_summary.json" if evaluation_spec.get("regime_definition", "none") != "none" else None,
@@ -7066,6 +7276,11 @@ def execute_recipe(
     predictions.to_csv(run_dir / 'predictions.csv', index=False)
     if export_format in ('parquet', 'all'):
         predictions.to_parquet(run_dir / 'predictions.parquet')
+    if path_average_steps is not None:
+        path_average_steps.to_csv(run_dir / 'path_average_steps.csv', index=False)
+        manifest["path_average_steps_file"] = "path_average_steps.csv"
+        if export_format in ('parquet', 'all'):
+            path_average_steps.to_parquet(run_dir / 'path_average_steps.parquet')
 
     # Write structured metrics/comparison/regime based on export_format
     metrics_files = {}

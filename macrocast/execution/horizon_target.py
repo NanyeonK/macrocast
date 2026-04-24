@@ -1,10 +1,9 @@
 """Target construction for 1.2.4 horizon_target_construction axis.
 
 Provides forward-transform (build training target from the raw target series at
-horizon h) and inverse-transform (convert model forecasts back to the raw
-target scale so metrics can be computed on the original series).
+horizon h), path-average step targets, and inverse-transform helpers.
 
-Six constructions are operational in v1.0:
+Nine constructions are operational in v1.0:
 
 - ``future_target_level_t_plus_h``: target_{t+h} (default, identity inverse)
 - ``future_diff``: target_{t+h} - target_t
@@ -12,10 +11,13 @@ Six constructions are operational in v1.0:
 - ``average_growth_1_to_h``: (target_{t+h} / target_t - 1) / h
 - ``average_difference_1_to_h``: (target_{t+h} - target_t) / h
 - ``average_log_growth_1_to_h``: (log(target_{t+h}) - log(target_t)) / h
+- ``path_average_growth_1_to_h``: mean of one-step growth targets from 1..h
+- ``path_average_difference_1_to_h``: mean of one-step difference targets from 1..h
+- ``path_average_log_growth_1_to_h``: mean of one-step log-growth targets from 1..h
 
-All constructions share a single vectorised forward implementation. The inverse
-takes a scalar point forecast plus the anchor target level at the origin index
-and returns the predicted target level at t+h.
+Direct constructions share a single vectorised forward implementation. Path
+average constructions expose stepwise targets and a path-level reconstruction
+helper for Layer 3 multi-step execution.
 """
 from __future__ import annotations
 
@@ -42,7 +44,7 @@ LEGACY_CONSTRUCTION_ALIASES: Final[dict[str, str]] = {
     "future_level_y_t_plus_h": "future_target_level_t_plus_h",
 }
 SUPPORTED_CONSTRUCTIONS: Final[frozenset[str]] = (
-    OPERATIONAL_CONSTRUCTIONS | frozenset(LEGACY_CONSTRUCTION_ALIASES)
+    OPERATIONAL_CONSTRUCTIONS | PATH_AVERAGE_CONSTRUCTIONS | frozenset(LEGACY_CONSTRUCTION_ALIASES)
 )
 
 
@@ -88,9 +90,9 @@ def build_horizon_target(target: pd.Series, horizon: int, construction: str) -> 
     construction = canonicalize_horizon_target_construction(construction)
     if construction in PATH_AVERAGE_CONSTRUCTIONS:
         raise ValueError(
-            f"horizon_target_construction={construction!r} is protocol-only; "
-            "use build_path_average_target_protocol() until Layer 3 multi-step "
-            "fit/aggregation runtime is implemented"
+            f"horizon_target_construction={construction!r} requires Layer 3 "
+            "stepwise execution; use build_path_average_step_target() for the "
+            "per-step target series."
         )
     if construction not in OPERATIONAL_CONSTRUCTIONS:
         raise ValueError(
@@ -127,8 +129,60 @@ def _is_average_construction(construction: str) -> bool:
 
 
 def is_path_average_construction(construction: str) -> bool:
-    """True if the construction is a protocol-only path-average target."""
+    """True if the construction is a path-average target."""
     return canonicalize_horizon_target_construction(construction) in PATH_AVERAGE_CONSTRUCTIONS
+
+
+def build_path_average_step_target(target: pd.Series, step: int, construction: str) -> pd.Series:
+    """Build the one-step target series used by path-average execution.
+
+    The returned series is indexed by the date where the one-step movement is
+    realized. Layer 3 aligns it with origin ``t`` by using ``horizon=step``:
+    row ``X_t`` predicts the step target observed at ``t + step``.
+    """
+    _positive_horizon(step)
+    construction = canonicalize_horizon_target_construction(construction)
+    if construction not in PATH_AVERAGE_CONSTRUCTIONS:
+        raise ValueError(
+            f"horizon_target_construction={construction!r} is not a path-average construction; "
+            f"path-average set is {sorted(PATH_AVERAGE_CONSTRUCTIONS)}"
+        )
+    previous = target.shift(1)
+    if construction == "path_average_difference_1_to_h":
+        return target - previous
+    if construction == "path_average_growth_1_to_h":
+        _log_or_raise(target, construction=construction)
+        _log_or_raise(previous.dropna(), construction=construction)
+        return target / previous - 1.0
+    log_target = _log_or_raise(target, construction=construction)
+    log_previous = _log_or_raise(previous.dropna(), construction=construction).reindex(target.index)
+    return log_target - log_previous
+
+
+def path_average_level_from_steps(
+    step_values: list[float] | tuple[float, ...],
+    y_anchor: float,
+    construction: str,
+) -> float:
+    """Reconstruct the horizon-level target value from stepwise predictions."""
+    construction = canonicalize_horizon_target_construction(construction)
+    if construction not in PATH_AVERAGE_CONSTRUCTIONS:
+        raise ValueError(
+            f"horizon_target_construction={construction!r} is not a path-average construction"
+        )
+    values = np.asarray(step_values, dtype=float)
+    if values.size == 0:
+        raise ValueError("path-average reconstruction requires at least one step value")
+    if construction == "path_average_difference_1_to_h":
+        return float(y_anchor) + float(np.sum(values))
+    y_anchor_f = _require_positive_scalar(y_anchor, construction=construction, name="target_anchor")
+    if construction == "path_average_growth_1_to_h":
+        if np.any(values <= -1.0):
+            raise ValueError(
+                "path_average_growth_1_to_h requires each step growth forecast to be greater than -1"
+            )
+        return y_anchor_f * float(np.prod(1.0 + values))
+    return y_anchor_f * float(np.exp(np.sum(values)))
 
 
 def _path_average_step_kind(construction: str) -> str:
@@ -163,8 +217,7 @@ def build_path_average_target_protocol(
 ) -> dict[str, object]:
     """Build Layer 2 metadata for a path-average target construction.
 
-    This does not fit models or build runtime prediction rows. It defines the
-    stepwise target formulas Layer 3 must forecast and aggregate.
+    This defines the stepwise target formulas Layer 3 forecasts and aggregates.
     """
     horizon = _positive_horizon(horizon)
     construction = canonicalize_horizon_target_construction(construction)
@@ -183,7 +236,7 @@ def build_path_average_target_protocol(
     return {
         "schema_version": "path_average_target_protocol_v1",
         "construction": construction,
-        "runtime_effect": "protocol_only",
+        "runtime_effect": "layer3_stepwise_execution",
         "formula_owner": "2_preprocessing",
         "execution_owner": "3_training",
         "aggregation_rule": aggregation_rule,
@@ -201,9 +254,9 @@ def build_path_average_target_protocol(
         ],
         "layer3_requirements": [
             "schedule one forecast-generator fit per step target",
-            "write per-step prediction artifacts",
+            "write path_average_steps.csv",
             "aggregate stepwise predictions with equal weights",
-            "write aggregate horizon-level prediction artifacts",
+            "write aggregate horizon prediction rows",
         ],
     }
 
@@ -220,8 +273,8 @@ def inverse_horizon_target(
     construction = canonicalize_horizon_target_construction(construction)
     if construction in PATH_AVERAGE_CONSTRUCTIONS:
         raise ValueError(
-            f"horizon_target_construction={construction!r} is protocol-only; "
-            "Layer 3 multi-step fit/aggregation runtime is required before inversion"
+            f"horizon_target_construction={construction!r} is a stepwise path-average target; "
+            "use path_average_level_from_steps() with per-step forecasts for level reconstruction"
         )
     if construction not in OPERATIONAL_CONSTRUCTIONS:
         raise ValueError(
@@ -284,8 +337,8 @@ def forward_scalar(y_val: float, y_anchor: float, construction: str, *, horizon:
     construction = canonicalize_horizon_target_construction(construction)
     if construction in PATH_AVERAGE_CONSTRUCTIONS:
         raise ValueError(
-            f"horizon_target_construction={construction!r} is protocol-only; "
-            "Layer 3 multi-step fit/aggregation runtime is required before scalar forwarding"
+            f"horizon_target_construction={construction!r} is a stepwise path-average target; "
+            "use build_path_average_step_target() for realized step targets"
         )
     if construction not in OPERATIONAL_CONSTRUCTIONS:
         raise ValueError(

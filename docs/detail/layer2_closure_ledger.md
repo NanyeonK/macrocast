@@ -100,11 +100,11 @@ MARX and factor frontier:
 
 These are represented as explicit gated composer modes, not silent aliases.
 
-Layer 3 dependency:
+Layer 3 handoff:
 
 - path-average target construction choices record
-  `path_average_target_protocol_v1` but require Layer 3 multi-step
-  fit/aggregation runtime.
+  `path_average_target_protocol_v1`; Layer 3 now executes the protocol through
+  stepwise fit/predict/aggregate runtime and writes `path_average_steps.csv`.
 
 ## Compatibility-Only
 
@@ -159,9 +159,9 @@ future item moves from `contract-defined gated` to `operational`.
 2. Target-side `inverse_transform_policy=custom`.
    This needs a callable inverse contract plus metric-scale and artifact
    guarantees.
-3. Path-average target execution.
-   Layer 2 protocol metadata exists; Layer 3 still needs multi-step fit,
-   prediction, and aggregation artifacts.
+3. Extended path-average variants beyond the current point-forecast runtime.
+   Stepwise point forecasts are executable; interval, density, and custom
+   target-transformer variants still need their own payload contracts.
 4. Sequence/tensor representation handoff.
    Current tabular `Layer2Representation` is closed for supported raw-panel,
    factor, custom-block, and target-lag runtimes. Sequence/tensor models need a

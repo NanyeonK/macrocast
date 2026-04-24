@@ -18,10 +18,12 @@ import pytest
 from macrocast.compiler.build import compile_recipe_dict
 from macrocast.compiler.build import run_compiled_recipe
 from macrocast.execution.horizon_target import build_horizon_target
+from macrocast.execution.horizon_target import build_path_average_step_target
 from macrocast.execution.horizon_target import build_path_average_target_protocol
 from macrocast.execution.horizon_target import construction_scale
 from macrocast.execution.horizon_target import forward_scalar
 from macrocast.execution.horizon_target import inverse_horizon_target
+from macrocast.execution.horizon_target import path_average_level_from_steps
 
 
 OPERATIONAL_CONSTRUCTIONS = (
@@ -31,6 +33,9 @@ OPERATIONAL_CONSTRUCTIONS = (
     "average_growth_1_to_h",
     "average_difference_1_to_h",
     "average_log_growth_1_to_h",
+    "path_average_growth_1_to_h",
+    "path_average_difference_1_to_h",
+    "path_average_log_growth_1_to_h",
 )
 
 
@@ -198,7 +203,7 @@ def test_direct_average_execution_records_horizon_two_scale(
 def test_path_average_target_protocol_builds_stepwise_specs_without_models() -> None:
     protocol = build_path_average_target_protocol("path_average_log_growth_1_to_h", 3)
     assert protocol["schema_version"] == "path_average_target_protocol_v1"
-    assert protocol["runtime_effect"] == "protocol_only"
+    assert protocol["runtime_effect"] == "layer3_stepwise_execution"
     assert protocol["formula_owner"] == "2_preprocessing"
     assert protocol["execution_owner"] == "3_training"
     assert protocol["aggregation_rule"] == "equal_weight_mean"
@@ -226,6 +231,98 @@ def test_path_average_target_protocol_builds_stepwise_specs_without_models() -> 
             "fit_requirement": "separate_stepwise_forecast_generator",
         },
     ]
+
+
+def test_path_average_step_target_aligns_to_realized_step_date() -> None:
+    target = pd.Series(
+        [100.0, 105.0, 111.0, 120.0],
+        index=pd.period_range("2020-01", periods=4, freq="M").to_timestamp(),
+    )
+    expected_diff = pd.Series([np.nan, 5.0, 6.0, 9.0], index=target.index)
+    expected_growth = pd.Series([np.nan, 0.05, 111.0 / 105.0 - 1.0, 120.0 / 111.0 - 1.0], index=target.index)
+    expected_log = pd.Series([
+        np.nan,
+        np.log(105.0) - np.log(100.0),
+        np.log(111.0) - np.log(105.0),
+        np.log(120.0) - np.log(111.0),
+    ], index=target.index)
+
+    assert np.allclose(
+        build_path_average_step_target(target, 1, "path_average_difference_1_to_h"),
+        expected_diff,
+        equal_nan=True,
+    )
+    assert np.allclose(
+        build_path_average_step_target(target, 2, "path_average_growth_1_to_h"),
+        expected_growth,
+        equal_nan=True,
+    )
+    assert np.allclose(
+        build_path_average_step_target(target, 3, "path_average_log_growth_1_to_h"),
+        expected_log,
+        equal_nan=True,
+    )
+
+
+def test_path_average_level_reconstruction_uses_full_step_path() -> None:
+    assert path_average_level_from_steps([5.0, 6.0], 100.0, "path_average_difference_1_to_h") == pytest.approx(111.0)
+    assert path_average_level_from_steps([0.05, 111.0 / 105.0 - 1.0], 100.0, "path_average_growth_1_to_h") == pytest.approx(111.0)
+    assert path_average_level_from_steps(
+        [np.log(105.0) - np.log(100.0), np.log(111.0) - np.log(105.0)],
+        100.0,
+        "path_average_log_growth_1_to_h",
+    ) == pytest.approx(111.0)
+
+
+@pytest.mark.parametrize(
+    ("construction", "scale"),
+    (
+        ("path_average_growth_1_to_h", "path_average_growth"),
+        ("path_average_difference_1_to_h", "path_average_difference"),
+        ("path_average_log_growth_1_to_h", "path_average_log_growth"),
+    ),
+)
+def test_path_average_execution_writes_step_artifact(
+    construction: str,
+    scale: str,
+    tmp_path: Path,
+) -> None:
+    execution = _run(construction, tmp_path / construction, horizons=[2])
+    predictions = _predictions(execution)
+    manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
+    step_path = Path(execution.artifact_dir) / "path_average_steps.csv"
+    steps = pd.read_csv(step_path)
+
+    assert not predictions.empty
+    assert step_path.exists()
+    assert manifest["path_average_step_rows"] == len(steps)
+    assert manifest["path_average_steps_file"] == "path_average_steps.csv"
+    assert (predictions["horizon_target_construction"] == construction).all()
+    assert (predictions["target_construction_scale"] == scale).all()
+    assert (predictions["path_average_step_count"] == 2).all()
+    assert set(steps["step"]) == {1, 2}
+    assert (steps["path_average_runtime"] == "layer3_stepwise_equal_weight_v1").all()
+
+
+def test_path_average_execution_supports_raw_panel_representation(tmp_path: Path) -> None:
+    recipe = _recipe("path_average_difference_1_to_h", horizons=[2])
+    recipe["path"]["3_training"]["fixed_axes"]["feature_builder"] = "raw_feature_panel"
+    recipe["path"]["3_training"]["fixed_axes"]["model_family"] = "ridge"
+    compile_result = compile_recipe_dict(recipe)
+    assert compile_result.compiled.execution_status == "executable"
+
+    execution = run_compiled_recipe(
+        compile_result.compiled,
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+    )
+    predictions = _predictions(execution)
+    steps = pd.read_csv(Path(execution.artifact_dir) / "path_average_steps.csv")
+
+    assert not predictions.empty
+    assert (predictions["horizon_target_construction"] == "path_average_difference_1_to_h").all()
+    assert set(steps["step"]) == {1, 2}
+    assert (steps["horizon_target_construction"] == "path_average_difference_1_to_h").all()
 
 
 def test_path_average_target_protocol_validates_aggregation_rule() -> None:

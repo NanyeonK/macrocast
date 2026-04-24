@@ -43,10 +43,11 @@ The current tabular runtime handoff is `Layer2Representation`, with
 `Z_train`, `y_train`, `Z_pred`, feature names, block order, block roles,
 alignment, leakage contract, fit state, and runtime provenance.
 
-Forward contracts for path-average execution, future payload families,
-sequence/tensor handoff, and raw-panel iterated forecasting are specified in
-`layer2_layer3_detailed_design.md`. Those surfaces should remain gated in the
-Layer 3 capability matrix until their executors and artifacts exist.
+Forward contracts for future payload families, sequence/tensor handoff, and
+raw-panel iterated forecasting are specified in
+`layer2_layer3_detailed_design.md`. Those surfaces remain gated in the Layer 3
+capability matrix until their executors and artifacts exist. Path-average point
+forecast execution is now operational through the stepwise Layer 3 protocol.
 
 ## Non-Ownership
 
@@ -85,9 +86,9 @@ inside the autoregressive forecast generator.
 
 Layer 2 owns the supervised target representation, including level, difference,
 growth, log growth, and path-average target formulas. Layer 3 owns the
-forecast-generation protocol used to estimate and predict that target. If a
-path-average target needs a multi-step execution protocol, the formula remains
-Layer 2 and the multi-step fit/prediction rule is Layer 3.
+forecast-generation protocol used to estimate and predict that target. For
+path-average targets, the formula remains Layer 2 and the multi-step
+fit/predict/aggregate rule is Layer 3.
 
 ### Target Scale Versus Forecast Object
 
@@ -122,6 +123,11 @@ The docs and runtime now mostly follow this split:
 - Built-in raw-panel factor-model adapters (`pcr`, `pls`, and
   `factor_augmented_linear`) also consume the same `Layer2Representation`
   bundle instead of rebuilding predictor frames beside Layer 2.
+- Path-average target constructions are operational for point forecasts: Layer
+  3 fits one supported generator per step, aggregates with equal weights,
+  writes `path_average_steps.csv`, and records the aggregate row in
+  `predictions.csv`. The current runtime requires raw-level target scale, no
+  target normalization, and no custom target transformer.
 - Registered custom Layer 3 models receive `custom_model_v1` context and Layer
   2 provenance.
 - The compiler validates important Layer 2 x Layer 3 incompatibilities, such
