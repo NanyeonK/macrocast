@@ -257,13 +257,13 @@ Acceptance:
 
 ### Patch L2-F: Factor And Selection Blocks
 
-Status: complete for `factor_feature_block=pca_static_factors` in the supported
-runtime slice, including `select_before_factor` composition with
-`feature_selection_policy`. Matrix composition reads the explicit factor block
-first and uses old factor/dimensionality-reduction bridge fields only as
-fallback. Factor lags, supervised factors, custom factors, and
-`select_after_factor` composition remain registry-only or `not_supported`
-until the explicit block composer exists.
+Status: complete for the supported built-in factor slice:
+`pca_static_factors`, `pca_factor_lags`, `supervised_factors`,
+`select_before_factor`, and `select_after_factor`. Registered custom factor
+blocks execute through `custom_feature_block_callable_v1`. Matrix composition
+reads the explicit factor block first and uses old
+factor/dimensionality-reduction bridge fields only as fallback. Unregistered
+custom factors and custom-block final-`Z` selection remain gated.
 
 Goal: move factor construction from coarse runtime switches into explicit
 Layer 2 blocks.
@@ -325,10 +325,12 @@ Current lowered slice:
   raw-panel feature runtimes. They append trailing 3-period moving averages,
   mean/variance moments, deterministic local temporal factors, or rolling
   volatility of the base predictor columns using only information available
-  through each row date / prediction origin, and reject X-lag/factor bridge
-  composition for now. Local temporal factors are row-wise cross-sectional
-  mean/dispersion summaries of the active predictor panel with trailing time
-  smoothing, not learned PCA/static factors.
+  through each row date / prediction origin. They can compose with fixed X
+  lags, `moving_average_rotation`, and MARX append mode in the supported
+  deterministic raw-panel slice. Temporal-to-factor and custom-block final-`Z`
+  selection semantics remain gated. Local temporal factors are row-wise
+  cross-sectional mean/dispersion summaries of the active predictor panel with
+  trailing time smoothing, not learned PCA/static factors.
 - `temporal_feature_block=custom_temporal_features` remains registry-only by
   design. It should not silently reuse the broad `custom_preprocessor` hook:
   operational custom temporal blocks need a block-local callable contract that
@@ -462,11 +464,13 @@ aliases remain intentionally accepted for old recipes and old manifests.
 
 The remaining items in this file are not cleanup blockers:
 
-- broader factor/selection composition beyond static PCA;
-- MARX with additional X-lag/temporal/factor composition;
+- `factor_then_marx`;
 - MAF/custom rotations;
-- custom temporal/feature-block callable contracts;
-- target-side normalization/inverse/evaluation-scale expansion;
+- unregistered custom temporal/rotation/factor blocks;
+- custom combiners and custom-block final-`Z` selection;
+- target-side custom inverse policies;
+- Layer 3 path-average multi-step execution;
+- sequence/tensor representation handoff;
 - public Layer 2 sweep exposure.
 
 Those are semantic feature-composer or API-governance tasks. They should start

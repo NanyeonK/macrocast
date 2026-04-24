@@ -136,8 +136,25 @@ and failure visibility.
 
 ## Next Build Order
 
-1. Add `factor_then_marx` and MAF rotation after each has factor-score history,
-   naming, and alignment tests.
-2. Broaden feature selection over custom append blocks.
-3. Implement `feature_block_combination=custom_combiner`.
-4. Add target-side custom inverse policies.
+This is no longer cleanup work. It is the semantic composer backlog for new
+research features.
+
+1. `factor_then_marx` and MAF rotation.
+   These need factor-score history, rotation naming, alignment tests, and
+   block-level leakage metadata before they can be opened.
+2. Custom-block final-`Z` selection.
+   Built-in final-`Z` selection is open for the supported static-factor slice,
+   but user-created columns need selection provenance over custom feature names.
+3. `feature_block_combination=custom_combiner`.
+   This needs a callable contract for arbitrary block composition, stable
+   feature naming, and clear ownership of leakage metadata.
+4. Target-side `inverse_transform_policy=custom`.
+   This needs a callable inverse contract plus metric-scale and artifact
+   guarantees.
+5. Path-average target execution.
+   Layer 2 protocol metadata exists; Layer 3 still needs multi-step fit,
+   prediction, and aggregation artifacts.
+6. Sequence/tensor representation handoff.
+   Current tabular `Layer2Representation` is closed for supported raw-panel,
+   factor, custom-block, and target-lag runtimes. Sequence/tensor models need a
+   separate handoff contract before they should enter full grids.
