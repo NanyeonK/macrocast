@@ -347,8 +347,8 @@ Current lowered slice:
   each row date / prediction origin. It can compose with fixed X lags and
   deterministic temporal append blocks. `marx_rotation` requires
   `leaf_config.marx_max_lag`, builds the cumulative moving-average
-  lag-polynomial basis, and replaces the source X lag-polynomial basis in final
-  `Z`.
+  lag-polynomial basis, replaces the source X lag-polynomial basis in final
+  `Z`, and now supports `marx_then_factor` with `pca_static_factors`.
 - `rotation_feature_block=maf_rotation` and `custom_rotation` remain
   registry-only. The compiler still records explicit boundary metadata when
   those values are selected: MAF requires factor-to-rotation composition, and
@@ -360,10 +360,10 @@ Current lowered slice:
   (`{predictor}_marx_ma_lag1_to_lag{p}` / `{predictor}__marx_ma_lag1_to_lag{p}`),
   feature order (predictor-major, then rotation order), alignment
   (`Z_{i,p,t} = p^{-1} * sum_{j=1}^{p} X_{i,t-j}`), and basis composition
-  (`replace_lag_polynomial_basis`). External X-lag, temporal, and factor
-  composition remains gated for MARX because it replaces the raw-panel feature
-  basis. Factor/rotation composition also remains gated until the package
-  defines factor-of-augmented-panel vs append-to-factors semantics.
+  (`replace_lag_polynomial_basis`). MARX-to-factor composition is now explicit
+  as `marx_then_factor`: the runtime first builds the MARX basis, then fits
+  static PCA factors on that rotated basis. External X-lag append, temporal
+  append, and remaining MARX composition modes remain gated.
 
 Acceptance:
 

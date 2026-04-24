@@ -220,15 +220,22 @@ and moving-average rotation in the current raw-panel runtime.
 
 `moving_average_rotation` appends deterministic trailing moving-average
 rotations. `marx_rotation` replaces the source X lag-polynomial basis. Because
-MARX is a replacement basis rather than a simple append block, future
-composition must distinguish:
+MARX is a replacement basis rather than a simple append block, composition must
+distinguish:
 
 - `marx_replace_x_basis`;
 - `marx_append_to_x`;
 - `marx_then_factor`;
 - `factor_then_marx`.
 
-Only the first mode is operational today.
+The current runtime opens the first and third modes:
+
+- `marx_replace_x_basis`: raw-panel `Z` is the MARX basis itself;
+- `marx_then_factor`: replace the X lag-polynomial basis with MARX features,
+  then fit `pca_static_factors` on that rotated basis. Target lags may still
+  be concatenated after factor scores through the existing target-lag path.
+
+`marx_append_to_x` and `factor_then_marx` remain gated.
 
 ### Custom Blocks
 
@@ -279,7 +286,8 @@ the usual model compatibility constraints:
 - `temporal_feature_block`: `none`, `moving_average_features`,
   `rolling_moments`, `local_temporal_factors`, `volatility_features`;
 - `rotation_feature_block`: `none`, `moving_average_rotation`,
-  `marx_rotation` with its current replacement-basis restriction;
+  `marx_rotation` with replacement-basis support plus `marx_then_factor`
+  static-PCA composition;
 - X-side frame conditioning axes already marked operational, such as missing,
   outlier, scaling, HP filter, and train-only fit scope.
 
@@ -291,6 +299,8 @@ This patch opens the first previously gated composition class:
   concatenated after the factor block rather than entering PCA.
 - raw predictor feature selection followed by PCA static factors
   (`select_before_factor`) in supported raw-panel runtimes.
+- MARX basis replacement followed by static PCA factors
+  (`marx_then_factor`) in supported raw-panel runtimes.
 
 ## Still Gated
 
@@ -299,7 +309,7 @@ These are the next semantic composer tasks:
 | Area | Why gated |
 |---|---|
 | Broader factor plus feature selection | Static PCA supports `select_before_factor` and `select_after_factor`. Non-PCA factor composers and richer factor/selection algebra still need explicit contracts. |
-| MARX plus X-lag/temporal/factor blocks | Need append versus replacement semantics and stable feature naming. |
+| MARX plus X-lag/temporal append modes | Need append versus replacement semantics and stable feature naming. |
 | MAF rotation | Need factor-to-rotation composer and leakage metadata. |
 | Custom temporal/rotation blocks | Need block-local callable contract. |
 | Target normalization and inverse/evaluation scale | Need recursive fit/inverse state and metric-scale contract. |
@@ -329,7 +339,7 @@ Before a Layer 2 x Layer 3 combination is marked operational, tests must cover:
 4. Add feature-name and block-role artifacts for every `Z` column.
 5. Add full recipe examples for Layer 2 x Layer 3 grids.
 6. Add broader factor/selection composition semantics beyond static PCA.
-7. Add MARX composition modes beyond basis replacement.
+7. Add remaining MARX composition modes beyond `marx_then_factor`.
 8. Add custom block callable contracts.
 9. Expose a safe simple-API representation sweep after the full-route contract
    is stable.

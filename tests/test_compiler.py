@@ -1837,6 +1837,44 @@ def test_layer2_explicit_marx_rotation_runs_raw_panel_bridge(tmp_path: Path) -> 
     assert block["runtime_bridge"] == {"raw_panel_rotation_features": "marx_rotation"}
 
 
+def test_layer2_explicit_marx_rotation_supports_static_factor_composition(tmp_path: Path) -> None:
+    recipe = _layer2_temporal_block_recipe(
+        temporal_feature_block="none",
+        rotation_feature_block="marx_rotation",
+        marx_max_lag=3,
+    )
+    recipe["path"]["2_preprocessing"]["fixed_axes"].update(
+        {
+            "factor_feature_block": "pca_static_factors",
+            "dimensionality_reduction_policy": "pca",
+            "tcode_policy": "extra_preprocess_without_tcode",
+            "preprocess_order": "extra_only",
+            "preprocess_fit_scope": "train_only",
+        }
+    )
+
+    result = compile_recipe_dict(recipe)
+
+    assert result.compiled.execution_status == "executable"
+    factor_block = result.manifest["layer2_representation_spec"]["feature_blocks"]["factor_feature_block"]
+    rotation_interaction = factor_block["rotation_interaction"]
+    assert rotation_interaction["rotation_feature_block"] == "marx_rotation"
+    assert rotation_interaction["supported_semantics"] == ["marx_then_factor"]
+    assert rotation_interaction["active_semantic"] == "marx_then_factor"
+
+    execution = run_compiled_recipe(
+        result.compiled,
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+    )
+    manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
+    fit_state = json.loads((Path(execution.artifact_dir) / "feature_representation_fit_state.json").read_text())
+
+    assert manifest["layer2_representation_spec"]["feature_blocks"]["rotation_feature_block"]["value"] == "marx_rotation"
+    assert fit_state["block"] == "pca_static_factors"
+    assert all("__marx_ma_lag1_to_lag" in name for name in fit_state["source_feature_names"])
+
+
 def test_layer2_explicit_marx_rotation_rejects_x_lag_composition() -> None:
     result = compile_recipe_dict(
         _layer2_temporal_block_recipe(

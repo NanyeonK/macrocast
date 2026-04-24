@@ -1512,6 +1512,7 @@ def _factor_block_from_bridge(
     training_spec: dict[str, Any],
     preprocess_contract,
     explicit_block: str | None,
+    rotation_feature_block: str = "none",
 ) -> dict[str, Any]:
     inferred = "pca_static_factors" if feature_builder in _FACTOR_BRIDGE_BUILDERS else _DIMRED_TO_FACTOR_FEATURE_BLOCK.get(dimred, "custom_factors")
     block = explicit_block or inferred
@@ -1542,6 +1543,24 @@ def _factor_block_from_bridge(
                 "when feature_selection_policy is active with pca_static_factors, the runtime supports "
                 "select_before_factor (select raw predictor X, then fit factors) and "
                 "select_after_factor (fit factors, then select among final Z columns)"
+            ),
+        },
+        "rotation_interaction": {
+            "rotation_feature_block": rotation_feature_block,
+            "supported_semantics": (
+                ["marx_then_factor"]
+                if block == "pca_static_factors" and rotation_feature_block == "marx_rotation"
+                else []
+            ),
+            "active_semantic": (
+                "marx_then_factor"
+                if block == "pca_static_factors" and rotation_feature_block == "marx_rotation"
+                else "none"
+            ),
+            "rule": (
+                "when rotation_feature_block='marx_rotation' is active with pca_static_factors, "
+                "the runtime first replaces the X lag-polynomial basis with MARX features and then "
+                "fits static PCA factors on that rotated basis"
             ),
         },
     }
@@ -1785,6 +1804,7 @@ def _layer2_representation_spec(
                 training_spec=training_spec,
                 preprocess_contract=preprocess_contract,
                 explicit_block=explicit_factor_feature_block,
+                rotation_feature_block=_selection_value(selection_map, "rotation_feature_block", default="none"),
             ),
             "level_feature_block": _level_block_from_selection(selection_map, data_task_spec),
             "rotation_feature_block": _rotation_block_from_selection(selection_map, data_task_spec),
@@ -2140,7 +2160,8 @@ def _execution_status(
                 f"temporal_feature_block={temporal_feature_block!r} cannot yet be combined with "
                 "factor_feature_block or dimensionality_reduction_policy; temporal-to-factor composition requires a block composer"
             )
-        if rotation_block_active and (factor_block_active or dimred != "none"):
+        marx_then_factor_allowed = rotation_feature_block == "marx_rotation" and factor_block_active
+        if rotation_block_active and (factor_block_active or dimred != "none") and not marx_then_factor_allowed:
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} cannot yet be combined with "
                 "factor_feature_block or dimensionality_reduction_policy; rotation-to-factor composition requires a block composer"

@@ -154,7 +154,8 @@ Operational support is currently narrow:
   deterministic temporal append blocks. `marx_rotation` requires
   `leaf_config.marx_max_lag`, builds the cumulative lower-triangular
   lag-polynomial rotation, and replaces the source lag-polynomial basis in
-  final `Z`.
+  final `Z`. It now also supports `marx_then_factor`, where static PCA factors
+  are fit on the MARX basis before any target-lag append.
 - Advanced rotation values are explicit boundaries, not aliases for the generic
   primitive. `maf_rotation` remains registry-only until factor-score fit/apply
   state can compose with rotation blocks. `custom_rotation` remains registry-only
@@ -169,8 +170,10 @@ Operational support is currently narrow:
   `X_{origin-1}, ..., X_{origin-p}` at prediction origin. Initial unavailable
   lags follow the package lag convention and are zero-filled before the sample
   start. Source lag columns must not be appended a second time when the MARX
-  basis is active. MARX currently cannot compose with external X-lag, temporal,
-  or factor blocks until the explicit block composer exists.
+  basis is active. The current composer now supports raw-panel MARX basis
+  replacement itself and `marx_then_factor` with static PCA factors. External
+  X-lag append, temporal append, MAF/custom rotation, and other MARX
+  composition modes remain gated.
 - Feature selection is now operational for two explicit static-factor composer
   semantics when `factor_feature_block=pca_static_factors` (or the equivalent
   `dimensionality_reduction_policy` bridge) is active:

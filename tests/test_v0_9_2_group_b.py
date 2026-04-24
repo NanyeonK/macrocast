@@ -437,6 +437,51 @@ def test_raw_panel_factor_feature_block_matches_legacy_dimred_bridge():
     assert explicit_fit_state[-1]["runtime_policy"] == "pca"
 
 
+def test_raw_panel_marx_then_factor_matches_legacy_dimred_bridge():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0],
+        }
+    )
+    legacy_fit_state: list[dict[str, object]] = []
+    explicit_fit_state: list[dict[str, object]] = []
+
+    legacy = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(dimensionality_reduction_policy="pca"),
+        predictor_family="all_macro_vars",
+        fit_state_sink=legacy_fit_state,
+        rotation_feature_block="marx_rotation",
+        marx_max_lag=3,
+    )
+    explicit = _build_raw_panel_training_data(
+        frame,
+        "target",
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(dimensionality_reduction_policy="none"),
+        predictor_family="all_macro_vars",
+        fit_state_sink=explicit_fit_state,
+        factor_feature_block="pca_static_factors",
+        rotation_feature_block="marx_rotation",
+        marx_max_lag=3,
+    )
+
+    for legacy_arr, explicit_arr in zip(legacy, explicit):
+        assert np.allclose(legacy_arr, explicit_arr)
+    assert legacy_fit_state[-1]["runtime_policy"] == "pca"
+    assert explicit_fit_state[-1]["runtime_policy"] == "pca"
+    assert all("__marx_ma_lag1_to_lag" in name for name in explicit_fit_state[-1]["source_feature_names"])
+
+
 def test_raw_panel_representation_bundle_uses_factor_feature_names_and_metadata():
     frame = pd.DataFrame(
         {
@@ -473,6 +518,50 @@ def test_raw_panel_representation_bundle_uses_factor_feature_names_and_metadata(
     }
     assert bundle.alignment["factor_fit_scope"] == "train_window_only"
     assert bundle.latest_fit_state["block"] == "pca_static_factors"
+
+
+def test_raw_panel_representation_bundle_records_marx_then_factor_alignment():
+    frame = pd.DataFrame(
+        {
+            "target": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+            "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "b": [2.0, 3.0, 5.0, 7.0, 11.0, 13.0],
+            "c": [1.5, 1.0, 2.5, 3.0, 3.5, 5.0],
+        }
+    )
+    recipe = _dispatch_recipe(
+        model_family="ridge",
+        blocks={
+            "feature_block_set": {"value": "factor_blocks_only"},
+            "factor_feature_block": {"value": "pca_static_factors"},
+            "rotation_feature_block": {
+                "value": "marx_rotation",
+                "max_lag": 3,
+                "composer_contract": {"max_lag": 3},
+            },
+            "target_lag_block": {
+                "value": "fixed_target_lags",
+                "lag_orders": [2],
+            },
+        },
+    )
+    recipe.data_task_spec = {"predictor_family": "all_macro_vars", "marx_max_lag": 3}
+    recipe.benchmark_config = {"max_ar_lag": 2}
+
+    bundle = _build_raw_panel_representation(
+        frame,
+        recipe,
+        horizon=1,
+        start_idx=0,
+        origin_idx=4,
+        contract=_contract(),
+    )
+
+    assert bundle.feature_names == ("factor_1", "factor_2", "factor_3", "target_lag_1", "target_lag_2")
+    assert bundle.block_order == ("factor", "target_lag")
+    assert bundle.alignment["rotation_factor_semantics"] == "marx_then_factor"
+    assert bundle.latest_fit_state["block"] == "pca_static_factors"
+    assert all("__marx_ma_lag1_to_lag" in name for name in bundle.latest_fit_state["source_feature_names"])
 
 
 def test_importance_feature_names_use_representation_bundle_for_factor_path():

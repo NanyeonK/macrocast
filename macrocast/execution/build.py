@@ -2537,6 +2537,8 @@ def _raw_panel_alignment(
         alignment["level_timing"] = "observable_at_forecast_origin"
     if _factor_feature_names_from_fit_state(fit_state) is not None:
         alignment["factor_fit_scope"] = "train_window_only"
+        if _rotation_feature_block(recipe) == "marx_rotation":
+            alignment["rotation_factor_semantics"] = "marx_then_factor"
         for payload in reversed(tuple(fit_state)):
             if str(payload.get("block", "")) != "pca_static_factors":
                 continue
