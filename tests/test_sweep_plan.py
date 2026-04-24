@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 
 import pytest
+import yaml
 
+from macrocast.compiler import compile_recipe_dict
 from macrocast.compiler.sweep_plan import (
     DEFAULT_MAX_VARIANTS,
     SweepPlan,
@@ -67,6 +70,25 @@ def test_two_axis_sweep_cartesian_count() -> None:
     assert plan.governance["schema_version"] == "sweep_governance_v1"
     assert plan.governance["expansion_policy"] == "cartesian_expand_all_then_compile_each_variant"
     assert plan.governance["variant_count"] == 6
+
+
+def test_layer2_layer3_grid_example_expands_and_compiles_cells() -> None:
+    recipe = yaml.safe_load(Path("examples/recipes/layer2-layer3-grid.yaml").read_text())
+
+    plan = compile_sweep_plan(recipe)
+
+    assert plan.size == 12
+    assert set(plan.axes_swept) == {
+        "2_preprocessing.target_lag_block",
+        "2_preprocessing.x_lag_feature_block",
+        "3_training.model_family",
+    }
+    compiled = [compile_recipe_dict(variant.variant_recipe_dict).compiled for variant in plan.variants]
+    statuses = {status: sum(item.execution_status == status for item in compiled) for status in {item.execution_status for item in compiled}}
+    assert statuses["executable"] == 8
+    assert statuses["blocked_by_incompatibility"] == 4
+    blocked = [item for item in compiled if item.execution_status == "blocked_by_incompatibility"]
+    assert all("model_family='ar'" in " ".join(item.blocked_reasons) for item in blocked)
 
 
 def test_variant_id_is_stable_across_calls() -> None:
