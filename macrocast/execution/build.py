@@ -7580,11 +7580,17 @@ def _build_predictions(
                 )
             )
             if raw_panel_iterated_runtime:
+                raw_panel_iterated_step_predictions = (
+                    list(tuning_payload.get("raw_panel_iterated_step_predictions", []))
+                    if tuning_payload
+                    else []
+                )
                 row.update(
                     {
                         "forecast_type": "iterated",
                         "forecast_payload_contract": _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION,
                         "payload_family": "raw_panel_iterated",
+                        "raw_panel_iterated_payload_contract": _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION,
                         "raw_panel_iterated_runtime": str(
                             tuning_payload.get("raw_panel_iterated_runtime_contract", "")
                             if tuning_payload
@@ -7592,6 +7598,24 @@ def _build_predictions(
                         ),
                         "raw_panel_iterated_step_count": int(horizon),
                         "raw_panel_iterated_x_path_policy": _exogenous_x_path_policy(recipe),
+                        "raw_panel_iterated_step_predictions": json.dumps(
+                            [float(value) for value in raw_panel_iterated_step_predictions],
+                            sort_keys=True,
+                        ),
+                        "raw_panel_iterated_final_step_prediction": float(
+                            raw_panel_iterated_step_predictions[-1]
+                            if raw_panel_iterated_step_predictions
+                            else y_pred_model_scale
+                        ),
+                        "raw_panel_iterated_model_target_scale": row["model_target_scale"],
+                        "raw_panel_iterated_forecast_scale": metric_target_scale,
+                        "raw_panel_iterated_evaluation_scale": evaluation_scale,
+                        "raw_panel_iterated_target_transform_policy": str(
+                            getattr(contract, "target_transform", "level")
+                        ),
+                        "raw_panel_iterated_target_normalization": str(
+                            target_scale_state.get("normalization", "none")
+                        ),
                     }
                 )
             return row, tuning_payload, [], raw_panel_iterated_steps
