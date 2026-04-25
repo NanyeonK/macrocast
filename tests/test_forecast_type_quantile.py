@@ -97,6 +97,7 @@ def test_forecast_type_default_is_direct_for_raw_panel() -> None:
         "feature_runtime": "raw_feature_panel",
         "forecast_type": "direct",
         "forecast_object": "point_mean",
+        "payload_contract": "forecast_payload_v1",
         "runtime_status": "operational",
         "blocked_reasons": [],
     }
@@ -117,17 +118,17 @@ def test_layer3_capability_matrix_records_future_status_catalog() -> None:
     matrix = r.manifest["layer3_capability_matrix"]
 
     assert matrix["schema_version"] == "layer3_capability_matrix_v1"
-    assert matrix["schema_revision"] == 3
+    assert matrix["schema_revision"] == 4
     assert "not_supported_yet" in matrix["status_catalog"]
     future_cells = {cell["cell_id"]: cell for cell in matrix["future_cells"]}
-    assert future_cells["forecast_object.interval"]["runtime_status"] == "not_supported_yet"
-    assert future_cells["forecast_object.interval"]["payload_contract"] == "interval_forecast_payload_v1"
-    assert future_cells["forecast_object.density"]["dimension"] == "forecast_object"
-    assert future_cells["forecast_object.density"]["payload_contract"] == "density_forecast_payload_v1"
+    assert "forecast_object.interval" not in future_cells
+    assert matrix["rules"]["forecast_object"]["direction"]["payload_contract"] == "direction_forecast_payload_v1"
+    assert matrix["rules"]["forecast_object"]["interval"]["runtime_status"] == "operational"
+    assert matrix["rules"]["forecast_object"]["interval"]["payload_contract"] == "interval_forecast_payload_v1"
+    assert matrix["rules"]["forecast_object"]["density"]["payload_contract"] == "density_forecast_payload_v1"
     assert future_cells["feature_runtime.sequence_tensor"]["owner_layer"] == "2_preprocessing"
     assert future_cells["feature_runtime.sequence_tensor"]["upstream_contract"] == "sequence_representation_contract_v1"
     assert future_cells["forecast_type.raw_panel_iterated"]["scenario_contract"] == "exogenous_x_path_contract_v1"
-    assert matrix["rules"]["forecast_object"]["interval"]["runtime_status"] == "not_supported_yet"
 
 
 def test_forecast_type_iterated_autoreg_executes(tmp_path: Path) -> None:
@@ -218,6 +219,46 @@ def test_forecast_object_point_mean_rejected_with_quantile_linear() -> None:
         "quantile_linear" in r_msg and "point_median" in r_msg
         for r_msg in r.manifest.get("blocked_reasons", [])
     )
+
+
+@pytest.mark.parametrize(
+    ("forecast_object", "contract", "payload_column"),
+    [
+        ("direction", "direction_forecast_payload_v1", "direction_hit"),
+        ("interval", "interval_forecast_payload_v1", "interval_covered"),
+        ("density", "density_forecast_payload_v1", "density_log_score"),
+    ],
+)
+def test_forecast_payload_family_executes(
+    tmp_path: Path,
+    forecast_object: str,
+    contract: str,
+    payload_column: str,
+) -> None:
+    recipe = _recipe(
+        model_family="ridge",
+        feature_builder="raw_feature_panel",
+        forecast_object=forecast_object,
+    )
+    r = compile_recipe_dict(recipe)
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["layer3_capability_matrix"]["active_cell"]["payload_contract"] == contract
+    execution = run_compiled_recipe(
+        r.compiled,
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+    )
+    artifact_dir = Path(execution.artifact_dir)
+    manifest = json.loads((artifact_dir / "manifest.json").read_text())
+    predictions = __import__("pandas").read_csv(artifact_dir / "predictions.csv")
+    metrics = json.loads((artifact_dir / "metrics.json").read_text())
+
+    assert manifest["forecast_object"] == forecast_object
+    assert manifest["forecast_payload_contract"] == contract
+    assert manifest["forecast_payloads_file"] == "forecast_payloads.jsonl"
+    assert payload_column in predictions.columns
+    assert predictions["forecast_payload_contract"].eq(contract).all()
+    assert metrics["metrics_by_horizon"]["h1"]["payload_metrics"]["payload_family"] == forecast_object
 
 
 @pytest.mark.parametrize("forecast_object", ["point_median", "quantile"])

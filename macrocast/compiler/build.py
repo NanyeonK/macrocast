@@ -1269,6 +1269,7 @@ def _training_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[st
         "execution_backend": _selection_value(selection_map, "execution_backend", default="local_cpu"),
         "forecast_type": _selection_value(selection_map, "forecast_type", default=forecast_type_default),
         "forecast_object": _selection_value(selection_map, "forecast_object", default="point_mean"),
+        "interval_coverage": leaf_config.get("interval_coverage", 0.9),
         "min_train_size": _selection_value(selection_map, "min_train_size", default="fixed_n_obs"),
         "training_start_rule": _selection_value(selection_map, "training_start_rule", default="earliest_possible"),
         "training_start_date": leaf_config.get("training_start_date"),
@@ -2107,6 +2108,7 @@ def _layer3_capability_rejections(
     feature_runtime: str | None,
     forecast_type: str,
     forecast_object: str,
+    horizon_target_construction: str = "future_target_level_t_plus_h",
 ) -> tuple[str, ...]:
     blocked: list[str] = []
     if model_family == "ar" and feature_runtime == "raw_feature_panel":
@@ -2116,6 +2118,16 @@ def _layer3_capability_rejections(
     if forecast_object in {"point_median", "quantile"} and model_family != "quantile_linear":
         blocked.append(
             f"forecast_object={forecast_object!r} requires model_family='quantile_linear' in the current runtime slice"
+        )
+    if forecast_object in {"direction", "interval", "density"} and model_family == "quantile_linear":
+        blocked.append(
+            f"forecast_object={forecast_object!r} uses the scalar point payload wrapper and is not compatible "
+            "with model_family='quantile_linear' in the current runtime slice"
+        )
+    if forecast_object == "sequence" and not _is_path_average_construction(horizon_target_construction):
+        blocked.append(
+            "forecast_object='sequence' requires a path-average target construction or the future "
+            "sequence_representation_contract_v1"
         )
     if feature_runtime == "raw_feature_panel" and forecast_type == "iterated":
         blocked.append(
@@ -2137,41 +2149,18 @@ _LAYER3_CAPABILITY_STATUS_CATALOG = {
     "registry_only": "the registry names a placeholder or extension hook without a built-in runtime contract",
 }
 
+_LAYER3_PAYLOAD_CONTRACTS = {
+    "point_mean": "forecast_payload_v1",
+    "point_median": "forecast_payload_v1",
+    "quantile": "forecast_payload_v1",
+    "direction": "direction_forecast_payload_v1",
+    "interval": "interval_forecast_payload_v1",
+    "density": "density_forecast_payload_v1",
+    "sequence": "sequence_forecast_payload_v1",
+}
+
 
 _LAYER3_FUTURE_CAPABILITY_CELLS = (
-    {
-        "cell_id": "forecast_object.direction",
-        "dimension": "forecast_object",
-        "runtime_status": "not_supported_yet",
-        "owner_layer": "3_training",
-        "payload_contract": "direction_forecast_payload_v1",
-        "requires": [
-            "directional forecast payload contract",
-            "direction-specific evaluation contract",
-        ],
-    },
-    {
-        "cell_id": "forecast_object.interval",
-        "dimension": "forecast_object",
-        "runtime_status": "not_supported_yet",
-        "owner_layer": "3_training",
-        "payload_contract": "interval_forecast_payload_v1",
-        "requires": [
-            "lower/upper forecast payload contract",
-            "interval coverage and width evaluation contract",
-        ],
-    },
-    {
-        "cell_id": "forecast_object.density",
-        "dimension": "forecast_object",
-        "runtime_status": "not_supported_yet",
-        "owner_layer": "3_training",
-        "payload_contract": "density_forecast_payload_v1",
-        "requires": [
-            "predictive density payload contract",
-            "density scoring and calibration evaluation contract",
-        ],
-    },
     {
         "cell_id": "feature_runtime.sequence_tensor",
         "dimension": "feature_runtime",
@@ -2212,15 +2201,21 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
         default=_layer3_forecast_type_default(feature_runtime),
     )
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
+    horizon_target_construction = _selection_value(
+        selection_map,
+        "horizon_target_construction",
+        default="future_target_level_t_plus_h",
+    )
     blocked = _layer3_capability_rejections(
         model_family=model_family,
         feature_runtime=feature_runtime,
         forecast_type=forecast_type,
         forecast_object=forecast_object,
+        horizon_target_construction=horizon_target_construction,
     )
     return {
         "schema_version": "layer3_capability_matrix_v1",
-        "schema_revision": 3,
+        "schema_revision": 4,
         "dimensions": ["model_family", "feature_runtime", "forecast_type", "forecast_object"],
         "status_catalog": dict(_LAYER3_CAPABILITY_STATUS_CATALOG),
         "future_cells": [dict(cell) for cell in _LAYER3_FUTURE_CAPABILITY_CELLS],
@@ -2261,16 +2256,19 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
                     "runtime_status": "operational",
                 },
                 "direction": {
-                    "model_family": "future_directional_generator",
-                    "runtime_status": "not_supported_yet",
+                    "model_family": "scalar_point_generator",
+                    "runtime_status": "operational",
+                    "payload_contract": "direction_forecast_payload_v1",
                 },
                 "interval": {
-                    "model_family": "future_interval_generator",
-                    "runtime_status": "not_supported_yet",
+                    "model_family": "scalar_point_generator",
+                    "runtime_status": "operational",
+                    "payload_contract": "interval_forecast_payload_v1",
                 },
                 "density": {
-                    "model_family": "future_density_generator",
-                    "runtime_status": "not_supported_yet",
+                    "model_family": "scalar_point_generator",
+                    "runtime_status": "operational",
+                    "payload_contract": "density_forecast_payload_v1",
                 },
             },
         },
@@ -2280,6 +2278,7 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
             "feature_runtime": feature_runtime,
             "forecast_type": forecast_type,
             "forecast_object": forecast_object,
+            "payload_contract": _LAYER3_PAYLOAD_CONTRACTS.get(forecast_object, "forecast_payload_v1"),
             "runtime_status": "blocked_by_incompatibility" if blocked else "operational",
             "blocked_reasons": list(blocked),
         },
@@ -2717,14 +2716,34 @@ def _execution_status(
         default=_layer3_forecast_type_default(feature_runtime),
     )
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
+    horizon_target_construction_for_l3 = _selection_value(
+        selection_map,
+        "horizon_target_construction",
+        default="future_target_level_t_plus_h",
+    )
     blocked.extend(
         _layer3_capability_rejections(
             model_family=model_family,
             feature_runtime=feature_runtime,
             forecast_type=forecast_type,
             forecast_object=forecast_object,
+            horizon_target_construction=horizon_target_construction_for_l3,
         )
     )
+    if forecast_object in {"interval", "density"}:
+        if str(getattr(preprocess_contract, "target_transform", "level")) != "level":
+            not_supported.append(
+                f"forecast_object={forecast_object!r} currently requires target_transform_policy='raw_level'"
+            )
+        if str(getattr(preprocess_contract, "target_normalization", "none")) != "none":
+            not_supported.append(
+                f"forecast_object={forecast_object!r} currently requires target_normalization='none'"
+            )
+        target_transformer = _selection_value(selection_map, "target_transformer", default="none")
+        if str(target_transformer) != "none":
+            not_supported.append(
+                f"forecast_object={forecast_object!r} currently does not support custom target_transformer"
+            )
 
     # 1.3 training_start_rule=fixed_start requires leaf_config.training_start_date
     if feature_builder is not None:

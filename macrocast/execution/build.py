@@ -10,6 +10,7 @@ import math
 import warnings
 from dataclasses import replace
 from pathlib import Path
+from statistics import NormalDist
 
 import numpy as np
 import pandas as pd
@@ -52,10 +53,16 @@ from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as
 from .nber import filter_origins_by_regime as _filter_origins_by_regime
 from .deterministic import augment_array as _augment_deterministic_array
 from .types import (
+    DENSITY_FORECAST_PAYLOAD_CONTRACT_VERSION,
+    DIRECTION_FORECAST_PAYLOAD_CONTRACT_VERSION,
     FORECAST_PAYLOAD_CONTRACT_VERSION,
+    INTERVAL_FORECAST_PAYLOAD_CONTRACT_VERSION,
+    DensityForecastPayload,
+    DirectionForecastPayload,
     ExecutionResult,
     ExecutionSpec,
     ForecastPayload,
+    IntervalForecastPayload,
     Layer2Representation,
 )
 from .deep_training import fit_factor_model, fit_with_optional_tuning, fit_adaptive_lasso, predict_adaptive_lasso
@@ -1545,6 +1552,168 @@ def _coerce_forecast_payload(output: Mapping[str, object] | ForecastPayload, *, 
         selected_bic=float(output["selected_bic"]),
         tuning_payload=tuning_payload,
     )
+
+
+_PAYLOAD_CONTRACT_BY_FORECAST_OBJECT = {
+    "point_mean": FORECAST_PAYLOAD_CONTRACT_VERSION,
+    "point_median": FORECAST_PAYLOAD_CONTRACT_VERSION,
+    "quantile": FORECAST_PAYLOAD_CONTRACT_VERSION,
+    "direction": DIRECTION_FORECAST_PAYLOAD_CONTRACT_VERSION,
+    "interval": INTERVAL_FORECAST_PAYLOAD_CONTRACT_VERSION,
+    "density": DENSITY_FORECAST_PAYLOAD_CONTRACT_VERSION,
+}
+
+
+def _forecast_object(recipe: RecipeSpec) -> str:
+    return str(
+        recipe.training_spec.get(
+            "forecast_object",
+            recipe.data_task_spec.get("forecast_object", "point_mean"),
+        )
+    )
+
+
+def _forecast_payload_contract_for_recipe(recipe: RecipeSpec) -> str:
+    return _PAYLOAD_CONTRACT_BY_FORECAST_OBJECT.get(_forecast_object(recipe), FORECAST_PAYLOAD_CONTRACT_VERSION)
+
+
+def _payload_sigma(series: pd.Series, fallback_center: float) -> float:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    sigma = float(values.std(ddof=1)) if len(values) > 1 else float("nan")
+    if not math.isfinite(sigma) or sigma <= 0:
+        sigma = max(abs(float(fallback_center)) * 0.1, 1e-8)
+    return sigma
+
+
+def _direction_label(value: float, threshold: float = 0.0) -> str:
+    return "up" if float(value) >= threshold else "down"
+
+
+def _gaussian_log_density(y_true: float, mean: float, sigma: float) -> float:
+    variance = sigma**2
+    return float(
+        -0.5 * math.log(2.0 * math.pi * variance)
+        - ((float(y_true) - float(mean)) ** 2) / (2.0 * variance)
+    )
+
+
+def _payload_family_columns(
+    *,
+    forecast_object: str,
+    y_true: float,
+    y_pred: float,
+    benchmark_pred: float,
+    payload_sigma: float,
+    interval_coverage: float,
+) -> dict[str, object]:
+    contract = _PAYLOAD_CONTRACT_BY_FORECAST_OBJECT.get(forecast_object, FORECAST_PAYLOAD_CONTRACT_VERSION)
+    base = {
+        "forecast_object": forecast_object,
+        "forecast_payload_contract": contract,
+    }
+    if forecast_object in {"point_mean", "point_median", "quantile"}:
+        return {
+            **base,
+            "payload_family": "point",
+        }
+    if forecast_object == "direction":
+        threshold = 0.0
+        model_payload = DirectionForecastPayload(
+            direction=_direction_label(y_pred, threshold),
+            up_probability=1.0 if y_pred >= threshold else 0.0,
+            threshold=threshold,
+        )
+        benchmark_payload = DirectionForecastPayload(
+            direction=_direction_label(benchmark_pred, threshold),
+            up_probability=1.0 if benchmark_pred >= threshold else 0.0,
+            threshold=threshold,
+        )
+        true_direction = _direction_label(y_true, threshold)
+        return {
+            **base,
+            "payload_family": "direction",
+            "direction_threshold": threshold,
+            "direction_true": true_direction,
+            "direction_pred": model_payload.direction,
+            "benchmark_direction_pred": benchmark_payload.direction,
+            "direction_up_probability": model_payload.up_probability,
+            "benchmark_direction_up_probability": benchmark_payload.up_probability,
+            "direction_hit": model_payload.direction == true_direction,
+            "benchmark_direction_hit": benchmark_payload.direction == true_direction,
+        }
+    if forecast_object == "interval":
+        z_value = float(NormalDist().inv_cdf(0.5 + interval_coverage / 2.0))
+        half_width = z_value * payload_sigma
+        model_payload = IntervalForecastPayload(
+            lower=float(y_pred - half_width),
+            upper=float(y_pred + half_width),
+            coverage=float(interval_coverage),
+            center=float(y_pred),
+        )
+        benchmark_payload = IntervalForecastPayload(
+            lower=float(benchmark_pred - half_width),
+            upper=float(benchmark_pred + half_width),
+            coverage=float(interval_coverage),
+            center=float(benchmark_pred),
+        )
+        return {
+            **base,
+            "payload_family": "interval",
+            "interval_method": model_payload.method,
+            "interval_coverage": model_payload.coverage,
+            "interval_sigma": payload_sigma,
+            "interval_lower": model_payload.lower,
+            "interval_upper": model_payload.upper,
+            "benchmark_interval_lower": benchmark_payload.lower,
+            "benchmark_interval_upper": benchmark_payload.upper,
+            "interval_width": model_payload.upper - model_payload.lower,
+            "benchmark_interval_width": benchmark_payload.upper - benchmark_payload.lower,
+            "interval_covered": model_payload.lower <= y_true <= model_payload.upper,
+            "benchmark_interval_covered": benchmark_payload.lower <= y_true <= benchmark_payload.upper,
+        }
+    if forecast_object == "density":
+        model_payload = DensityForecastPayload(
+            mean=float(y_pred),
+            variance=float(payload_sigma**2),
+        )
+        benchmark_payload = DensityForecastPayload(
+            mean=float(benchmark_pred),
+            variance=float(payload_sigma**2),
+        )
+        return {
+            **base,
+            "payload_family": "density",
+            "density_distribution": model_payload.distribution,
+            "density_mean": model_payload.mean,
+            "density_variance": model_payload.variance,
+            "density_std": payload_sigma,
+            "benchmark_density_mean": benchmark_payload.mean,
+            "benchmark_density_variance": benchmark_payload.variance,
+            "density_log_score": _gaussian_log_density(y_true, y_pred, payload_sigma),
+            "benchmark_density_log_score": _gaussian_log_density(y_true, benchmark_pred, payload_sigma),
+        }
+    raise ExecutionError(f"forecast_object {forecast_object!r} is not executable in current payload family runtime")
+
+
+def _payload_artifact_records(predictions: pd.DataFrame) -> list[dict[str, object]]:
+    payload_cols = [
+        col
+        for col in predictions.columns
+        if col.startswith(("direction_", "interval_", "density_", "benchmark_direction_", "benchmark_interval_", "benchmark_density_"))
+    ]
+    base_cols = [
+        "target",
+        "horizon",
+        "origin_date",
+        "target_date",
+        "model_name",
+        "benchmark_name",
+        "forecast_object",
+        "payload_family",
+        "forecast_payload_contract",
+    ]
+    cols = [col for col in base_cols + payload_cols if col in predictions.columns]
+    return predictions[cols].to_dict(orient="records")
 
 
 def _get_model_executor(recipe: RecipeSpec):
@@ -5124,6 +5293,13 @@ def _write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _write_jsonl(path: Path, payload: Sequence[Mapping[str, object]]) -> None:
+    path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False, default=str) + "\n" for row in payload),
+        encoding="utf-8",
+    )
+
+
 
 
 def _output_spec(provenance_payload: dict | None) -> dict[str, object]:
@@ -6522,6 +6698,15 @@ def _build_predictions(
     target_transformer_spec = _target_transformer_spec(recipe)
     feature_runtime_builder = _feature_runtime_builder(recipe)
     model_family = _model_family(recipe)
+    forecast_object = _forecast_object(recipe)
+    interval_coverage = float(
+        recipe.training_spec.get(
+            "interval_coverage",
+            recipe.data_task_spec.get("interval_coverage", 0.9),
+        )
+    )
+    if not 0.0 < interval_coverage < 1.0:
+        raise ExecutionError("interval_coverage must be between 0 and 1")
     if (
         target_transformer_spec is not None
         and feature_runtime_builder not in _TARGET_TRANSFORMER_FEATURE_RUNTIMES
@@ -6792,6 +6977,19 @@ def _build_predictions(
                 "path_average_step_count": horizon,
                 "path_average_aggregation_rule": "equal_weight_mean",
             }
+            row.update(
+                _payload_family_columns(
+                    forecast_object=forecast_object,
+                    y_true=y_true,
+                    y_pred=y_pred,
+                    benchmark_pred=benchmark_pred,
+                    payload_sigma=_payload_sigma(
+                        path_step_target.iloc[start_idx + 1 : effective_origin_idx + 1],
+                        fallback_center=y_pred,
+                    ),
+                    interval_coverage=interval_coverage,
+                )
+            )
             return row, tuning_payload, step_rows
 
         def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]]]:
@@ -6953,6 +7151,16 @@ def _build_predictions(
                 "y_pred_level": y_pred_level,
                 "benchmark_pred_level": benchmark_pred_level,
             }
+            row.update(
+                _payload_family_columns(
+                    forecast_object=forecast_object,
+                    y_true=y_true,
+                    y_pred=y_pred,
+                    benchmark_pred=benchmark_pred,
+                    payload_sigma=_payload_sigma(train_for_model, fallback_center=y_pred),
+                    interval_coverage=interval_coverage,
+                )
+            )
             return row, tuning_payload, []
 
         horizon_rows: list[dict[str, object]] = []
@@ -7091,6 +7299,20 @@ def _compute_metrics(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str,
                 error_col="transformed_scale_error",
                 benchmark_error_col="transformed_scale_benchmark_error",
             )
+        payload_metrics: dict[str, object] = {}
+        if "payload_family" in group.columns:
+            payload_metrics["payload_family"] = str(group["payload_family"].iloc[0])
+        if "direction_hit" in group.columns:
+            payload_metrics["direction_accuracy"] = float(group["direction_hit"].astype(bool).mean())
+            payload_metrics["benchmark_direction_accuracy"] = float(group["benchmark_direction_hit"].astype(bool).mean())
+        if "interval_covered" in group.columns:
+            payload_metrics["interval_coverage_rate"] = float(group["interval_covered"].astype(bool).mean())
+            payload_metrics["benchmark_interval_coverage_rate"] = float(group["benchmark_interval_covered"].astype(bool).mean())
+            payload_metrics["mean_interval_width"] = float(group["interval_width"].mean())
+            payload_metrics["benchmark_mean_interval_width"] = float(group["benchmark_interval_width"].mean())
+        if "density_log_score" in group.columns:
+            payload_metrics["mean_density_log_score"] = float(group["density_log_score"].mean())
+            payload_metrics["benchmark_mean_density_log_score"] = float(group["benchmark_density_log_score"].mean())
         metrics_by_horizon[f"h{int(horizon)}"] = {
             "n_predictions": int(len(group)),
             "msfe": msfe,
@@ -7111,6 +7333,7 @@ def _compute_metrics(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str,
             "sign_accuracy": sign_accuracy,
             "selected_lag_counts": selected_lag_counts,
             "scale_metrics": scale_metrics,
+            "payload_metrics": payload_metrics,
         }
 
     return {
@@ -7474,8 +7697,15 @@ def execute_recipe(
         manifest.update(provenance_payload)
     feature_fit_state = _last_tp.get("feature_representation_fit_state") if isinstance(_last_tp, dict) else None
     forecast_payload_contract = _last_tp.get("forecast_payload_contract") if isinstance(_last_tp, dict) else None
+    manifest["forecast_object"] = _forecast_object(recipe)
+    manifest["forecast_payload_contract"] = _forecast_payload_contract_for_recipe(recipe)
+    manifest["forecast_payload_family"] = (
+        "point"
+        if manifest["forecast_object"] in {"point_mean", "point_median", "quantile"}
+        else manifest["forecast_object"]
+    )
     if forecast_payload_contract:
-        manifest["forecast_payload_contract"] = forecast_payload_contract
+        manifest["base_forecast_payload_contract"] = forecast_payload_contract
     if feature_fit_state:
         _write_json(run_dir / "feature_representation_fit_state.json", feature_fit_state)
         manifest["feature_representation_fit_state_file"] = "feature_representation_fit_state.json"
@@ -7518,6 +7748,10 @@ def execute_recipe(
         manifest["path_average_steps_file"] = "path_average_steps.csv"
         if export_format in ('parquet', 'all'):
             path_average_steps.to_parquet(run_dir / 'path_average_steps.parquet')
+    payload_records = _payload_artifact_records(predictions)
+    if payload_records:
+        _write_jsonl(run_dir / "forecast_payloads.jsonl", payload_records)
+        manifest["forecast_payloads_file"] = "forecast_payloads.jsonl"
 
     # Write structured metrics/comparison/regime based on export_format
     metrics_files = {}

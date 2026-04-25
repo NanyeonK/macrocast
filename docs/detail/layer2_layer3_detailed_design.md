@@ -290,8 +290,8 @@ given; Layer 2/evaluation converts scale.
 
 ### Forecast Payload Families
 
-`ForecastPayload` v1 is scalar and point-oriented. Future payloads should form
-a typed family rather than overloading `y_pred`.
+`ForecastPayload` v1 is scalar and point-oriented. Additional forecast objects
+use typed payload-family wrappers rather than overloading `y_pred`.
 
 Proposed payload family:
 
@@ -299,12 +299,15 @@ Proposed payload family:
 |---|---|---|
 | `PointForecastPayload` | Operational via `ForecastPayload` v1 | point prediction plus estimator metadata. |
 | `QuantileForecastPayload` | Partly operational through current quantile paths | quantile level(s), quantile predictions, calibration metadata. |
-| `IntervalForecastPayload` | Future | lower/upper bounds, coverage level, method metadata. |
-| `DensityForecastPayload` | Future | distribution parameters, samples, or grid density plus scoring metadata. |
-| `DirectionForecastPayload` | Future | class probability or direction score plus threshold metadata. |
+| `DirectionForecastPayload` | Operational | direction label, up probability, threshold metadata, and hit indicators. |
+| `IntervalForecastPayload` | Operational as scalar wrapper | lower/upper bounds, coverage level, method metadata, and coverage indicators. |
+| `DensityForecastPayload` | Operational as scalar wrapper | Gaussian mean/variance metadata and log-score columns. |
 
-The capability matrix should keep future payload cells blocked until runtime
-executors and artifacts exist.
+The current direction/interval/density wrappers consume the existing scalar
+generator and write explicit payload columns plus `forecast_payloads.jsonl`.
+They are baseline payload contracts, not model-specific distributional
+estimators. Sequence/tensor and raw-panel iterated payloads remain gated until
+their upstream contracts exist.
 
 ### Path-Average Execution
 
@@ -479,23 +482,28 @@ Acceptance:
 
 ### Phase 5: Forecast Payload Family
 
-Reason: interval, density, and direction outputs need typed payloads and
-evaluation contracts. Do not overload scalar `y_pred`.
+Status: direction, interval, and density are now operational as typed wrappers
+over scalar point generators. Do not overload scalar `y_pred`.
 
 Acceptance:
 
 - payload classes or tagged payload schemas exist;
-- Layer 3 capability matrix gates unsupported payload families;
+- Layer 3 capability matrix records payload contract per active cell;
 - artifacts preserve payload type, scale, and scoring metadata.
 
-The current `layer3_capability_matrix_v1` schema revision names the future
-contracts without opening them:
+The current `layer3_capability_matrix_v1` schema revision opens these payload
+contracts:
 
 | Cell | Contract |
 |---|---|
 | `forecast_object.direction` | `direction_forecast_payload_v1` |
 | `forecast_object.interval` | `interval_forecast_payload_v1` |
 | `forecast_object.density` | `density_forecast_payload_v1` |
+
+The remaining future contracts stay gated:
+
+| Future cell | Contract |
+|---|---|
 | `feature_runtime.sequence_tensor` | `sequence_representation_contract_v1` and `sequence_forecast_payload_v1` |
 | `forecast_type.raw_panel_iterated` | `exogenous_x_path_contract_v1` and `multi_step_raw_panel_payload_v1` |
 

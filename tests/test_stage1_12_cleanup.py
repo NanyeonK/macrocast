@@ -67,9 +67,6 @@ DROPPED: tuple[tuple[str, str], ...] = (
     ("forecast_type", "dirrec"),
     ("forecast_type", "mimo"),
     ("forecast_type", "seq2seq"),
-    ("forecast_object", "direction"),
-    ("forecast_object", "interval"),
-    ("forecast_object", "density"),
     ("forecast_object", "turning_point"),
     ("forecast_object", "regime_probability"),
     ("forecast_object", "event_probability"),
@@ -91,6 +88,9 @@ PROMOTED: tuple[tuple[str, str], ...] = (
     ("horizon_target_construction", "path_average_growth_1_to_h"),
     ("horizon_target_construction", "path_average_difference_1_to_h"),
     ("horizon_target_construction", "path_average_log_growth_1_to_h"),
+    ("forecast_object", "direction"),
+    ("forecast_object", "interval"),
+    ("forecast_object", "density"),
 )
 
 

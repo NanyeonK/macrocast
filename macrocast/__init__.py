@@ -65,10 +65,13 @@ from .custom import (
     target_transformer_contract_metadata,
 )
 from .execution import (
+    DensityForecastPayload,
+    DirectionForecastPayload,
     ExecutionError,
     ExecutionResult,
     ExecutionSpec,
     ForecastPayload,
+    IntervalForecastPayload,
     SweepResult,
     VariantResult,
     build_execution_spec,
@@ -291,6 +294,9 @@ __all__ = [
     "ExecutionSpec",
     "ExecutionResult",
     "ForecastPayload",
+    "DirectionForecastPayload",
+    "IntervalForecastPayload",
+    "DensityForecastPayload",
     "get_canonical_layer_order",
     "get_axis_registry",
     "get_axis_registry_entry",

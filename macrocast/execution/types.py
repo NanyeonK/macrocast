@@ -27,6 +27,9 @@ class ExecutionResult:
 
 
 FORECAST_PAYLOAD_CONTRACT_VERSION = "forecast_payload_v1"
+DIRECTION_FORECAST_PAYLOAD_CONTRACT_VERSION = "direction_forecast_payload_v1"
+INTERVAL_FORECAST_PAYLOAD_CONTRACT_VERSION = "interval_forecast_payload_v1"
+DENSITY_FORECAST_PAYLOAD_CONTRACT_VERSION = "density_forecast_payload_v1"
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,58 @@ class ForecastPayload:
             "selected_lag": self.selected_lag,
             "selected_bic": self.selected_bic,
             "tuning_payload": tuning_payload,
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
+class DirectionForecastPayload:
+    direction: str
+    up_probability: float
+    threshold: float = 0.0
+    contract_version: str = DIRECTION_FORECAST_PAYLOAD_CONTRACT_VERSION
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "direction": self.direction,
+            "up_probability": self.up_probability,
+            "threshold": self.threshold,
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
+class IntervalForecastPayload:
+    lower: float
+    upper: float
+    coverage: float
+    center: float
+    method: str = "gaussian_train_std_symmetric_v1"
+    contract_version: str = INTERVAL_FORECAST_PAYLOAD_CONTRACT_VERSION
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "lower": self.lower,
+            "upper": self.upper,
+            "coverage": self.coverage,
+            "center": self.center,
+            "method": self.method,
+            "contract_version": self.contract_version,
+        }
+
+
+@dataclass(frozen=True)
+class DensityForecastPayload:
+    mean: float
+    variance: float
+    distribution: str = "gaussian_train_std_v1"
+    contract_version: str = DENSITY_FORECAST_PAYLOAD_CONTRACT_VERSION
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "mean": self.mean,
+            "variance": self.variance,
+            "distribution": self.distribution,
             "contract_version": self.contract_version,
         }
 

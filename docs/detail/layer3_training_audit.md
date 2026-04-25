@@ -30,7 +30,7 @@ Layer 3's canonical consumer contract is:
 fit_predict(forecast_generator, layer2_representation, training_spec) -> forecast_payload
 ```
 
-The runtime forecast payload contract is `forecast_payload_v1`:
+The scalar runtime forecast payload contract is `forecast_payload_v1`:
 
 | Field | Meaning |
 |---|---|
@@ -43,11 +43,21 @@ The current tabular runtime handoff is `Layer2Representation`, with
 `Z_train`, `y_train`, `Z_pred`, feature names, block order, block roles,
 alignment, leakage contract, fit state, and runtime provenance.
 
-Forward contracts for future payload families, sequence/tensor handoff, and
-raw-panel iterated forecasting are specified in
-`layer2_layer3_detailed_design.md`. Those surfaces remain gated in the Layer 3
-capability matrix until their executors and artifacts exist. Path-average point
-forecast execution is now operational through the stepwise Layer 3 protocol.
+Layer 3 also supports typed payload-family wrappers around the scalar
+generator:
+
+| Forecast object | Payload contract | Current runtime |
+|---|---|---|
+| `direction` | `direction_forecast_payload_v1` | Converts scalar forecasts into up/down payloads relative to a zero threshold and records hit indicators. |
+| `interval` | `interval_forecast_payload_v1` | Builds a symmetric Gaussian interval around the scalar forecast using train-window target dispersion. |
+| `density` | `density_forecast_payload_v1` | Builds a Gaussian density payload around the scalar forecast using train-window target dispersion and records log scores. |
+
+These wrappers make payload type, artifact columns, and manifest contracts
+explicit without pretending that they are model-specific distributional
+estimators. Sequence/tensor handoff and raw-panel iterated forecasting remain
+gated until their upstream representation/scenario contracts exist.
+Path-average point forecast execution is operational through the stepwise
+Layer 3 protocol.
 
 ## Non-Ownership
 
@@ -132,6 +142,12 @@ The docs and runtime now mostly follow this split:
   writes `path_average_steps.csv`, and records the aggregate row in
   `predictions.csv`. The current runtime requires raw-level target scale, no
   target normalization, and no custom target transformer.
+- Direction, interval, and density forecast objects are operational as typed
+  payload-family wrappers over supported scalar point generators. Runtime
+  writes payload columns into `predictions.csv`, writes
+  `forecast_payloads.jsonl`, and records the active payload contract in the
+  manifest. Interval/density wrappers currently require raw-level target scale,
+  no target normalization, and no custom target transformer.
 - Registered custom Layer 3 models receive `custom_model_v1` context and Layer
   2 provenance.
 - The compiler validates important Layer 2 x Layer 3 incompatibilities, such
@@ -140,12 +156,10 @@ The docs and runtime now mostly follow this split:
 - New compiled manifests include `layer3_capability_matrix`, which records the
   active `model_family x feature_runtime x forecast_type x forecast_object`
   cell and the same blocking reasons used by the compiler gate.
-- The same matrix includes a status catalog and reserved future cells for
-  direction, interval, density, sequence/tensor runtimes, and raw-panel
-  iterated forecasting. These are documentation of future contracts, not
-  accepted recipe values. The cells now name the required contracts:
-  `direction_forecast_payload_v1`, `interval_forecast_payload_v1`,
-  `density_forecast_payload_v1`, `sequence_representation_contract_v1`,
+- The same matrix includes a status catalog, payload contract names for
+  direction/interval/density, and reserved future cells for sequence/tensor
+  runtimes and raw-panel iterated forecasting. These future cells name the
+  remaining required contracts: `sequence_representation_contract_v1`,
   `sequence_forecast_payload_v1`, `exogenous_x_path_contract_v1`, and
   `multi_step_raw_panel_payload_v1`.
 
@@ -189,7 +203,9 @@ The boundary is defined, but these cleanup items remain:
 - `model_family` status is still value-level in the registry, but runtime
   support is now represented in `layer3_capability_matrix`. The current matrix
   covers the operational tabular cells: target-lag-only iterated point models,
-  raw-panel direct point models, and quantile-linear median/quantile outputs.
+  raw-panel direct point models, quantile-linear median/quantile outputs, and
+  direction/interval/density payload-family wrappers over scalar point
+  generators.
 - Built-in model executors still have separate autoreg/raw-panel wrappers, but
   supported sklearn, custom, and factor-model paths now attach
   `Layer2Representation` metadata to their tuning payloads. Sequence/tensor
