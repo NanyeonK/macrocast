@@ -215,7 +215,7 @@ def test_evaluate_with_hac_blocks_non_hac_stat_test() -> None:
         stat_test="dm",
     ))
     assert r.compiled.execution_status == "blocked_by_incompatibility"
-    assert any("evaluate_with_hac" in msg and "stat_test='dm'" in msg
+    assert any("evaluate_with_hac" in msg and "dm" in msg
                for msg in r.manifest.get("blocked_reasons", []))
 
 
@@ -240,3 +240,4 @@ def test_allow_overlap_default_with_any_stat_test() -> None:
     r = compile_recipe_dict(_recipe(stat_test="dm"))
     assert r.compiled.execution_status == "executable"
     assert r.manifest["data_task_spec"]["overlap_handling"] == "allow_overlap"
+    assert r.manifest["stat_test_spec"]["overlap_handling"] == "allow_overlap"

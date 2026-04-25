@@ -28,7 +28,7 @@ OPERATIONAL_VALUES = {
         "none", "mincer_zarnowitz", "ljung_box", "arch_lm", "bias_test", "diagnostics_full",
         "autocorrelation_of_errors", "serial_dependence_loss_diff",
     },
-    "test_scope": {"per_target", "per_horizon", "per_model_pair", "full_grid_pairwise", "benchmark_vs_all", "regime_specific_tests", "subsample_tests"},
+    "test_scope": {"per_target"},
 }
 
 PLANNED_PRESENT = {
@@ -77,3 +77,14 @@ def test_legacy_stat_test_axis_still_registered() -> None:
     assert entry.layer == "6_stat_tests"
     assert "dm" in entry.allowed_values
     assert entry.current_status["dm"] == "operational"
+
+
+def test_scope_runtime_status_matches_current_orchestration() -> None:
+    entry = get_axis_registry_entry("test_scope")
+    assert entry.current_status["per_target"] == "operational"
+    assert entry.current_status["per_horizon"] == "registry_only"
+    assert entry.current_status["per_model_pair"] == "registry_only"
+    assert entry.current_status["benchmark_vs_all"] == "registry_only"
+    assert entry.current_status["full_grid_pairwise"] == "future"
+    assert entry.current_status["regime_specific_tests"] == "future"
+    assert entry.current_status["subsample_tests"] == "future"

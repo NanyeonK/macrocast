@@ -112,6 +112,8 @@ def test_navigation_tree_populates_downstream_defaults():
     assert _axis(view, "export_format")["selected"] == "json"
     assert _axis(view, "saved_objects")["selected"] == "full_bundle"
     assert _axis(view, "regime_definition")["selected"] == "none"
+    assert _axis(view, "test_scope")["selected"] == "per_target"
+    assert _axis(view, "overlap_handling")["selected"] == "allow_overlap"
     assert _axis(view, "importance_method")["selected"] == "none"
     assert _option(_axis(view, "export_format"), "parquet")["canonical_path_effect"].endswith(
         "fixed_axes.export_format = 'parquet'"
@@ -156,6 +158,26 @@ def test_navigation_shows_current_deep_sequence_gate():
     assert _option(feature_axis, "autoreg_lagged_target")["enabled"] is True
     assert _option(feature_axis, "sequence_tensor")["enabled"] is False
     assert "sequence_tensor remains gated" in _option(feature_axis, "sequence_tensor")["disabled_reason"]
+
+
+def test_navigation_layer6_split_hac_compatibility():
+    recipe = _recipe()
+    recipe["path"]["6_stat_tests"]["fixed_axes"] = {
+        "equal_predictive": "dm_hln",
+        "dependence_correction": "nw_hac",
+        "overlap_handling": "evaluate_with_hac",
+    }
+    view = build_navigation_view(recipe)
+
+    equal_axis = _axis(view, "equal_predictive")
+    correction_axis = _axis(view, "dependence_correction")
+    overlap_axis = _axis(view, "overlap_handling")
+
+    assert _option(equal_axis, "dm_hln")["enabled"] is True
+    assert _option(correction_axis, "nw_hac")["enabled"] is True
+    assert _option(overlap_axis, "evaluate_with_hac")["enabled"] is True
+    assert _option(equal_axis, "dm")["enabled"] is False
+    assert "HAC-capable" in _option(equal_axis, "dm")["disabled_reason"]
 
 
 def test_replication_library_writes_yaml(tmp_path: Path):

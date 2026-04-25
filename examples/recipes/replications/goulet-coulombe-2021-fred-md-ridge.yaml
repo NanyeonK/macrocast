@@ -73,7 +73,7 @@ path:
         minimum_train_size: 60
   6_stat_tests:
     fixed_axes:
-      stat_test: dm
+      equal_predictive: dm
   7_importance:
     fixed_axes:
       importance_method: none

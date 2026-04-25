@@ -66,7 +66,8 @@ The exact set depends on the selected path, but ordinary executable runs should 
 - optional evaluation reports such as `evaluation_report.md` or
   `evaluation_report.tex` when Layer 4 `report_style` requests them;
 - optional payload files such as `forecast_payloads.jsonl`;
-- optional test artifacts such as `stat_test_dm.json`.
+- optional Layer 6 inference artifacts such as `stat_tests.json` and
+  compatibility sidecars such as `stat_test_dm_modified.json`.
 
 ## When To Use API Docs
 

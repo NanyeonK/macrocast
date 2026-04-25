@@ -219,6 +219,7 @@ result-object readers exist.
 
 Owns statistical inference over forecast errors:
 
+- canonical split-axis statistical-test spec
 - equal predictive ability tests
 - nested model tests
 - multiple model tests
@@ -226,7 +227,22 @@ Owns statistical inference over forecast errors:
 - direction tests
 - residual diagnostics
 - dependence correction / HAC policy
+- overlap handling for dependent long-horizon forecast errors
 - test scope
+
+Runtime manifests include `stat_test_spec` under
+`layer6_stat_test_split_v1`. The canonical fields are
+`equal_predictive`, `nested`, `cpa_instability`, `multiple_model`,
+`density_interval`, `direction`, `residual_diagnostics`, `test_scope`,
+`dependence_correction`, and `overlap_handling`. The legacy
+`stat_test` field remains accepted as a compatibility alias and is routed into
+the matching split axis.
+
+Layer 6 writes `stat_tests.json` when at least one test-family axis is active
+and `saved_objects=full_bundle`. Per-test sidecars such as
+`stat_test_dm_modified.json` remain compatibility files for existing readers.
+`test_scope=per_target` is the only currently operational scope; per-horizon,
+pairwise, regime-specific, and subsample orchestration are named but not open.
 
 ## Layer 7: Interpretation
 

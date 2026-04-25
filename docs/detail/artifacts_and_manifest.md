@@ -21,6 +21,14 @@ Layer 5 writes `artifact_manifest.json` for every run. It is the stable
 inventory of files that were actually materialized under the selected
 `output_spec`.
 
+Layer 6 writes statistical-test artifacts only for `saved_objects=full_bundle`
+and only when at least one split test-family axis is active. The aggregate file
+is `stat_tests.json`; per-test compatibility sidecars such as
+`stat_test_dm_modified.json` are also written when a single test payload is
+materialized. The run manifest records
+`stat_test_contract=layer6_stat_test_split_v1` and the resolved
+`stat_test_spec`.
+
 ## Output Spec
 
 | Axis | Operational values | Effect |

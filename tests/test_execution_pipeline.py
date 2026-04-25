@@ -2052,6 +2052,7 @@ def test_execute_recipe_stage6_extended_stat_tests(tmp_path: Path) -> None:
         manifest = json.loads((run_dir / "manifest.json").read_text())
         payload = json.loads((run_dir / filename).read_text())
         assert manifest["stat_test_file"] == filename
+        assert manifest["stat_test_contract"] == "layer6_stat_test_split_v1"
         assert payload["stat_test"] == stat_name
 
 
@@ -2066,6 +2067,38 @@ def test_execute_recipe_stage6_stat_test_manifest_preserves_dependence_correctio
     )
     manifest = json.loads((tmp_path / result.run.artifact_subdir / "manifest.json").read_text())
     assert manifest["stat_test_spec"]["dependence_correction"] == "nw_hac_auto"
+
+
+def test_execute_recipe_stage6_split_stat_test_contract(tmp_path: Path) -> None:
+    fixture = Path("tests/fixtures/fred_md_ar_sample.csv")
+    result = execute_recipe(
+        recipe=_recipe(benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=fixture,
+        provenance_payload={
+            "compiler": {
+                "stat_test_spec": {
+                    "equal_predictive": "dm_modified",
+                    "dependence_correction": "nw_hac_auto",
+                    "overlap_handling": "evaluate_with_hac",
+                    "test_scope": "per_target",
+                }
+            }
+        },
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    stat_tests = json.loads((run_dir / "stat_tests.json").read_text())
+    artifact_manifest = json.loads((run_dir / "artifact_manifest.json").read_text())
+
+    assert manifest["stat_test_contract"] == "layer6_stat_test_split_v1"
+    assert manifest["stat_test_spec"]["stat_test"] == "none"
+    assert manifest["stat_test_spec"]["equal_predictive"] == "dm_modified"
+    assert manifest["stat_test_spec"]["test_scope"] == "per_target"
+    assert manifest["stat_test_file"] == "stat_test_dm_modified.json"
+    assert stat_tests["equal_predictive"]["stat_test"] == "dm_modified"
+    assert any(item["path"] == "stat_tests.json" for item in artifact_manifest["artifacts"])
 
 
 

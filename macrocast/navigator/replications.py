@@ -101,7 +101,7 @@ _GOULET_COULOMBE_2021_RECIPE: dict[str, Any] = {
             },
             "leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 60}},
         },
-        "6_stat_tests": {"fixed_axes": {"stat_test": "dm"}},
+        "6_stat_tests": {"fixed_axes": {"equal_predictive": "dm"}},
         "7_importance": {"fixed_axes": {"importance_method": "none"}},
     },
 }
@@ -186,7 +186,7 @@ _ENTRIES: dict[str, ReplicationEntry] = {
             "3_training.model_family=ridge",
             "3_training.benchmark_family=ar_bic",
             "4_evaluation.primary_metric=msfe",
-            "6_stat_tests.stat_test=dm",
+            "6_stat_tests.equal_predictive=dm",
         ),
         recipe_yaml=_dump_recipe(_GOULET_COULOMBE_2021_RECIPE),
         command=(
@@ -206,6 +206,7 @@ _ENTRIES: dict[str, ReplicationEntry] = {
             "predictions.csv",
             "metrics.json",
             "comparison_summary.json",
+            "stat_tests.json",
             "stat_test_dm.json",
         ),
         deviations_from_original_paper=(
