@@ -62,6 +62,9 @@ The exact set depends on the selected path, but ordinary executable runs should 
 - `predictions.csv`;
 - `metrics.json`;
 - `comparison_summary.json`;
+- `evaluation_summary.json`;
+- optional evaluation reports such as `evaluation_report.md` or
+  `evaluation_report.tex` when Layer 4 `report_style` requests them;
 - optional payload files such as `forecast_payloads.jsonl`;
 - optional test artifacts such as `stat_test_dm.json`.
 

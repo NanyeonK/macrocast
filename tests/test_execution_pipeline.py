@@ -642,6 +642,55 @@ def test_execute_recipe_stage4_metrics_include_relative_and_direction_fields(tmp
     assert "sign_accuracy" in h1
 
 
+def test_execute_recipe_writes_layer4_evaluation_summary_and_report(tmp_path: Path) -> None:
+    result = execute_recipe(
+        recipe=_recipe(benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5}),
+        preprocess=_preprocess_raw_only(),
+        output_root=tmp_path,
+        local_raw_source=Path("tests/fixtures/fred_md_ar_sample.csv"),
+        provenance_payload={
+            "compiler": {
+                "evaluation_spec": {
+                    "primary_metric": "rmse",
+                    "point_metrics": "RMSE",
+                    "relative_metrics": "relative_RMSE",
+                    "direction_metrics": "directional_accuracy",
+                    "density_metrics": "pinball_loss",
+                    "economic_metrics": "utility_gain",
+                    "benchmark_window": "expanding",
+                    "benchmark_scope": "same_for_all",
+                    "agg_time": "full_oos_average",
+                    "agg_horizon": "equal_weight",
+                    "agg_target": "report_separately_only",
+                    "ranking": "mean_metric_rank",
+                    "report_style": "markdown_table",
+                    "regime_definition": "none",
+                    "regime_use": "eval_only",
+                    "regime_metrics": "all_main_metrics_by_regime",
+                    "decomposition_target": "preprocessing_effect",
+                    "decomposition_order": "marginal_effect_only",
+                    "oos_period": "all_oos_data",
+                }
+            }
+        },
+    )
+    run_dir = tmp_path / result.run.artifact_subdir
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    summary = json.loads((run_dir / "evaluation_summary.json").read_text())
+    report = (run_dir / "evaluation_report.md").read_text()
+
+    assert manifest["evaluation_summary_file"] == "evaluation_summary.json"
+    assert manifest["evaluation_report_file"] == "evaluation_report.md"
+    assert manifest["evaluation_summary_contract"] == "layer4_evaluation_summary_v1"
+    assert summary["contract_version"] == "layer4_evaluation_summary_v1"
+    assert summary["target_mode"] == "single_target"
+    assert summary["summary"]["primary_metric"] == "rmse"
+    assert summary["summary"]["overall_equal_weight"]["available"] is True
+    assert summary["summary"]["selected_metric_availability"]["point_metrics"]["metric_key"] == "rmse"
+    assert summary["summary"]["selected_metric_availability"]["density_metrics"]["available"] is False
+    assert "Primary metric" in report
+
+
 def test_execute_recipe_reads_oos_period_from_evaluation_spec(tmp_path: Path, monkeypatch) -> None:
     seen: list[str] = []
 

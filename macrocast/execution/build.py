@@ -7868,6 +7868,276 @@ def _compute_metrics(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str,
     }
 
 
+_EVALUATION_SUMMARY_CONTRACT_VERSION = "layer4_evaluation_summary_v1"
+
+_PRIMARY_METRIC_MAP: dict[str, tuple[str, str | None, str]] = {
+    "msfe": ("msfe", "benchmark_msfe", "lower"),
+    "relative_msfe": ("relative_msfe", None, "lower"),
+    "oos_r2": ("oos_r2", None, "higher"),
+    "csfe": ("csfe", None, "lower"),
+    "rmse": ("rmse", "benchmark_rmse", "lower"),
+    "mae": ("mae", "benchmark_mae", "lower"),
+    "mape": ("mape", "benchmark_mape", "lower"),
+}
+
+_EVALUATION_AXIS_METRIC_KEYS: dict[str, dict[str, str]] = {
+    "point_metrics": {
+        "MSE": "msfe",
+        "MSFE": "msfe",
+        "RMSE": "rmse",
+        "MAE": "mae",
+        "MAPE": "mape",
+    },
+    "relative_metrics": {
+        "relative_MSFE": "relative_msfe",
+        "relative_RMSE": "relative_rmse",
+        "relative_MAE": "relative_mae",
+        "oos_R2": "oos_r2",
+        "benchmark_win_rate": "benchmark_win_rate",
+        "CSFE_difference": "csfe",
+    },
+    "direction_metrics": {
+        "directional_accuracy": "directional_accuracy",
+        "sign_accuracy": "sign_accuracy",
+    },
+    "density_metrics": {
+        "coverage_rate": "payload_metrics.interval_coverage_rate",
+        "log_score": "payload_metrics.mean_density_log_score",
+    },
+}
+
+
+def _finite_or_none(value: object) -> object:
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return value
+    if math.isnan(numeric) or math.isinf(numeric):
+        return None
+    return numeric
+
+
+def _metric_from_horizon_payload(payload: Mapping[str, object], key: str | None) -> object:
+    if not key:
+        return None
+    current: object = payload
+    for part in key.split("."):
+        if not isinstance(current, Mapping) or part not in current:
+            return None
+        current = current[part]
+    return _finite_or_none(current)
+
+
+def _selected_metric_availability(metrics_by_horizon: Mapping[str, Mapping[str, object]], evaluation_spec: Mapping[str, object]) -> dict[str, object]:
+    out: dict[str, object] = {}
+    for axis_name, mapping in _EVALUATION_AXIS_METRIC_KEYS.items():
+        selected = str(evaluation_spec.get(axis_name, ""))
+        metric_key = mapping.get(selected)
+        available = bool(metric_key) and any(
+            _metric_from_horizon_payload(payload, metric_key) is not None
+            for payload in metrics_by_horizon.values()
+        )
+        out[axis_name] = {
+            "selected": selected,
+            "metric_key": metric_key,
+            "available": available,
+            "disabled_reason": None if available else "selected metric is not materialized by the current forecast payload/runtime slice",
+        }
+    if str(evaluation_spec.get("economic_metrics", "")):
+        out["economic_metrics"] = {
+            "selected": str(evaluation_spec.get("economic_metrics")),
+            "metric_key": None,
+            "available": False,
+            "disabled_reason": "economic metrics require a user-supplied utility/loss contract",
+        }
+    return out
+
+
+def _evaluation_aggregation_payload(evaluation_spec: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "agg_time": evaluation_spec.get("agg_time", "full_oos_average"),
+        "agg_horizon": evaluation_spec.get("agg_horizon", "equal_weight"),
+        "agg_target": evaluation_spec.get("agg_target", "report_separately_only"),
+        "ranking": evaluation_spec.get("ranking", "mean_metric_rank"),
+        "report_style": evaluation_spec.get("report_style", "tidy_dataframe"),
+    }
+
+
+def _summarize_metrics_by_horizon(metrics_by_horizon: Mapping[str, Mapping[str, object]], evaluation_spec: Mapping[str, object]) -> dict[str, object]:
+    primary_metric = str(evaluation_spec.get("primary_metric", "msfe"))
+    metric_key, benchmark_key, direction = _PRIMARY_METRIC_MAP.get(primary_metric, (primary_metric, None, "lower"))
+    rows: list[dict[str, object]] = []
+    for horizon_key in sorted(metrics_by_horizon, key=lambda item: int(str(item).lstrip("h"))):
+        payload = metrics_by_horizon[horizon_key]
+        value = _metric_from_horizon_payload(payload, metric_key)
+        benchmark_value = _metric_from_horizon_payload(payload, benchmark_key)
+        winner = None
+        if isinstance(value, float) and isinstance(benchmark_value, float):
+            if value == benchmark_value:
+                winner = "tie"
+            elif direction == "higher":
+                winner = "model" if value > benchmark_value else "benchmark"
+            else:
+                winner = "model" if value < benchmark_value else "benchmark"
+        rows.append(
+            {
+                "horizon": horizon_key,
+                "metric_key": metric_key,
+                "value": value,
+                "benchmark_metric_key": benchmark_key,
+                "benchmark_value": benchmark_value,
+                "winner": winner,
+            }
+        )
+    values = [row["value"] for row in rows if isinstance(row.get("value"), float)]
+    overall_value = float(np.mean(values)) if values and str(evaluation_spec.get("agg_horizon", "equal_weight")) == "equal_weight" else None
+    return {
+        "primary_metric": primary_metric,
+        "direction": direction,
+        "by_horizon": rows,
+        "overall_equal_weight": {
+            "available": overall_value is not None,
+            "value": overall_value,
+            "reason": None if overall_value is not None else "agg_horizon is report_separately_only or no finite metric values are available",
+        },
+        "selected_metric_availability": _selected_metric_availability(metrics_by_horizon, evaluation_spec),
+    }
+
+
+def _build_evaluation_summary(metrics: Mapping[str, object], evaluation_spec: Mapping[str, object], recipe: RecipeSpec) -> dict[str, object]:
+    if "metrics_by_target" in metrics:
+        target_summaries = {
+            str(target): _summarize_metrics_by_horizon(
+                target_payload.get("metrics_by_horizon", {}),
+                evaluation_spec,
+            )
+            for target, target_payload in dict(metrics.get("metrics_by_target", {})).items()
+            if isinstance(target_payload, Mapping)
+        }
+        return {
+            "contract_version": _EVALUATION_SUMMARY_CONTRACT_VERSION,
+            "target_mode": "multi_target",
+            "targets": target_summaries,
+            "evaluation_spec": dict(evaluation_spec),
+            "aggregation": _evaluation_aggregation_payload(evaluation_spec),
+        }
+    return {
+        "contract_version": _EVALUATION_SUMMARY_CONTRACT_VERSION,
+        "target_mode": "single_target",
+        "target": recipe.target,
+        "raw_dataset": recipe.raw_dataset,
+        "evaluation_spec": dict(evaluation_spec),
+        "summary": _summarize_metrics_by_horizon(
+            metrics.get("metrics_by_horizon", {}) if isinstance(metrics.get("metrics_by_horizon", {}), Mapping) else {},
+            evaluation_spec,
+        ),
+        "aggregation": _evaluation_aggregation_payload(evaluation_spec),
+    }
+
+
+def _evaluation_report_value(value: object) -> str:
+    if value is None:
+        return ""
+    try:
+        return f"{float(value):.6g}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _evaluation_summary_markdown(summary: Mapping[str, object]) -> str:
+    if summary.get("target_mode") == "multi_target":
+        lines = [
+            "# Evaluation Summary",
+            "",
+            "| Target | Horizon | Model | Benchmark | Winner |",
+            "|---|---|---:|---:|---|",
+        ]
+        targets = summary.get("targets", {}) if isinstance(summary.get("targets"), Mapping) else {}
+        for target, target_summary in targets.items():
+            if not isinstance(target_summary, Mapping):
+                continue
+            rows = target_summary.get("by_horizon", [])
+            for row in rows if isinstance(rows, list) else []:
+                lines.append(
+                    "| {target} | {horizon} | {model} | {benchmark} | {winner} |".format(
+                        target=target,
+                        horizon=row.get("horizon", ""),
+                        model=_evaluation_report_value(row.get("value")),
+                        benchmark=_evaluation_report_value(row.get("benchmark_value")),
+                        winner=row.get("winner") or "",
+                    )
+                )
+        return "\n".join(lines) + "\n"
+    single = summary.get("summary", {}) if isinstance(summary.get("summary"), Mapping) else {}
+    rows = single.get("by_horizon", []) if isinstance(single, Mapping) else []
+    lines = [
+        "# Evaluation Summary",
+        "",
+        f"Primary metric: `{single.get('primary_metric', 'unknown')}`",
+        "",
+        "| Horizon | Model | Benchmark | Winner |",
+        "|---|---:|---:|---|",
+    ]
+    for row in rows if isinstance(rows, list) else []:
+        lines.append(
+            "| {horizon} | {model} | {benchmark} | {winner} |".format(
+                horizon=row.get("horizon", ""),
+                model=_evaluation_report_value(row.get("value")),
+                benchmark=_evaluation_report_value(row.get("benchmark_value")),
+                winner=row.get("winner") or "",
+            )
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _evaluation_summary_latex(summary: Mapping[str, object]) -> str:
+    if summary.get("target_mode") == "multi_target":
+        lines = [
+            "\\begin{tabular}{llrrl}",
+            "\\hline",
+            "Target & Horizon & Model & Benchmark & Winner \\\\",
+            "\\hline",
+        ]
+        targets = summary.get("targets", {}) if isinstance(summary.get("targets"), Mapping) else {}
+        for target, target_summary in targets.items():
+            if not isinstance(target_summary, Mapping):
+                continue
+            rows = target_summary.get("by_horizon", [])
+            for row in rows if isinstance(rows, list) else []:
+                lines.append(
+                    "{target} & {horizon} & {model} & {benchmark} & {winner} \\\\".format(
+                        target=target,
+                        horizon=row.get("horizon", ""),
+                        model=_evaluation_report_value(row.get("value")),
+                        benchmark=_evaluation_report_value(row.get("benchmark_value")),
+                        winner=row.get("winner") or "",
+                    )
+                )
+        lines.extend(["\\hline", "\\end{tabular}", ""])
+        return "\n".join(lines)
+    single = summary.get("summary", {}) if isinstance(summary.get("summary"), Mapping) else {}
+    rows = single.get("by_horizon", []) if isinstance(single, Mapping) else []
+    lines = [
+        "\\begin{tabular}{lrrl}",
+        "\\hline",
+        "Horizon & Model & Benchmark & Winner \\\\",
+        "\\hline",
+    ]
+    for row in rows if isinstance(rows, list) else []:
+        lines.append(
+            "{horizon} & {model} & {benchmark} & {winner} \\\\".format(
+                horizon=row.get("horizon", ""),
+                model=_evaluation_report_value(row.get("value")),
+                benchmark=_evaluation_report_value(row.get("benchmark_value")),
+                winner=row.get("winner") or "",
+            )
+        )
+    lines.extend(["\\hline", "\\end{tabular}", ""])
+    return "\n".join(lines)
+
+
 def _build_comparison_summary(predictions: pd.DataFrame, recipe: RecipeSpec) -> dict[str, object]:
     comparison_by_horizon: dict[str, dict[str, object]] = {}
     for horizon, group in predictions.groupby("horizon", sort=True):
@@ -8183,6 +8453,15 @@ def execute_recipe(
     else:
         metrics = _compute_metrics(predictions, recipe)
         comparison_summary = _build_comparison_summary(predictions, recipe)
+    evaluation_summary = _build_evaluation_summary(metrics, evaluation_spec, recipe)
+    evaluation_report_file = None
+    evaluation_report_text = None
+    if evaluation_spec.get("report_style") == "markdown_table":
+        evaluation_report_file = "evaluation_report.md"
+        evaluation_report_text = _evaluation_summary_markdown(evaluation_summary)
+    elif evaluation_spec.get("report_style") == "latex_table":
+        evaluation_report_file = "evaluation_report.tex"
+        evaluation_report_text = _evaluation_summary_latex(evaluation_summary)
     if recipe.targets and stat_test_spec.get("stat_test") != "none":
         raise ExecutionError("multi-target point-forecast slice does not yet support statistical-test artifacts")
     if recipe.targets and importance_spec.get("importance_method") != "none":
@@ -8225,6 +8504,9 @@ def execute_recipe(
         "raw_panel_iterated_step_rows": int(len(raw_panel_iterated_steps)) if raw_panel_iterated_steps is not None else 0,
         "metrics_file": "metrics.json",
         "comparison_file": "comparison_summary.json",
+        "evaluation_summary_file": "evaluation_summary.json",
+        "evaluation_report_file": evaluation_report_file,
+        "evaluation_summary_contract": _EVALUATION_SUMMARY_CONTRACT_VERSION,
         "regime_file": "regime_summary.json" if evaluation_spec.get("regime_definition", "none") != "none" else None,
         "successful_targets": successful_targets,
         "partial_run": bool(failed_components),
@@ -8342,6 +8624,9 @@ def execute_recipe(
     if comparison_files:
         manifest['comparison_files'] = comparison_files
         manifest['comparison_file'] = comparison_files.get('json') or comparison_files.get('csv') or comparison_files.get('parquet')
+    _write_json(run_dir / "evaluation_summary.json", evaluation_summary)
+    if evaluation_report_file is not None and evaluation_report_text is not None:
+        (run_dir / evaluation_report_file).write_text(evaluation_report_text, encoding="utf-8")
     if evaluation_spec.get('regime_definition', 'none') != 'none':
         regime_summary = _compute_regime_summary(predictions, recipe, evaluation_spec)
         regime_files = {}
