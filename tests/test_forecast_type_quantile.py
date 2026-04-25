@@ -5,7 +5,8 @@ v1.0 semantics:
   autoreg_lagged_target -> "iterated" (matches the existing recursive path),
   raw_feature_panel     -> "direct"   (matches the existing h-step path).
 - `forecast_type=iterated` + feature_builder=autoreg_lagged_target   : executable.
-- `forecast_type=iterated` + feature_builder=raw_feature_panel       : blocked_by_incompatibility.
+- `forecast_type=iterated` + feature_builder=raw_feature_panel       : executable only for the
+  explicit hold-last-observed narrow slice; otherwise blocked_by_incompatibility.
 - `forecast_type=direct`   + feature_builder=autoreg_lagged_target   : blocked_by_incompatibility.
 - `forecast_type=direct`   + feature_builder=raw_feature_panel       : executable.
 
@@ -19,11 +20,19 @@ from pathlib import Path
 
 import pytest
 
+from macrocast import clear_custom_extensions, custom_model
 from macrocast.compiler.build import compile_recipe_dict, run_compiled_recipe
 
 
-def _recipe(*, feature_builder: str = "autoreg_lagged_target", model_family: str = "ar",
-            forecast_type: str | None = None, forecast_object: str | None = None) -> dict:
+def _recipe(
+    *,
+    feature_builder: str = "autoreg_lagged_target",
+    model_family: str = "ar",
+    forecast_type: str | None = None,
+    forecast_object: str | None = None,
+    target_lag_block: str | None = None,
+    exogenous_x_path_policy: str | None = None,
+) -> dict:
     axes_1 = {
         "dataset": "fred_md",
         "info_set": "revised",
@@ -41,30 +50,38 @@ def _recipe(*, feature_builder: str = "autoreg_lagged_target", model_family: str
         "model_family": model_family,
     }
 
+    layer2_axes = {
+        "target_transform_policy": "raw_level",
+        "x_transform_policy": "raw_level",
+        "tcode_policy": "raw_only",
+        "target_missing_policy": "none",
+        "x_missing_policy": "none",
+        "target_outlier_policy": "none",
+        "x_outlier_policy": "none",
+        "scaling_policy": "none",
+        "dimensionality_reduction_policy": "none",
+        "feature_selection_policy": "none",
+        "preprocess_order": "none",
+        "preprocess_fit_scope": "not_applicable",
+        "inverse_transform_policy": "none",
+        "evaluation_scale": "raw_level",
+    }
+    if target_lag_block is not None:
+        layer2_axes["target_lag_block"] = target_lag_block
+
+    data_leaf = {"target": "INDPRO", "horizons": [1]}
+    if exogenous_x_path_policy is not None:
+        data_leaf["exogenous_x_path_policy"] = exogenous_x_path_policy
+
     return {
         "recipe_id": "ft-q-test",
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
             "1_data_task": {
                 "fixed_axes": axes_1,
-                "leaf_config": {"target": "INDPRO", "horizons": [1]},
+                "leaf_config": data_leaf,
             },
-            "2_preprocessing": {"fixed_axes": {
-                "target_transform_policy": "raw_level",
-                "x_transform_policy": "raw_level",
-                "tcode_policy": "raw_only",
-                "target_missing_policy": "none",
-                "x_missing_policy": "none",
-                "target_outlier_policy": "none",
-                "x_outlier_policy": "none",
-                "scaling_policy": "none",
-                "dimensionality_reduction_policy": "none",
-                "feature_selection_policy": "none",
-                "preprocess_order": "none",
-                "preprocess_fit_scope": "not_applicable",
-                "inverse_transform_policy": "none",
-                "evaluation_scale": "raw_level",
-            }},
+            "2_preprocessing": {"fixed_axes": layer2_axes},
             "3_training": {"fixed_axes": training},
             "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
             "5_output_provenance": {"leaf_config": {
@@ -127,7 +144,7 @@ def test_layer3_capability_matrix_records_future_status_catalog() -> None:
     matrix = r.manifest["layer3_capability_matrix"]
 
     assert matrix["schema_version"] == "layer3_capability_matrix_v1"
-    assert matrix["schema_revision"] == 5
+    assert matrix["schema_revision"] == 6
     assert matrix["canonical_dimensions"] == [
         "forecast_generator_family",
         "representation_runtime",
@@ -147,7 +164,32 @@ def test_layer3_capability_matrix_records_future_status_catalog() -> None:
     assert matrix["rules"]["forecast_object"]["density"]["payload_contract"] == "density_forecast_payload_v1"
     assert future_cells["feature_runtime.sequence_tensor"]["owner_layer"] == "2_preprocessing"
     assert future_cells["feature_runtime.sequence_tensor"]["upstream_contract"] == "sequence_representation_contract_v1"
+    assert future_cells["feature_runtime.sequence_tensor"]["required_contracts"] == [
+        "sequence_representation_contract_v1",
+        "sequence_forecast_payload_v1",
+    ]
+    sequence_requirements = future_cells["feature_runtime.sequence_tensor"]["contract_requirements"]
+    assert "channel_names" in sequence_requirements["sequence_representation_contract_v1"]["required_fields"]
+    assert "path_or_vector_payload" in sequence_requirements["sequence_forecast_payload_v1"]["required_fields"]
     assert future_cells["forecast_type.raw_panel_iterated"]["scenario_contract"] == "exogenous_x_path_contract_v1"
+    assert future_cells["forecast_type.raw_panel_iterated"]["runtime_status"] == "operational_narrow"
+    assert future_cells["forecast_type.raw_panel_iterated"]["required_contracts"] == [
+        "exogenous_x_path_contract_v1",
+        "multi_step_raw_panel_payload_v1",
+    ]
+    raw_iterated_requirements = future_cells["forecast_type.raw_panel_iterated"]["contract_requirements"]
+    assert raw_iterated_requirements["exogenous_x_path_contract_v1"]["path_kinds"] == [
+        "observed_future_x",
+        "scheduled_known_future_x",
+        "hold_last_observed",
+        "recursive_x_model",
+        "unavailable",
+    ]
+    assert "step_predictions" in raw_iterated_requirements["multi_step_raw_panel_payload_v1"]["required_fields"]
+    assert "hold_last_observed is operational" in future_cells["forecast_type.raw_panel_iterated"]["opening_rule"]
+    assert matrix["rules"]["forecast_type"]["raw_feature_panel"]["conditional_operational"]["iterated"][
+        "runtime_contract"
+    ] == "raw_panel_iterated_hold_last_observed_v1"
 
 
 def test_forecast_type_iterated_autoreg_executes(tmp_path: Path) -> None:
@@ -172,11 +214,53 @@ def test_forecast_type_iterated_raw_panel_blocked() -> None:
     ))
     assert r.compiled.execution_status == "blocked_by_incompatibility"
     assert any(
-        "forecast_type='iterated' is not implemented for the raw-panel feature runtime" in r_msg
+        "requires leaf_config.exogenous_x_path_policy='hold_last_observed'" in r_msg
         for r_msg in r.manifest.get("blocked_reasons", [])
     )
     assert r.manifest["layer3_capability_matrix"]["active_cell"]["runtime_status"] == "blocked_by_incompatibility"
     assert r.manifest["layer3_capability_matrix"]["active_cell"]["blocked_reasons"] == r.manifest["blocked_reasons"]
+
+
+def test_forecast_type_iterated_raw_panel_hold_last_observed_compiles() -> None:
+    r = compile_recipe_dict(
+        _recipe(
+            feature_builder="raw_feature_panel",
+            model_family="ridge",
+            forecast_type="iterated",
+            target_lag_block="fixed_target_lags",
+            exogenous_x_path_policy="hold_last_observed",
+        )
+    )
+    assert r.compiled.execution_status == "executable"
+    assert r.manifest["data_task_spec"]["exogenous_x_path_policy"] == "hold_last_observed"
+    assert r.manifest["training_spec"]["forecast_type"] == "iterated"
+    assert r.manifest["layer3_capability_matrix"]["active_cell"]["runtime_status"] == "operational"
+
+
+def test_forecast_type_iterated_raw_panel_custom_model_requires_adapter_contract() -> None:
+    clear_custom_extensions()
+
+    @custom_model("iterated_custom_gate")
+    def _iterated_custom_gate(X_train, y_train, X_test, context):
+        return float(y_train[-1])
+
+    try:
+        r = compile_recipe_dict(
+            _recipe(
+                feature_builder="raw_feature_panel",
+                model_family="iterated_custom_gate",
+                forecast_type="iterated",
+                target_lag_block="fixed_target_lags",
+                exogenous_x_path_policy="hold_last_observed",
+            )
+        )
+        assert r.compiled.execution_status == "blocked_by_incompatibility"
+        assert any(
+            "does not yet support registered custom models" in r_msg
+            for r_msg in r.manifest.get("blocked_reasons", [])
+        )
+    finally:
+        clear_custom_extensions()
 
 
 def test_forecast_type_direct_autoreg_blocked() -> None:

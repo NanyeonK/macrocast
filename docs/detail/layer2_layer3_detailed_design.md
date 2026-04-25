@@ -353,15 +353,34 @@ target scale contracts: `target_transform_policy='raw_level'`,
 Raw-panel iterated forecasting is a Layer 3 execution protocol, but it needs
 more than the current tabular `Z_pred`.
 
-Open dependency:
+Operational narrow slice:
 
-- an exogenous-X path or scenario contract;
-- rules for unknown future predictors;
-- recursive update rules for target-history features;
-- artifacts that distinguish assumed future X from observed X.
+- `exogenous_x_path_contract_v1.path_kind='hold_last_observed'`;
+- `target_lag_block='fixed_target_lags'`;
+- `forecast_object='point_mean'`;
+- built-in scalar tabular model generators;
+- raw-level target and X, no target normalization, no custom target
+  transformer, and no extra Layer 2 preprocessing.
 
-Until that contract exists, raw-panel iterated cells should remain blocked by
-the Layer 3 capability matrix.
+Still-gated dependency:
+
+- `exogenous_x_path_contract_v1`;
+- `multi_step_raw_panel_payload_v1`;
+- observed, scheduled, or recursively forecast future-X paths;
+- custom raw-panel iterated model adapter contracts;
+- non-point forecast payloads;
+- transformed/normalized target scale composition.
+
+The first operational slice is
+`exogenous_x_path_contract_v1.path_kind='hold_last_observed'`. That slice is
+explicitly a scenario assumption, not knowledge of future X. It should write a
+step trace, the assumed future-X path reference, recursive target-history
+updates, and a final horizon prediction under
+`multi_step_raw_panel_payload_v1`.
+
+Broader raw-panel iterated cells remain blocked by the Layer 3 capability
+matrix until their future-X path kind has explicit availability, release-lag,
+origin-alignment, and artifact tests.
 
 ### Sequence/Tensor Forecast Generators
 

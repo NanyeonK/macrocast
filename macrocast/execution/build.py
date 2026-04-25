@@ -1563,6 +1563,9 @@ _PAYLOAD_CONTRACT_BY_FORECAST_OBJECT = {
     "density": DENSITY_FORECAST_PAYLOAD_CONTRACT_VERSION,
 }
 
+_RAW_PANEL_ITERATED_RUNTIME_CONTRACT_VERSION = "raw_panel_iterated_hold_last_observed_v1"
+_RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION = "multi_step_raw_panel_payload_v1"
+
 
 def _forecast_object(recipe: RecipeSpec) -> str:
     return str(
@@ -1570,6 +1573,25 @@ def _forecast_object(recipe: RecipeSpec) -> str:
             "forecast_object",
             recipe.data_task_spec.get("forecast_object", "point_mean"),
         )
+    )
+
+
+def _forecast_type(recipe: RecipeSpec) -> str:
+    return str(
+        recipe.training_spec.get(
+            "forecast_type",
+            recipe.data_task_spec.get("forecast_type", "direct"),
+        )
+    )
+
+
+def _exogenous_x_path_policy(recipe: RecipeSpec) -> str:
+    return str(
+        recipe.data_task_spec.get(
+            "exogenous_x_path_policy",
+            recipe.training_spec.get("exogenous_x_path_policy", "unavailable"),
+        )
+        or "unavailable"
     )
 
 
@@ -1699,7 +1721,15 @@ def _payload_artifact_records(predictions: pd.DataFrame) -> list[dict[str, objec
     payload_cols = [
         col
         for col in predictions.columns
-        if col.startswith(("direction_", "interval_", "density_", "benchmark_direction_", "benchmark_interval_", "benchmark_density_"))
+        if col.startswith((
+            "direction_",
+            "interval_",
+            "density_",
+            "benchmark_direction_",
+            "benchmark_interval_",
+            "benchmark_density_",
+            "raw_panel_iterated_",
+        ))
     ]
     base_cols = [
         "target",
@@ -4706,6 +4736,129 @@ def _run_tcn_autoreg_executor(train: pd.Series, horizon: int, recipe: RecipeSpec
     return _run_deep_autoreg_executor("tcn", train, horizon)
 
 
+def _predict_fitted_scalar(model, X_pred: np.ndarray, *, model_family: str) -> float:
+    if model_family == "adaptivelasso":
+        return float(predict_adaptive_lasso(model, X_pred)[0])
+    return float(model.predict(X_pred)[0])
+
+
+def _run_raw_panel_iterated_hold_last_executor(
+    train: pd.Series,
+    horizon: int,
+    recipe: RecipeSpec,
+    contract: PreprocessContract,
+    raw_frame: pd.DataFrame | None = None,
+    origin_idx: int | None = None,
+    start_idx: int = 0,
+) -> dict[str, object]:
+    assert raw_frame is not None and origin_idx is not None
+    if _exogenous_x_path_policy(recipe) != "hold_last_observed":
+        raise ExecutionError(
+            "raw-panel iterated forecasting requires exogenous_x_path_policy='hold_last_observed'"
+        )
+    if _target_lag_feature_block(recipe) != "fixed_target_lags":
+        raise ExecutionError(
+            "raw-panel iterated forecasting requires target_lag_block='fixed_target_lags'"
+        )
+    if str(getattr(contract, "target_normalization", "none")) != "none":
+        raise ExecutionError("raw-panel iterated forecasting requires target_normalization='none'")
+    if str(getattr(contract, "target_transform", "level")) != "level":
+        raise ExecutionError("raw-panel iterated forecasting requires target_transform_policy='raw_level'")
+    if _target_transformer_spec(recipe) is not None:
+        raise ExecutionError("raw-panel iterated forecasting does not support custom target_transformer")
+    model_family = _model_family(recipe)
+    predictors = _raw_panel_columns(
+        raw_frame,
+        recipe.target,
+        predictor_family=_predictor_family(recipe),
+        spec=_layer2_runtime_spec(recipe),
+    )
+    lag_order = _target_lag_order_from_block(recipe, _max_ar_lag(recipe))
+    if lag_order < 1:
+        raise ExecutionError("raw-panel iterated forecasting requires positive target lag order")
+    if origin_idx <= start_idx:
+        raise ExecutionError("raw-panel iterated forecasting has insufficient one-step training rows")
+    X_base = raw_frame[predictors].iloc[start_idx:origin_idx].astype(float).copy()
+    y_train = train.iloc[1:].to_numpy(dtype=float)
+    if len(X_base) != len(y_train) or len(y_train) == 0:
+        raise ExecutionError("raw-panel iterated one-step matrix has inconsistent training rows")
+    target_lag_train = _fixed_target_lag_frame(train, X_base.index, lag_order)
+    target_lag_names = _target_lag_feature_names(recipe, lag_order, default_prefix="target_lag")
+    target_lag_train.columns = list(target_lag_names)
+    X_train_df = pd.concat([X_base, target_lag_train], axis=1)
+    feature_names = [str(name) for name in X_train_df.columns]
+    X_train = X_train_df.to_numpy(dtype=float)
+    model, tuning_payload = fit_with_optional_tuning(model_family, X_train, y_train, recipe.training_spec)
+    history = [float(value) for value in train.to_numpy(dtype=float)]
+    origin_date = raw_frame.index[origin_idx]
+    x_origin = raw_frame[predictors].iloc[[origin_idx]].astype(float).copy()
+    step_rows: list[dict[str, object]] = []
+    step_predictions: list[float] = []
+    for step in range(1, int(horizon) + 1):
+        lag_values = [history[-lag] if len(history) >= lag else 0.0 for lag in range(1, lag_order + 1)]
+        X_pred_df = x_origin.copy()
+        for name, value in zip(target_lag_names, lag_values):
+            X_pred_df[str(name)] = float(value)
+        X_pred = X_pred_df[feature_names].to_numpy(dtype=float)
+        y_pred_step = _predict_fitted_scalar(model, X_pred, model_family=model_family)
+        history.append(y_pred_step)
+        step_predictions.append(y_pred_step)
+        step_rows.append(
+            {
+                "target": recipe.target,
+                "model_name": _model_spec(recipe)["executor_name"],
+                "horizon": int(horizon),
+                "step": int(step),
+                "origin_date": origin_date.strftime("%Y-%m-%d"),
+                "x_path_policy": "hold_last_observed",
+                "x_origin_date": origin_date.strftime("%Y-%m-%d"),
+                "step_prediction": float(y_pred_step),
+                "recursive_target_history_tail": json.dumps(lag_values, sort_keys=True),
+                "runtime_contract": _RAW_PANEL_ITERATED_RUNTIME_CONTRACT_VERSION,
+                "payload_contract": _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION,
+            }
+        )
+    representation = Layer2Representation(
+        Z_train=X_train,
+        y_train=y_train,
+        Z_pred=X_pred,
+        feature_names=tuple(feature_names),
+        block_order=("base_x", "target_lag"),
+        block_roles={
+            **{str(name): "base_x" for name in predictors},
+            **{str(name): "target_lag" for name in target_lag_names},
+        },
+        alignment={
+            "representation_runtime": "raw_feature_panel",
+            "forecast_protocol": "iterated",
+            "exogenous_x_path_contract": "exogenous_x_path_contract_v1",
+            "exogenous_x_path_policy": "hold_last_observed",
+            "target_lag_timing": "recursive_target_history_updated_each_step",
+        },
+        leakage_contract="forecast_origin_only_with_explicit_future_x_assumption",
+        feature_builder=_feature_runtime_builder(recipe),
+        feature_runtime_builder=_feature_runtime_builder(recipe),
+        legacy_feature_builder=_feature_builder(recipe),
+    )
+    tuning_payload = _merge_layer2_representation_payload(tuning_payload, representation)
+    tuning_payload.update(
+        {
+            "raw_panel_iterated_runtime_contract": _RAW_PANEL_ITERATED_RUNTIME_CONTRACT_VERSION,
+            "raw_panel_iterated_payload_contract": _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION,
+            "exogenous_x_path_contract": "exogenous_x_path_contract_v1",
+            "exogenous_x_path_policy": "hold_last_observed",
+            "raw_panel_iterated_steps": step_rows,
+            "raw_panel_iterated_step_predictions": step_predictions,
+        }
+    )
+    return {
+        "y_pred": float(step_predictions[-1]),
+        "selected_lag": int(lag_order),
+        "selected_bic": math.nan,
+        "tuning_payload": tuning_payload,
+    }
+
+
 def _fit_raw_panel_model(
     raw_frame: pd.DataFrame,
     recipe: RecipeSpec,
@@ -6699,6 +6852,11 @@ def _build_predictions(
     feature_runtime_builder = _feature_runtime_builder(recipe)
     model_family = _model_family(recipe)
     forecast_object = _forecast_object(recipe)
+    forecast_type = _forecast_type(recipe)
+    raw_panel_iterated_runtime = (
+        feature_runtime_builder == "raw_feature_panel"
+        and forecast_type == "iterated"
+    )
     interval_coverage = float(
         recipe.training_spec.get(
             "interval_coverage",
@@ -6754,6 +6912,40 @@ def _build_predictions(
         raise ExecutionError(
             "path-average target construction currently requires target_normalization='none'"
         )
+    if raw_panel_iterated_runtime:
+        if _exogenous_x_path_policy(recipe) != "hold_last_observed":
+            raise ExecutionError(
+                "raw-panel iterated forecasting requires exogenous_x_path_policy='hold_last_observed'"
+            )
+        if is_custom_model(model_family):
+            raise ExecutionError(
+                "raw-panel iterated forecasting does not yet support registered custom models; "
+                "requires a custom raw-panel iterated model contract"
+            )
+        if _target_lag_feature_block(recipe) != "fixed_target_lags":
+            raise ExecutionError(
+                "raw-panel iterated forecasting requires target_lag_block='fixed_target_lags'"
+            )
+        if forecast_object != "point_mean":
+            raise ExecutionError("raw-panel iterated forecasting currently supports forecast_object='point_mean' only")
+        if target_transformer_spec is not None:
+            raise ExecutionError("raw-panel iterated forecasting does not support custom target_transformer")
+        if str(getattr(contract, "target_transform", "level")) != "level":
+            raise ExecutionError("raw-panel iterated forecasting currently requires target_transform_policy='raw_level'")
+        if str(getattr(contract, "target_normalization", "none")) != "none":
+            raise ExecutionError("raw-panel iterated forecasting currently requires target_normalization='none'")
+        if str(getattr(contract, "tcode_policy", "raw_only")) != "raw_only":
+            raise ExecutionError("raw-panel iterated forecasting currently requires tcode_policy='raw_only'")
+        if str(getattr(contract, "x_transform", "level")) != "level":
+            raise ExecutionError("raw-panel iterated forecasting currently requires x_transform_policy='raw_level'")
+        if str(getattr(contract, "preprocess_order", "none")) != "none":
+            raise ExecutionError("raw-panel iterated forecasting currently requires preprocess_order='none'")
+        if str(getattr(contract, "scaling_policy", "none")) != "none":
+            raise ExecutionError("raw-panel iterated forecasting currently requires scaling_policy='none'")
+        if str(getattr(contract, "dimensionality_reduction_policy", "none")) != "none":
+            raise ExecutionError("raw-panel iterated forecasting currently requires dimensionality_reduction_policy='none'")
+        if str(getattr(contract, "feature_selection_policy", "none")) != "none":
+            raise ExecutionError("raw-panel iterated forecasting currently requires feature_selection_policy='none'")
     _oos_period = str(recipe.data_task_spec.get("oos_period", "all_oos_data"))
 
     # 1.3 training_start_rule=fixed_start: resolve the calendar date to an index floor
@@ -6831,7 +7023,7 @@ def _build_predictions(
             origin_idx: int,
             start_idx: int,
             effective_origin_idx: int,
-        ) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]]]:
+        ) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]], list[dict[str, object]]]:
             assert path_step_target is not None
             origin_date = target_series.index[origin_idx]
             target_date = target_series.index[origin_idx + horizon]
@@ -6990,9 +7182,13 @@ def _build_predictions(
                     interval_coverage=interval_coverage,
                 )
             )
-            return row, tuning_payload, step_rows
+            return row, tuning_payload, step_rows, []
 
-        def _compute_origin(origin_idx: int, start_idx: int, effective_origin_idx: int) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]]]:
+        def _compute_origin(
+            origin_idx: int,
+            start_idx: int,
+            effective_origin_idx: int,
+        ) -> tuple[dict[str, object], dict[str, object] | None, list[dict[str, object]], list[dict[str, object]]]:
             if _is_path_average_target:
                 return _compute_path_average_origin(origin_idx, start_idx, effective_origin_idx)
             train = target_series.iloc[start_idx : effective_origin_idx + 1]
@@ -7004,22 +7200,51 @@ def _build_predictions(
             }
             target_transform_context: dict[str, object] = {}
             fitted_target_transformer = None
-            if target_transformer_spec is not None:
+            if raw_panel_iterated_runtime:
+                model_mapping = _run_raw_panel_iterated_hold_last_executor(
+                    train_for_model,
+                    horizon,
+                    recipe,
+                    contract,
+                    aligned_frame,
+                    effective_origin_idx,
+                    start_idx,
+                )
+                model_output = _coerce_forecast_payload(
+                    model_mapping,
+                    executor_name=str(model_spec["executor_name"]),
+                )
+                tuning_payload = model_output.tuning_payload or None
+                raw_panel_iterated_steps = []
+                if tuning_payload:
+                    raw_panel_iterated_steps = list(tuning_payload.get("raw_panel_iterated_steps", []))
+                y_pred_model_scale = model_output.y_pred
+                benchmark_pred_model_scale = float(benchmark_executor(train_for_model, horizon, recipe))
+            elif target_transformer_spec is not None:
                 fitted_target_transformer, train_for_model, target_transform_context = _fit_target_transformer_for_window(
                     train,
                     recipe=recipe,
                     horizon=horizon,
                     target_date=target_series.index[origin_idx + horizon],
                 )
+                model_output = _coerce_forecast_payload(
+                    model_executor(train_for_model, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx),
+                    executor_name=str(model_spec["executor_name"]),
+                )
+                tuning_payload = model_output.tuning_payload or None
+                y_pred_model_scale = model_output.y_pred
+                benchmark_pred_model_scale = float(benchmark_executor(train_for_model, horizon, recipe))
+                raw_panel_iterated_steps = []
             else:
                 train_for_model, target_scale_state = _fit_target_normalization_for_window(train, contract)
-            model_output = _coerce_forecast_payload(
-                model_executor(train_for_model, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx),
-                executor_name=str(model_spec["executor_name"]),
-            )
-            tuning_payload = model_output.tuning_payload or None
-            y_pred_model_scale = model_output.y_pred
-            benchmark_pred_model_scale = float(benchmark_executor(train_for_model, horizon, recipe))
+                model_output = _coerce_forecast_payload(
+                    model_executor(train_for_model, horizon, recipe, contract, aligned_frame, effective_origin_idx, start_idx),
+                    executor_name=str(model_spec["executor_name"]),
+                )
+                tuning_payload = model_output.tuning_payload or None
+                y_pred_model_scale = model_output.y_pred
+                benchmark_pred_model_scale = float(benchmark_executor(train_for_model, horizon, recipe))
+                raw_panel_iterated_steps = []
             y_true_transformed_scale = float(target_series.iloc[origin_idx + horizon])
             y_true_model_scale = (
                 y_true_transformed_scale
@@ -7161,42 +7386,59 @@ def _build_predictions(
                     interval_coverage=interval_coverage,
                 )
             )
-            return row, tuning_payload, []
+            if raw_panel_iterated_runtime:
+                row.update(
+                    {
+                        "forecast_type": "iterated",
+                        "forecast_payload_contract": _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION,
+                        "payload_family": "raw_panel_iterated",
+                        "raw_panel_iterated_runtime": _RAW_PANEL_ITERATED_RUNTIME_CONTRACT_VERSION,
+                        "raw_panel_iterated_step_count": int(horizon),
+                        "raw_panel_iterated_x_path_policy": "hold_last_observed",
+                    }
+                )
+            return row, tuning_payload, [], raw_panel_iterated_steps
 
         horizon_rows: list[dict[str, object]] = []
         horizon_step_rows: list[dict[str, object]] = []
+        horizon_iterated_step_rows: list[dict[str, object]] = []
         if compute_mode == "parallel_by_oos_date" and len(origin_plan) > 1:
             with ThreadPoolExecutor(max_workers=min(len(origin_plan), 4)) as ex:
                 futures = [ex.submit(_compute_origin, *item) for item in origin_plan]
                 for future in futures:
-                    row, tuning_payload, step_rows = future.result()
+                    row, tuning_payload, step_rows, iterated_step_rows = future.result()
                     horizon_rows.append(row)
                     horizon_step_rows.extend(step_rows)
+                    horizon_iterated_step_rows.extend(iterated_step_rows)
                     if tuning_payload:
                         last_tuning_payload = tuning_payload
         else:
             for item in origin_plan:
-                row, tuning_payload, step_rows = _compute_origin(*item)
+                row, tuning_payload, step_rows, iterated_step_rows = _compute_origin(*item)
                 horizon_rows.append(row)
                 horizon_step_rows.extend(step_rows)
+                horizon_iterated_step_rows.extend(iterated_step_rows)
                 if tuning_payload:
                     last_tuning_payload = tuning_payload
-        return horizon_rows, horizon_step_rows
+        return horizon_rows, horizon_step_rows, horizon_iterated_step_rows
 
     rows: list[dict[str, object]] = []
     step_rows_all: list[dict[str, object]] = []
+    iterated_step_rows_all: list[dict[str, object]] = []
     if compute_mode == "parallel_by_horizon" and len(recipe.horizons) > 1:
         with ThreadPoolExecutor(max_workers=min(len(recipe.horizons), 4)) as ex:
             futures = [ex.submit(_rows_for_horizon, horizon) for horizon in recipe.horizons]
             for future in futures:
-                horizon_rows, horizon_step_rows = future.result()
+                horizon_rows, horizon_step_rows, horizon_iterated_step_rows = future.result()
                 rows.extend(horizon_rows)
                 step_rows_all.extend(horizon_step_rows)
+                iterated_step_rows_all.extend(horizon_iterated_step_rows)
     else:
         for horizon in recipe.horizons:
-            horizon_rows, horizon_step_rows = _rows_for_horizon(horizon)
+            horizon_rows, horizon_step_rows, horizon_iterated_step_rows = _rows_for_horizon(horizon)
             rows.extend(horizon_rows)
             step_rows_all.extend(horizon_step_rows)
+            iterated_step_rows_all.extend(horizon_iterated_step_rows)
 
     if not rows:
         raise ExecutionError("no forecast rows were produced for the requested horizons")
@@ -7204,6 +7446,8 @@ def _build_predictions(
     predictions = pd.DataFrame(rows)
     if step_rows_all:
         predictions.attrs["path_average_steps"] = pd.DataFrame(step_rows_all)
+    if iterated_step_rows_all:
+        predictions.attrs["raw_panel_iterated_steps"] = pd.DataFrame(iterated_step_rows_all)
     return predictions, last_tuning_payload
 
 
@@ -7583,6 +7827,7 @@ def execute_recipe(
     targets = _recipe_targets(recipe)
     prediction_frames = []
     path_average_step_frames = []
+    raw_panel_iterated_step_frames = []
     failed_components: list[dict[str, object]] = []
     successful_targets: list[str] = []
     target_series = None
@@ -7593,18 +7838,21 @@ def execute_recipe(
         target_series_local = _apply_target_transform_and_normalization(target_series_local, preprocess)
         frame, tp = _build_predictions(raw_result.data, target_series_local, target_recipe, preprocess, compute_mode=compute_mode)
         path_step_frame = frame.attrs.pop("path_average_steps", None)
-        return target, target_series_local, frame, tp, path_step_frame
+        raw_panel_iterated_step_frame = frame.attrs.pop("raw_panel_iterated_steps", None)
+        return target, target_series_local, frame, tp, path_step_frame, raw_panel_iterated_step_frame
 
     if compute_mode == "parallel_by_target" and len(targets) > 1:
         with ThreadPoolExecutor(max_workers=min(len(targets), 4)) as ex:
             futures = [ex.submit(contextvars.copy_context().run, _target_job, target) for target in targets]
             for future in futures:
                 try:
-                    target, target_series_local, frame, _last_tp, path_step_frame = future.result()
+                    target, target_series_local, frame, _last_tp, path_step_frame, raw_panel_iterated_step_frame = future.result()
                     target_series = target_series_local
                     prediction_frames.append(frame)
                     if path_step_frame is not None and not path_step_frame.empty:
                         path_average_step_frames.append(path_step_frame)
+                    if raw_panel_iterated_step_frame is not None and not raw_panel_iterated_step_frame.empty:
+                        raw_panel_iterated_step_frames.append(raw_panel_iterated_step_frame)
                     successful_targets.append(target)
                 except Exception as exc:
                     err = str(exc)
@@ -7620,11 +7868,13 @@ def execute_recipe(
     else:
         for target in targets:
             try:
-                target, target_series_local, frame, _last_tp, path_step_frame = _target_job(target)
+                target, target_series_local, frame, _last_tp, path_step_frame, raw_panel_iterated_step_frame = _target_job(target)
                 target_series = target_series_local
                 prediction_frames.append(frame)
                 if path_step_frame is not None and not path_step_frame.empty:
                     path_average_step_frames.append(path_step_frame)
+                if raw_panel_iterated_step_frame is not None and not raw_panel_iterated_step_frame.empty:
+                    raw_panel_iterated_step_frames.append(raw_panel_iterated_step_frame)
                 successful_targets.append(target)
             except Exception as exc:
                 if failure_policy in {"skip_failed_model", "save_partial_results", "warn_only"}:
@@ -7639,6 +7889,11 @@ def execute_recipe(
     path_average_steps = (
         pd.concat(path_average_step_frames, ignore_index=True)
         if path_average_step_frames
+        else None
+    )
+    raw_panel_iterated_steps = (
+        pd.concat(raw_panel_iterated_step_frames, ignore_index=True)
+        if raw_panel_iterated_step_frames
         else None
     )
     if recipe.targets:
@@ -7686,6 +7941,7 @@ def execute_recipe(
         "minimum_train_size": _minimum_train_size(recipe),
         "prediction_rows": int(len(predictions)),
         "path_average_step_rows": int(len(path_average_steps)) if path_average_steps is not None else 0,
+        "raw_panel_iterated_step_rows": int(len(raw_panel_iterated_steps)) if raw_panel_iterated_steps is not None else 0,
         "metrics_file": "metrics.json",
         "comparison_file": "comparison_summary.json",
         "regime_file": "regime_summary.json" if evaluation_spec.get("regime_definition", "none") != "none" else None,
@@ -7698,11 +7954,20 @@ def execute_recipe(
     feature_fit_state = _last_tp.get("feature_representation_fit_state") if isinstance(_last_tp, dict) else None
     forecast_payload_contract = _last_tp.get("forecast_payload_contract") if isinstance(_last_tp, dict) else None
     manifest["forecast_object"] = _forecast_object(recipe)
-    manifest["forecast_payload_contract"] = _forecast_payload_contract_for_recipe(recipe)
+    manifest["forecast_type"] = _forecast_type(recipe)
+    manifest["forecast_payload_contract"] = (
+        _RAW_PANEL_ITERATED_PAYLOAD_CONTRACT_VERSION
+        if raw_panel_iterated_steps is not None
+        else _forecast_payload_contract_for_recipe(recipe)
+    )
     manifest["forecast_payload_family"] = (
-        "point"
-        if manifest["forecast_object"] in {"point_mean", "point_median", "quantile"}
-        else manifest["forecast_object"]
+        "raw_panel_iterated"
+        if raw_panel_iterated_steps is not None
+        else (
+            "point"
+            if manifest["forecast_object"] in {"point_mean", "point_median", "quantile"}
+            else manifest["forecast_object"]
+        )
     )
     if forecast_payload_contract:
         manifest["base_forecast_payload_contract"] = forecast_payload_contract
@@ -7748,6 +8013,14 @@ def execute_recipe(
         manifest["path_average_steps_file"] = "path_average_steps.csv"
         if export_format in ('parquet', 'all'):
             path_average_steps.to_parquet(run_dir / 'path_average_steps.parquet')
+    if raw_panel_iterated_steps is not None:
+        raw_panel_iterated_steps.to_csv(run_dir / 'raw_panel_iterated_steps.csv', index=False)
+        manifest["raw_panel_iterated_steps_file"] = "raw_panel_iterated_steps.csv"
+        manifest["raw_panel_iterated_runtime_contract"] = _RAW_PANEL_ITERATED_RUNTIME_CONTRACT_VERSION
+        manifest["exogenous_x_path_contract"] = "exogenous_x_path_contract_v1"
+        manifest["exogenous_x_path_policy"] = "hold_last_observed"
+        if export_format in ('parquet', 'all'):
+            raw_panel_iterated_steps.to_parquet(run_dir / 'raw_panel_iterated_steps.parquet')
     payload_records = _payload_artifact_records(predictions)
     if payload_records:
         _write_jsonl(run_dir / "forecast_payloads.jsonl", payload_records)
