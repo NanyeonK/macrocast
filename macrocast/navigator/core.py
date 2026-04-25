@@ -89,28 +89,94 @@ _TREE_AXES = {
         "density_metrics",
         "direction_metrics",
         "relative_metrics",
+        "economic_metrics",
+        "benchmark_window",
+        "benchmark_scope",
+        "agg_time",
+        "agg_horizon",
+        "agg_target",
         "ranking",
+        "report_style",
+        "regime_definition",
+        "regime_use",
+        "regime_metrics",
+        "decomposition_target",
+        "decomposition_order",
+        "oos_period",
+    ),
+    "5_output_provenance": (
+        "export_format",
+        "saved_objects",
+        "provenance_fields",
+        "artifact_granularity",
     ),
     "6_stat_tests": (
         "stat_test",
         "equal_predictive",
         "nested",
-        "multiple_model",
-        "direction",
-        "density_interval",
-        "residual_diagnostics",
         "cpa_instability",
+        "multiple_model",
+        "density_interval",
+        "direction",
+        "residual_diagnostics",
+        "test_scope",
         "dependence_correction",
+        "overlap_handling",
     ),
     "7_importance": (
         "importance_method",
+        "importance_scope",
+        "importance_model_native",
+        "importance_model_agnostic",
         "importance_shap",
-        "model_native",
-        "model_agnostic",
-        "partial_dependence",
-        "grouped",
-        "stability",
+        "importance_local_surrogate",
+        "importance_partial_dependence",
+        "importance_grouped",
+        "importance_stability",
+        "importance_aggregation",
+        "importance_output_style",
+        "importance_temporal",
+        "importance_gradient_path",
     ),
+}
+
+_DEFAULT_SELECTIONS = {
+    "forecast_type": "direct",
+    "forecast_object": "point_mean",
+    "exogenous_x_path_policy": "unavailable",
+    "recursive_x_model_family": "none",
+    "primary_metric": "msfe",
+    "point_metrics": "MSFE",
+    "relative_metrics": "relative_MSFE",
+    "direction_metrics": "directional_accuracy",
+    "density_metrics": "pinball_loss",
+    "benchmark_window": "expanding",
+    "benchmark_scope": "same_for_all",
+    "agg_time": "full_oos_average",
+    "agg_horizon": "equal_weight",
+    "agg_target": "report_separately_only",
+    "ranking": "mean_metric_rank",
+    "report_style": "tidy_dataframe",
+    "regime_definition": "none",
+    "regime_use": "eval_only",
+    "regime_metrics": "all_main_metrics_by_regime",
+    "decomposition_target": "preprocessing_effect",
+    "decomposition_order": "marginal_effect_only",
+    "oos_period": "all_oos_data",
+    "export_format": "json",
+    "saved_objects": "full_bundle",
+    "provenance_fields": "full",
+    "artifact_granularity": "aggregated",
+    "stat_test": "none",
+    "equal_predictive": "none",
+    "nested": "none",
+    "cpa_instability": "none",
+    "multiple_model": "none",
+    "density_interval": "none",
+    "direction": "none",
+    "residual_diagnostics": "none",
+    "dependence_correction": "none",
+    "importance_method": "none",
 }
 
 _VIRTUAL_AXES = {
@@ -190,13 +256,8 @@ def _selection_map(recipe: Mapping[str, Any]) -> dict[str, Any]:
         for key, value in _layer_leaf(recipe, layer).items():
             if key not in {"benchmark_config", "training_config"}:
                 selected.setdefault(key, value)
-    selected.setdefault("forecast_type", _layer_fixed(recipe, "3_training").get("forecast_type", "direct"))
-    selected.setdefault("forecast_object", _layer_fixed(recipe, "3_training").get("forecast_object", "point_mean"))
-    selected.setdefault("exogenous_x_path_policy", _layer_leaf(recipe, "3_training").get("exogenous_x_path_policy", "unavailable"))
-    selected.setdefault("recursive_x_model_family", _layer_leaf(recipe, "3_training").get("recursive_x_model_family", "none"))
-    selected.setdefault("importance_method", _layer_fixed(recipe, "7_importance").get("importance_method", "none"))
-    selected.setdefault("stat_test", _layer_fixed(recipe, "6_stat_tests").get("stat_test", "none"))
-    selected.setdefault("primary_metric", _layer_fixed(recipe, "4_evaluation").get("primary_metric", "msfe"))
+    for key, value in _DEFAULT_SELECTIONS.items():
+        selected.setdefault(key, value)
     return selected
 
 
@@ -304,6 +365,19 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
     if axis_name == "density_interval":
         if forecast_object not in {"interval", "density", "quantile"} and value != "none":
             return "density/interval tests require interval, density, or quantile forecast objects"
+    if axis_name == "direction":
+        if forecast_object != "direction" and value != "none":
+            return "direction tests require forecast_object=direction"
+    if axis_name == "dependence_correction":
+        selected_stat_test = str(selected.get("stat_test", "none"))
+        hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
+        if value in {"nw_hac", "nw_hac_auto", "block_bootstrap"} and selected_stat_test not in hac_compatible:
+            return "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values"
+    if axis_name == "overlap_handling":
+        selected_stat_test = str(selected.get("stat_test", "none"))
+        hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
+        if value == "evaluate_with_hac" and selected_stat_test not in hac_compatible and selected_stat_test != "none":
+            return "evaluate_with_hac requires a HAC-capable stat_test"
     return None
 
 
@@ -380,6 +454,10 @@ def compatibility_view(recipe: Mapping[str, Any]) -> dict[str, Any]:
         recommendations.append("Use direction-family tests such as pesaran_timmermann or binomial_hit.")
     if forecast_object in {"interval", "density"}:
         recommendations.append("Use density_interval tests; interval/density payloads are baseline wrappers over scalar generators.")
+    if str(selected.get("export_format", "json")) in {"parquet", "all"}:
+        recommendations.append("Parquet output writes sidecar artifact files in addition to the always-written CSV prediction table.")
+    if str(selected.get("regime_definition", "none")) != "none":
+        recommendations.append("Regime evaluation is post-forecast evaluation filtering; regime_use beyond eval_only remains a separate runtime gate.")
     if forecast_type == "iterated" and feature_builder in _RAW_PANEL_BUILDERS:
         active_rules.append(
             {

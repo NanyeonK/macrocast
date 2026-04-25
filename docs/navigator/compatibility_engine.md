@@ -13,6 +13,10 @@ The Compatibility Engine is the constraint-aware view over the registry and comp
 | `forecast_object=interval` or `density` | Recommends density/interval calibration tests on the `density_interval` axis. |
 | `model_family in {lstm, gru, tcn}` | Current runtime uses the univariate target-history sequence route. Full multivariate `feature_runtime=sequence_tensor` remains gated until the Layer 2 sequence representation handoff is opened. |
 | `forecast_type=iterated` with raw-panel features | Requires an explicit `exogenous_x_path_policy`: `hold_last_observed`, `observed_future_x`, `scheduled_known_future_x`, or `recursive_x_model` with `recursive_x_model_family=ar1`. |
+| `export_format=parquet` or `all` | Adds sidecar artifact files; the CSV prediction table remains the stable baseline artifact. |
+| `regime_definition != none` | Treats regime handling as post-forecast evaluation filtering unless a future training-time regime gate is opened. |
+| `direction` statistical tests | Enabled for `forecast_object=direction`; otherwise direction tests stay inactive. |
+| HAC/bootstrap dependence correction | Attached to HAC/bootstrap-compatible test choices. Split Layer 6 axes are visible now; runtime harmonization is handled in the Layer 6 cleanup slice. |
 
 ## Why Disabled Branches Matter
 

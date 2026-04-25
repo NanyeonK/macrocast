@@ -21,6 +21,15 @@ macrocast-navigate tree examples/recipes/model-benchmark.yaml --upstream-only
 - Layer 2: representation construction and researcher preprocessing;
 - Layer 3: forecast generation.
 
+The default view shows Layers 0-7. Downstream layers are part of the same path contract:
+
+| Layer | Tree axes now surfaced |
+|---|---|
+| Layer 4 | metric families, benchmark comparison scope, aggregation, ranking, reporting style, regimes, decomposition, OOS period |
+| Layer 5 | export format, saved objects, provenance fields, artifact granularity |
+| Layer 6 | legacy `stat_test`, split test-family axes, test scope, dependence correction, overlap handling |
+| Layer 7 | importance method, scope, model-native/agnostic families, SHAP, local surrogate, partial dependence, grouped/stability/temporal/gradient outputs |
+
 ## Python
 
 ```python
@@ -59,5 +68,6 @@ Use this page when a researcher asks a path question such as:
 - Why is `sequence_tensor` not open?
 - If I choose `forecast_object=quantile`, which model family remains valid?
 - If I choose raw-panel iterated forecasting, which future-X path assumptions are available?
+- Which evaluation, export, statistical-test, and importance branches are named versus executable?
 
 The tree view should be the first diagnostic, not the API reference.
