@@ -49,7 +49,7 @@ Required fields:
 - `release_lag_policy`;
 - `no_lookahead_evidence`.
 
-The first operational slice should be `hold_last_observed`. It is deterministic
+The first operational slice is `hold_last_observed`. It is deterministic
 and honest: it records the scenario assumption instead of silently using future
 observed X.
 
@@ -74,7 +74,7 @@ The JSONL payload should preserve the step-level trace.
 
 ## Opening Checklist
 
-Before raw-panel iterated forecasting can become operational:
+Before a raw-panel iterated forecasting slice can become operational:
 
 - compiler accepts the explicit future-X scenario;
 - compiler rejects raw-panel iterated cells without a future-X contract;

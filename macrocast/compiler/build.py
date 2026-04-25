@@ -1166,6 +1166,8 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "release_lag_rule": _selection_value(selection_map, "release_lag_rule", default="ignore_release_lag"),
         "benchmark_family": _selection_value(selection_map, "benchmark_family"),
         "data_vintage": leaf_config.get("data_vintage"),
+        "exogenous_x_path_policy": leaf_config.get("exogenous_x_path_policy")
+        or leaf_config.get("future_x_path_policy"),
     }
 
 
@@ -2109,6 +2111,8 @@ def _layer3_capability_rejections(
     forecast_type: str,
     forecast_object: str,
     horizon_target_construction: str = "future_target_level_t_plus_h",
+    exogenous_x_path_policy: str = "unavailable",
+    target_lag_block: str | None = None,
 ) -> tuple[str, ...]:
     blocked: list[str] = []
     if model_family == "ar" and feature_runtime == "raw_feature_panel":
@@ -2130,10 +2134,30 @@ def _layer3_capability_rejections(
             "sequence_representation_contract_v1"
         )
     if feature_runtime == "raw_feature_panel" and forecast_type == "iterated":
-        blocked.append(
-            "forecast_type='iterated' is not implemented for the raw-panel feature runtime in v1.0 "
-            "(requires exogenous X forecasting)"
-        )
+        if is_custom_model(str(model_family)):
+            blocked.append(
+                "forecast_type='iterated' for raw-panel feature runtime does not yet support "
+                "registered custom models; requires a custom raw-panel iterated model contract"
+            )
+        if model_family in {"pcr", "pls", "factor_augmented_linear", "lstm", "gru", "tcn"}:
+            blocked.append(
+                "forecast_type='iterated' for raw-panel feature runtime currently supports scalar tabular "
+                "generators only, not factor/deep generator families"
+            )
+        if str(exogenous_x_path_policy) != "hold_last_observed":
+            blocked.append(
+                "forecast_type='iterated' for raw-panel feature runtime requires "
+                "leaf_config.exogenous_x_path_policy='hold_last_observed' in the first operational slice"
+            )
+        if str(target_lag_block or "none") != "fixed_target_lags":
+            blocked.append(
+                "forecast_type='iterated' for raw-panel feature runtime requires "
+                "target_lag_block='fixed_target_lags' so recursive target-history updates are explicit"
+            )
+        if forecast_object != "point_mean":
+            blocked.append(
+                "forecast_type='iterated' for raw-panel feature runtime currently supports forecast_object='point_mean' only"
+            )
     if feature_runtime == "autoreg_lagged_target" and forecast_type == "direct":
         blocked.append(
             "forecast_type='direct' is not implemented for the target-lag-only feature runtime in v1.0 "
@@ -2144,6 +2168,7 @@ def _layer3_capability_rejections(
 
 _LAYER3_CAPABILITY_STATUS_CATALOG = {
     "operational": "the selected cell has a runtime contract and can execute",
+    "operational_narrow": "the selected cell executes for a named narrow contract slice while broader variants remain gated",
     "blocked_by_incompatibility": "the selected values are valid individually but cannot compose in the current runtime",
     "not_supported_yet": "the cell is reserved for a future runtime contract and is not accepted as an executable recipe value",
     "registry_only": "the registry names a placeholder or extension hook without a built-in runtime contract",
@@ -2286,7 +2311,7 @@ _LAYER3_FUTURE_CAPABILITY_CELLS = (
     {
         "cell_id": "forecast_type.raw_panel_iterated",
         "dimension": "forecast_type x feature_runtime",
-        "runtime_status": "blocked_by_incompatibility",
+        "runtime_status": "operational_narrow",
         "owner_layer": "3_training",
         "scenario_contract": "exogenous_x_path_contract_v1",
         "payload_contract": "multi_step_raw_panel_payload_v1",
@@ -2302,16 +2327,21 @@ _LAYER3_FUTURE_CAPABILITY_CELLS = (
                 "multi_step_raw_panel_payload_v1"
             ],
         },
-        "opening_rule": "first operational slice should be an explicit future-X scenario, such as hold_last_observed, plus step-level payload artifacts",
+        "opening_rule": "hold_last_observed is operational; observed, scheduled, and recursively forecast future-X paths remain gated",
         "requires": [
-            "exogenous-X path or scenario contract",
-            "multi-step raw-panel forecast generation contract",
+            "explicit hold_last_observed exogenous-X scenario",
+            "fixed target-lag recursive history",
+            "multi-step raw-panel forecast payload artifacts",
         ],
     },
 )
 
 
-def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[str, Any]:
+def _layer3_capability_matrix(
+    selection_map: dict[str, AxisSelection],
+    leaf_config: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    leaf_config = dict(leaf_config or {})
     feature_builder = _selected_value_or_none(selection_map, "feature_builder")
     model_family = _selected_value_or_none(selection_map, "model_family")
     feature_runtime = _feature_runtime_for_validation(
@@ -2335,6 +2365,12 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
         forecast_type=forecast_type,
         forecast_object=forecast_object,
         horizon_target_construction=horizon_target_construction,
+        exogenous_x_path_policy=str(
+            leaf_config.get("exogenous_x_path_policy")
+            or leaf_config.get("future_x_path_policy")
+            or "unavailable"
+        ),
+        target_lag_block=_selection_value(selection_map, "target_lag_block", default="none"),
     )
     return {
         "schema_version": "layer3_capability_matrix_v1",
@@ -2374,7 +2410,18 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
                 "raw_feature_panel": {
                     "default": "direct",
                     "operational": ["direct"],
-                    "blocked": {"iterated": "raw-panel iterated runtime requires exogenous X forecasting"},
+                    "conditional_operational": {
+                        "iterated": {
+                            "requires": [
+                                "leaf_config.exogenous_x_path_policy='hold_last_observed'",
+                                "target_lag_block='fixed_target_lags'",
+                                "forecast_object='point_mean'",
+                            ],
+                            "runtime_contract": "raw_panel_iterated_hold_last_observed_v1",
+                            "payload_contract": "multi_step_raw_panel_payload_v1",
+                        }
+                    },
+                    "blocked": {"iterated": "raw-panel iterated runtime requires an explicit future-X scenario"},
                 },
             },
             "forecast_object": {
@@ -2872,8 +2919,51 @@ def _execution_status(
             forecast_type=forecast_type,
             forecast_object=forecast_object,
             horizon_target_construction=horizon_target_construction_for_l3,
+            exogenous_x_path_policy=str(
+                leaf_config.get("exogenous_x_path_policy")
+                or leaf_config.get("future_x_path_policy")
+                or "unavailable"
+            ),
+            target_lag_block=_selection_value(selection_map, "target_lag_block", default="none"),
         )
     )
+    if feature_runtime == "raw_feature_panel" and forecast_type == "iterated" and not blocked:
+        if str(getattr(preprocess_contract, "target_transform", "level")) != "level":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires target_transform_policy='raw_level'"
+            )
+        if str(getattr(preprocess_contract, "target_normalization", "none")) != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires target_normalization='none'"
+            )
+        if _selection_value(selection_map, "target_transformer", default="none") != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently does not support custom target_transformer"
+            )
+        if str(getattr(preprocess_contract, "tcode_policy", "raw_only")) != "raw_only":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires tcode_policy='raw_only'"
+            )
+        if str(getattr(preprocess_contract, "x_transform", "level")) != "level":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires x_transform_policy='raw_level'"
+            )
+        if str(getattr(preprocess_contract, "preprocess_order", "none")) != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires preprocess_order='none'"
+            )
+        if str(getattr(preprocess_contract, "scaling_policy", "none")) != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires scaling_policy='none'"
+            )
+        if str(getattr(preprocess_contract, "dimensionality_reduction_policy", "none")) != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires dimensionality_reduction_policy='none'"
+            )
+        if str(getattr(preprocess_contract, "feature_selection_policy", "none")) != "none":
+            not_supported.append(
+                "raw-panel iterated hold_last_observed currently requires feature_selection_policy='none'"
+            )
     if forecast_object in {"interval", "density"}:
         if str(getattr(preprocess_contract, "target_transform", "level")) != "level":
             not_supported.append(
@@ -3400,7 +3490,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
         "data_task_spec": _data_task_spec(selection_map, compiled.leaf_config),
         "training_spec": _training_spec(selection_map, compiled.leaf_config),
         "layer2_representation_spec": dict(compiled.recipe_spec.layer2_representation_spec),
-        "layer3_capability_matrix": _layer3_capability_matrix(selection_map),
+        "layer3_capability_matrix": _layer3_capability_matrix(selection_map, compiled.leaf_config),
         "evaluation_spec": _evaluation_spec(selection_map, compiled.leaf_config),
         "stat_test_spec": {
             "stat_test": _selection_value(selection_map, "stat_test", default="none"),
