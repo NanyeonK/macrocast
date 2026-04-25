@@ -196,6 +196,71 @@ compatibility axis. Canonically, they are custom forecast generator families
 and can be compared with built-in generators through the normal execution and
 experiment APIs.
 
+## Method Comparison Sweeps
+
+Method researchers often need to compare all four combinations:
+
+- built-in Layer 2 representation with built-in Layer 3 generator;
+- custom Layer 2 representation with built-in Layer 3 generator;
+- built-in Layer 2 representation with custom Layer 3 generator;
+- custom Layer 2 representation with custom Layer 3 generator.
+
+Use `sweep_axes` for registry axes and `leaf_sweep_axes` for variant-specific
+configuration names. `leaf_sweep_axes` materializes into `leaf_config` before
+each variant is compiled, so registered custom names can vary across variants
+without editing package internals.
+
+```yaml
+path:
+  0_meta:
+    fixed_axes:
+      research_design: controlled_variation
+      failure_policy: skip_failed_cell
+  2_preprocessing:
+    sweep_axes:
+      temporal_feature_block: [moving_average_features, custom_temporal_features]
+  3_training:
+    sweep_axes:
+      model_family: [ridge, my_custom_generator]
+```
+
+If the custom name should apply only when the parent custom axis is selected,
+use `nested_sweep_axes` with a `leaf_config.<key>` child. This avoids duplicate
+built-in variants that differ only by an unused custom name.
+
+```yaml
+path:
+  2_preprocessing:
+    nested_sweep_axes:
+      temporal_feature_block:
+        moving_average_features: {}
+        custom_temporal_features:
+          leaf_config.custom_temporal_feature_block:
+            - my_temporal_block
+            - my_second_temporal_block
+  3_training:
+    sweep_axes:
+      model_family: [ridge, my_custom_generator]
+```
+
+For custom combiners, bind the combiner name the same way:
+
+```yaml
+path:
+  2_preprocessing:
+    nested_sweep_axes:
+      feature_block_combination:
+        concatenate_named_blocks: {}
+        custom_combiner:
+          leaf_config.custom_feature_combiner:
+            - my_combiner
+```
+
+The compiler expands the grid first, then validates each variant. With
+`failure_policy=skip_failed_cell`, unsupported cells are recorded as skipped
+with `compiler_manifest.json`; supported built-in/custom cells run and appear
+in the same study manifest.
+
 ## Fair Comparison Checklist
 
 For a custom method comparison to be valid:

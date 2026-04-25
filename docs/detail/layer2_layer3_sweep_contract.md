@@ -102,23 +102,30 @@ representation payload plus training settings.
 
 ## Sweep Model
 
-The full recipe grammar already supports `sweep_axes` on Layer 2 and Layer 3.
-`compile_sweep_plan()` expands those axes into Cartesian variants. Each variant
-is then compiled as a normal single-path recipe. Executable variants run through
-`execute_recipe`; non-executable cells are reported before execution.
+The full recipe grammar supports `sweep_axes` on Layer 2 and Layer 3.
+`compile_sweep_plan()` expands those axes into Cartesian variants. It also
+supports `leaf_sweep_axes` for variant-specific `leaf_config` values such as
+registered custom feature-block names, and `nested_sweep_axes` for conditional
+method grids. Each variant is then compiled as a normal single-path recipe.
+Executable variants run through `execute_recipe`; non-executable cells are
+reported before execution.
 
 Free representation sweep means the following:
 
 1. A researcher may place operational Layer 2 axes in `2_preprocessing.sweep_axes`.
 2. A researcher may place operational Layer 3 axes in `3_training.sweep_axes`.
-3. The runner materializes each Layer 2 x Layer 3 cell as a separate variant.
-4. The compiler validates each cell after expansion, because some choices are
+3. A researcher may place custom method names or configs in
+   `leaf_sweep_axes`; these materialize into variant `leaf_config`.
+4. A researcher may use `nested_sweep_axes` to bind a custom name only to the
+   parent custom axis value that needs it.
+5. The runner materializes each Layer 2 x Layer 3 cell as a separate variant.
+6. The compiler validates each cell after expansion, because some choices are
    only meaningful together.
-5. With `failure_policy=skip_failed_cell`, compile-invalid cells are marked
+7. With `failure_policy=skip_failed_cell`, compile-invalid cells are marked
    `skipped` before execution. The variant directory still receives
    `compiler_manifest.json` for audit.
-6. Executed cells write per-cell artifacts under the variant directory.
-7. The study manifest records the axis values, execution status, metrics,
+8. Executed cells write per-cell artifacts under the variant directory.
+9. The study manifest records the axis values, execution status, metrics,
    compiler status, Layer 3 capability cell, and block provenance for every
    cell.
 
@@ -146,6 +153,39 @@ axes while the canonical docs use forecast-generator language.
 The compiler should not treat this as a special "preprocessing sweep" route.
 It should treat this as a set of concrete `Z` construction recipes crossed with
 forecast-generator choices.
+
+Custom method names are not registry axes. They are variant leaf configuration.
+Use `leaf_sweep_axes` when every variant should receive the key:
+
+```yaml
+path:
+  2_preprocessing:
+    leaf_sweep_axes:
+      custom_feature_combiner: [my_combiner_a, my_combiner_b]
+```
+
+Use `nested_sweep_axes` when the custom name is meaningful only for a custom
+parent value:
+
+```yaml
+path:
+  2_preprocessing:
+    nested_sweep_axes:
+      temporal_feature_block:
+        moving_average_features: {}
+        custom_temporal_features:
+          leaf_config.custom_temporal_feature_block:
+            - my_temporal_block
+            - my_second_temporal_block
+  3_training:
+    sweep_axes:
+      model_family: [ridge, my_custom_generator]
+```
+
+The example above creates one built-in temporal-feature variant and two custom
+temporal-feature variants, then crosses them with the selected forecast
+generators. The built-in temporal-feature variant does not receive an unused
+custom block name.
 
 Invalid cells are expected in broad research grids. For example, a raw-panel
 feature runtime crossed with `model_family=ar` is a Layer 2 x Layer 3
