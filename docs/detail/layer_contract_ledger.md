@@ -39,7 +39,96 @@ test.
 | `Layer2Representation` tabular handoff | Layer 2 | `consumed` | supported Layer 2 tabular builders | Layer 3 tabular generators | `operational` | Contains `Z_train`, `y_train`, `Z_pred`, feature names, block order/roles, fit state, alignment, leakage contract, and runtime provenance. Current Layer 3 capability matrix is built around this handoff. |
 | `forecast_payload_v1` | Layer 3 | `owned` | scalar forecast generators | execution artifact writer and evaluation | `operational` | Public scalar payload with `y_pred`, `selected_lag`, `selected_bic`, `tuning_payload`, and `contract_version`. Legacy executor dictionaries are coerced into this shape. |
 | `sequence_representation_contract_v1` | Layer 2 | `future_dependency` | future sequence/tensor representation builders | future Layer 3 sequence/tensor generators | `gated_named` | Required before sequence/tensor models enter full grids. Must define sample/origin axis, lookback axis, channel names, target/path alignment, fit state, leakage metadata, and missing/release-lag handling. |
-| `exogenous_x_path_contract_v1` | Layer 1/2 boundary plus Layer 3 scenario setup | `future_dependency` | future scenario or future-X provider | raw-panel iterated forecast generators | `gated_named` | Required before raw-panel iterated forecasting. Must distinguish observed future X, known scheduled future X, held-constant assumptions, recursively forecast X, unavailable X, and vintage/release-lag constraints. |
+| `exogenous_x_path_contract_v1` | Layer 1/2 boundary plus Layer 3 scenario setup | `future_dependency` | future scenario or future-X provider | raw-panel iterated forecast generators | `gated_named` | Required before raw-panel iterated forecasting. Must distinguish observed future X, known scheduled future X, held-constant assumptions, recursively forecast X, unavailable X, and vintage/release-lag constraints. The first openable slice should be an explicit `hold_last_observed` scenario, not an implicit fallback. |
+
+## Future Contract Shape Requirements
+
+The Layer 3 capability matrix exposes the following requirements as
+machine-readable future-cell metadata (`schema_revision=6`). These are not
+runtime permissions; they are the checklist for moving a gated cell to
+operational.
+
+### Sequence/Tensor Handoff
+
+`sequence_representation_contract_v1` is produced by Layer 2 and consumed by
+future sequence/tensor Layer 3 generators. It must define:
+
+- `origin_index`;
+- `sample_axis`;
+- `lookback_axis`;
+- `channel_names`;
+- `target_alignment`;
+- `fit_state`;
+- `leakage_metadata`;
+- `missing_release_lag_handling`.
+
+Required gates before opening:
+
+- sample/origin alignment test;
+- lookback no-future-leakage test;
+- channel-name schema test;
+- generator payload-shape test.
+
+`sequence_forecast_payload_v1` is produced by Layer 3 and consumed by the
+artifact writer and evaluation layer. It must define:
+
+- `origin_index`;
+- `horizon`;
+- `path_or_vector_payload`;
+- `step_rows`;
+- `aggregation_rule`;
+- `payload_metrics`.
+
+### Raw-Panel Iterated Forecasting
+
+`exogenous_x_path_contract_v1` is the producer-side scenario contract consumed
+by raw-panel iterated generators. It must define:
+
+- `path_kind`;
+- `origin_index`;
+- `horizon_steps`;
+- `predictor_names`;
+- `x_path_frame_or_assumption`;
+- `availability_mask`;
+- `vintage_cutoff`;
+- `release_lag_policy`;
+- `no_lookahead_evidence`.
+
+Allowed path kinds are:
+
+- `observed_future_x`;
+- `scheduled_known_future_x`;
+- `hold_last_observed`;
+- `recursive_x_model`;
+- `unavailable`.
+
+The first operational raw-panel iterated slice should use
+`path_kind='hold_last_observed'` because it is explicit, deterministic, and
+does not imply unavailable future-X knowledge. Later slices can add observed
+future X, scheduled known future X, or recursively forecast X.
+
+`multi_step_raw_panel_payload_v1` is the Layer 3 artifact payload produced by
+the iterated generator. It must define:
+
+- `origin_index`;
+- `horizon`;
+- `step_predictions`;
+- `final_horizon_prediction`;
+- `target_history_updates`;
+- `exogenous_x_path_ref`;
+- `recursive_state_trace`;
+- `payload_metrics`.
+
+Required gates before opening:
+
+- future-X availability test;
+- release-lag mask test;
+- origin-index alignment test;
+- scenario-assumption manifest test;
+- step-trace schema test;
+- final-prediction projection test;
+- recursive target-history test;
+- JSONL schema test.
 
 ## Layer 2 Method-Extension Contracts
 
@@ -64,7 +153,7 @@ test.
 | `path_average_target_protocol_v1` | Layer 2 | `consumed` | path-average target construction | Layer 3 path-average stepwise executor | `operational` | Layer 2 defines step targets and aggregation semantics; Layer 3 executes stepwise fits and writes path artifacts. |
 | `path_average_stepwise_execution_v1` | Layer 3 | `owned` | path-average executor | artifact writer and evaluation | `operational` | Executes one supported scalar generator per step `1..h`, aggregates equal-weight path-average predictions, and writes `path_average_steps.csv`. |
 | Sequence/tensor generator contract | Layer 3 | `owned` | future sequence/tensor executors | artifact writer and evaluation | `future_design` | Depends on `sequence_representation_contract_v1` and `sequence_forecast_payload_v1`. Must define accepted tensor family, training backend metadata, seed/early-stopping/convergence state, and payload shape. |
-| Raw-panel iterated execution contract | Layer 3 | `owned` | future raw-panel iterated generators | artifact writer and evaluation | `future_design` | Depends on `exogenous_x_path_contract_v1` and `multi_step_raw_panel_payload_v1`. Must define direct/recursive/iterated semantics, target-history updates, and future-X assumptions. |
+| Raw-panel iterated execution contract | Layer 3 | `owned` | future raw-panel iterated generators | artifact writer and evaluation | `gated_named` | Depends on `exogenous_x_path_contract_v1` and `multi_step_raw_panel_payload_v1`. First openable slice: explicit `hold_last_observed` future-X scenario, step-level recursive target-history updates, and typed multi-step payload artifacts. |
 
 ## Forecast Payload And Artifact Contracts
 

@@ -355,13 +355,21 @@ more than the current tabular `Z_pred`.
 
 Open dependency:
 
-- an exogenous-X path or scenario contract;
+- `exogenous_x_path_contract_v1`;
+- `multi_step_raw_panel_payload_v1`;
 - rules for unknown future predictors;
 - recursive update rules for target-history features;
 - artifacts that distinguish assumed future X from observed X.
 
-Until that contract exists, raw-panel iterated cells should remain blocked by
-the Layer 3 capability matrix.
+The first openable slice should be
+`exogenous_x_path_contract_v1.path_kind='hold_last_observed'`. That slice is
+explicitly a scenario assumption, not knowledge of future X. It should write a
+step trace, the assumed future-X path reference, recursive target-history
+updates, and a final horizon prediction under
+`multi_step_raw_panel_payload_v1`.
+
+Until both contracts are implemented, raw-panel iterated cells remain blocked
+by the Layer 3 capability matrix.
 
 ### Sequence/Tensor Forecast Generators
 

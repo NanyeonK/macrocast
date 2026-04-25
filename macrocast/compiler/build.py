@@ -2160,6 +2160,103 @@ _LAYER3_PAYLOAD_CONTRACTS = {
 }
 
 
+_LAYER3_FUTURE_CONTRACT_REQUIREMENTS = {
+    "sequence_representation_contract_v1": {
+        "owner_layer": "2_preprocessing",
+        "producer": "sequence_or_tensor_representation_builder",
+        "consumer": "sequence_or_tensor_forecast_generator",
+        "contract_status": "gated_named",
+        "required_fields": [
+            "origin_index",
+            "sample_axis",
+            "lookback_axis",
+            "channel_names",
+            "target_alignment",
+            "fit_state",
+            "leakage_metadata",
+            "missing_release_lag_handling",
+        ],
+        "validation_gates": [
+            "sample_origin_alignment_test",
+            "lookback_no_future_leakage_test",
+            "channel_name_schema_test",
+            "generator_payload_shape_test",
+        ],
+    },
+    "sequence_forecast_payload_v1": {
+        "owner_layer": "3_training",
+        "producer": "sequence_or_tensor_forecast_generator",
+        "consumer": "artifact_writer_and_evaluation",
+        "contract_status": "gated_named",
+        "required_fields": [
+            "origin_index",
+            "horizon",
+            "path_or_vector_payload",
+            "step_rows",
+            "aggregation_rule",
+            "payload_metrics",
+        ],
+        "validation_gates": [
+            "jsonl_schema_test",
+            "prediction_row_projection_test",
+            "metric_aggregation_test",
+        ],
+    },
+    "exogenous_x_path_contract_v1": {
+        "owner_layer": "layer1_layer2_layer3_boundary",
+        "producer": "scenario_or_future_x_provider",
+        "consumer": "raw_panel_iterated_forecast_generator",
+        "contract_status": "gated_named",
+        "path_kinds": [
+            "observed_future_x",
+            "scheduled_known_future_x",
+            "hold_last_observed",
+            "recursive_x_model",
+            "unavailable",
+        ],
+        "required_fields": [
+            "path_kind",
+            "origin_index",
+            "horizon_steps",
+            "predictor_names",
+            "x_path_frame_or_assumption",
+            "availability_mask",
+            "vintage_cutoff",
+            "release_lag_policy",
+            "no_lookahead_evidence",
+        ],
+        "validation_gates": [
+            "future_x_availability_test",
+            "release_lag_mask_test",
+            "origin_index_alignment_test",
+            "scenario_assumption_manifest_test",
+        ],
+    },
+    "multi_step_raw_panel_payload_v1": {
+        "owner_layer": "3_training",
+        "producer": "raw_panel_iterated_forecast_generator",
+        "consumer": "artifact_writer_and_evaluation",
+        "contract_status": "gated_named",
+        "required_fields": [
+            "origin_index",
+            "horizon",
+            "step_predictions",
+            "final_horizon_prediction",
+            "target_history_updates",
+            "exogenous_x_path_ref",
+            "recursive_state_trace",
+            "payload_metrics",
+        ],
+        "validation_gates": [
+            "step_trace_schema_test",
+            "final_prediction_projection_test",
+            "recursive_target_history_test",
+            "jsonl_schema_test",
+        ],
+    },
+}
+
+
 _LAYER3_FUTURE_CAPABILITY_CELLS = (
     {
         "cell_id": "feature_runtime.sequence_tensor",
@@ -2168,6 +2265,19 @@ _LAYER3_FUTURE_CAPABILITY_CELLS = (
         "owner_layer": "2_preprocessing",
         "upstream_contract": "sequence_representation_contract_v1",
         "payload_contract": "sequence_forecast_payload_v1",
+        "required_contracts": [
+            "sequence_representation_contract_v1",
+            "sequence_forecast_payload_v1",
+        ],
+        "contract_requirements": {
+            "sequence_representation_contract_v1": _LAYER3_FUTURE_CONTRACT_REQUIREMENTS[
+                "sequence_representation_contract_v1"
+            ],
+            "sequence_forecast_payload_v1": _LAYER3_FUTURE_CONTRACT_REQUIREMENTS[
+                "sequence_forecast_payload_v1"
+            ],
+        },
+        "opening_rule": "open only after Layer 2 emits an explicit sequence/tensor representation and Layer 3 writes typed sequence payloads",
         "requires": [
             "Layer 2 sequence/tensor representation handoff",
             "Layer 3 sequence forecast payload coercion",
@@ -2180,6 +2290,19 @@ _LAYER3_FUTURE_CAPABILITY_CELLS = (
         "owner_layer": "3_training",
         "scenario_contract": "exogenous_x_path_contract_v1",
         "payload_contract": "multi_step_raw_panel_payload_v1",
+        "required_contracts": [
+            "exogenous_x_path_contract_v1",
+            "multi_step_raw_panel_payload_v1",
+        ],
+        "contract_requirements": {
+            "exogenous_x_path_contract_v1": _LAYER3_FUTURE_CONTRACT_REQUIREMENTS[
+                "exogenous_x_path_contract_v1"
+            ],
+            "multi_step_raw_panel_payload_v1": _LAYER3_FUTURE_CONTRACT_REQUIREMENTS[
+                "multi_step_raw_panel_payload_v1"
+            ],
+        },
+        "opening_rule": "first operational slice should be an explicit future-X scenario, such as hold_last_observed, plus step-level payload artifacts",
         "requires": [
             "exogenous-X path or scenario contract",
             "multi-step raw-panel forecast generation contract",
@@ -2215,7 +2338,7 @@ def _layer3_capability_matrix(selection_map: dict[str, AxisSelection]) -> dict[s
     )
     return {
         "schema_version": "layer3_capability_matrix_v1",
-        "schema_revision": 5,
+        "schema_revision": 6,
         "dimensions": ["model_family", "feature_runtime", "forecast_type", "forecast_object"],
         "canonical_dimensions": [
             "forecast_generator_family",

@@ -127,7 +127,7 @@ def test_layer3_capability_matrix_records_future_status_catalog() -> None:
     matrix = r.manifest["layer3_capability_matrix"]
 
     assert matrix["schema_version"] == "layer3_capability_matrix_v1"
-    assert matrix["schema_revision"] == 5
+    assert matrix["schema_revision"] == 6
     assert matrix["canonical_dimensions"] == [
         "forecast_generator_family",
         "representation_runtime",
@@ -147,7 +147,28 @@ def test_layer3_capability_matrix_records_future_status_catalog() -> None:
     assert matrix["rules"]["forecast_object"]["density"]["payload_contract"] == "density_forecast_payload_v1"
     assert future_cells["feature_runtime.sequence_tensor"]["owner_layer"] == "2_preprocessing"
     assert future_cells["feature_runtime.sequence_tensor"]["upstream_contract"] == "sequence_representation_contract_v1"
+    assert future_cells["feature_runtime.sequence_tensor"]["required_contracts"] == [
+        "sequence_representation_contract_v1",
+        "sequence_forecast_payload_v1",
+    ]
+    sequence_requirements = future_cells["feature_runtime.sequence_tensor"]["contract_requirements"]
+    assert "channel_names" in sequence_requirements["sequence_representation_contract_v1"]["required_fields"]
+    assert "path_or_vector_payload" in sequence_requirements["sequence_forecast_payload_v1"]["required_fields"]
     assert future_cells["forecast_type.raw_panel_iterated"]["scenario_contract"] == "exogenous_x_path_contract_v1"
+    assert future_cells["forecast_type.raw_panel_iterated"]["required_contracts"] == [
+        "exogenous_x_path_contract_v1",
+        "multi_step_raw_panel_payload_v1",
+    ]
+    raw_iterated_requirements = future_cells["forecast_type.raw_panel_iterated"]["contract_requirements"]
+    assert raw_iterated_requirements["exogenous_x_path_contract_v1"]["path_kinds"] == [
+        "observed_future_x",
+        "scheduled_known_future_x",
+        "hold_last_observed",
+        "recursive_x_model",
+        "unavailable",
+    ]
+    assert "step_predictions" in raw_iterated_requirements["multi_step_raw_panel_payload_v1"]["required_fields"]
+    assert "hold_last_observed" in future_cells["forecast_type.raw_panel_iterated"]["opening_rule"]
 
 
 def test_forecast_type_iterated_autoreg_executes(tmp_path: Path) -> None:
