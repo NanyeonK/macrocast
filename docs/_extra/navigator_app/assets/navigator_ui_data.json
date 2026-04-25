@@ -3427,11 +3427,27 @@
           "active_rules": [],
           "recommendations": [],
           "selected": {
+            "agg_horizon": "equal_weight",
+            "agg_target": "report_separately_only",
+            "agg_time": "full_oos_average",
+            "artifact_granularity": "aggregated",
             "benchmark_family": "zero_change",
+            "benchmark_scope": "same_for_all",
+            "benchmark_window": "expanding",
+            "cpa_instability": "none",
             "dataset": "fred_md",
+            "decomposition_order": "marginal_effect_only",
+            "decomposition_target": "preprocessing_effect",
+            "density_interval": "none",
+            "density_metrics": "pinball_loss",
+            "dependence_correction": "none",
             "dimensionality_reduction_policy": "none",
+            "direction": "none",
+            "direction_metrics": "directional_accuracy",
+            "equal_predictive": "none",
             "evaluation_scale": "raw_level",
             "exogenous_x_path_policy": "unavailable",
+            "export_format": "json",
             "feature_builder": "autoreg_lagged_target",
             "feature_selection_policy": "none",
             "forecast_object": "point_mean",
@@ -3446,11 +3462,24 @@
             "inverse_transform_policy": "none",
             "manifest_mode": "full",
             "model_family": "ar",
+            "multiple_model": "none",
+            "nested": "none",
+            "oos_period": "all_oos_data",
+            "point_metrics": "MSFE",
             "preprocess_fit_scope": "not_applicable",
             "preprocess_order": "none",
             "primary_metric": "msfe",
+            "provenance_fields": "full",
+            "ranking": "mean_metric_rank",
             "recursive_x_model_family": "none",
+            "regime_definition": "none",
+            "regime_metrics": "all_main_metrics_by_regime",
+            "regime_use": "eval_only",
+            "relative_metrics": "relative_MSFE",
+            "report_style": "tidy_dataframe",
             "research_design": "single_path_benchmark",
+            "residual_diagnostics": "none",
+            "saved_objects": "full_bundle",
             "scaling_policy": "none",
             "stat_test": "none",
             "target": "INDPRO",
@@ -6440,7 +6469,7 @@
                 "value": "TheilU"
               }
             ],
-            "selected": null
+            "selected": "MSFE"
           },
           {
             "axis": "density_metrics",
@@ -6504,7 +6533,7 @@
                 "value": "PIT_based_metric"
               }
             ],
-            "selected": null
+            "selected": "pinball_loss"
           },
           {
             "axis": "direction_metrics",
@@ -6575,7 +6604,7 @@
                 "value": "Brier_score"
               }
             ],
-            "selected": null
+            "selected": "directional_accuracy"
           },
           {
             "axis": "relative_metrics",
@@ -6625,7 +6654,237 @@
                 "value": "CSFE_difference"
               }
             ],
+            "selected": "relative_MSFE"
+          },
+          {
+            "axis": "economic_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'utility_gain'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "utility_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'certainty_equivalent'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "certainty_equivalent"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'cost_sensitive_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "cost_sensitive_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'policy_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "policy_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'turning_point_value'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "turning_point_value"
+              }
+            ],
             "selected": null
+          },
+          {
+            "axis": "benchmark_window",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'expanding'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expanding"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'rolling'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'fixed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fixed"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'paper_exact_window'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_exact_window"
+              }
+            ],
+            "selected": "expanding"
+          },
+          {
+            "axis": "benchmark_scope",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'same_for_all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "same_for_all"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "target_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'horizon_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "horizon_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_horizon_specific'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "target_horizon_specific"
+              }
+            ],
+            "selected": "same_for_all"
+          },
+          {
+            "axis": "agg_time",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'full_oos_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_oos_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'rolling_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'regime_subsample_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "regime_subsample_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'event_window_average'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "event_window_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'pre_post_break_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pre_post_break_average"
+              }
+            ],
+            "selected": "full_oos_average"
+          },
+          {
+            "axis": "agg_horizon",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'short_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "short_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'long_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "long_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "equal_weight"
+          },
+          {
+            "axis": "agg_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'scale_adjusted_weight'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "scale_adjusted_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'economic_priority_weight'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "economic_priority_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "report_separately_only"
           },
           {
             "axis": "ranking",
@@ -6682,7 +6941,501 @@
                 "value": "ensemble_selection_rank"
               }
             ],
-            "selected": null
+            "selected": "mean_metric_rank"
+          },
+          {
+            "axis": "report_style",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'tidy_dataframe'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tidy_dataframe"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'latex_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "latex_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'markdown_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "markdown_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'plot_dashboard'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "plot_dashboard"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'paper_ready_bundle'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_ready_bundle"
+              }
+            ],
+            "selected": "tidy_dataframe"
+          },
+          {
+            "axis": "regime_definition",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'NBER_recession'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "NBER_recession"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'quantile_uncertainty'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "quantile_uncertainty"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'financial_stress'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "financial_stress"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'volatility_regime'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "volatility_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'Markov_switching_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Markov_switching_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'clustering_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "clustering_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'user_defined_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "user_defined_regime"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "regime_use",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'eval_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "eval_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_only'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_and_eval'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_and_eval"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_specific_model'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_specific_model"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_interaction_features'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_interaction_features"
+              }
+            ],
+            "selected": "eval_only"
+          },
+          {
+            "axis": "regime_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'all_main_metrics_by_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_main_metrics_by_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'regime_transition_performance'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regime_transition_performance"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'crisis_period_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "crisis_period_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'state_dependent_oos_r2'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "state_dependent_oos_r2"
+              }
+            ],
+            "selected": "all_main_metrics_by_regime"
+          },
+          {
+            "axis": "decomposition_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'nonlinearity_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "nonlinearity_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'regularization_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regularization_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'cv_scheme_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "cv_scheme_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'loss_function_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "loss_function_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'preprocessing_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "preprocessing_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_representation_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_representation_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_builder_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_builder_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'benchmark_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "benchmark_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'importance_method_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "importance_method_effect"
+              }
+            ],
+            "selected": "preprocessing_effect"
+          },
+          {
+            "axis": "decomposition_order",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'marginal_effect_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "marginal_effect_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'two_way_interaction'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "two_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'three_way_interaction'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "three_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'full_factorial'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "full_factorial"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'Shapley_style_effect_decomp'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Shapley_style_effect_decomp"
+              }
+            ],
+            "selected": "marginal_effect_only"
+          },
+          {
+            "axis": "oos_period",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'all_oos_data'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_oos_data"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'recession_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "recession_only_oos"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'expansion_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expansion_only_oos"
+              }
+            ],
+            "selected": "all_oos_data"
+          },
+          {
+            "axis": "export_format",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'parquet'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "parquet"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json+csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json+csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all"
+              }
+            ],
+            "selected": "json"
+          },
+          {
+            "axis": "saved_objects",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_and_metrics'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_and_metrics"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'full_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_bundle"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'models_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "models_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'data_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "data_only"
+              }
+            ],
+            "selected": "full_bundle"
+          },
+          {
+            "axis": "provenance_fields",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'minimal'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "minimal"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'standard'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "standard"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'full'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full"
+              }
+            ],
+            "selected": "full"
+          },
+          {
+            "axis": "artifact_granularity",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target_horizon'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target_horizon"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'aggregated'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "aggregated"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'hierarchical'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "hierarchical"
+              }
+            ],
+            "selected": "aggregated"
           },
           {
             "axis": "stat_test",
@@ -6887,7 +7640,7 @@
                 "value": "wilcoxon_signed_rank"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "nested",
@@ -6937,7 +7690,64 @@
                 "value": "forecast_encompassing_nested"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "cpa_instability",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cpa"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rossi"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_dm"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fluctuation_test"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "chow_break_forecast"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cusum_on_loss"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "multiple_model",
@@ -6987,50 +7797,7 @@
                 "value": "bootstrap_best_model"
               }
             ],
-            "selected": null
-          },
-          {
-            "axis": "direction",
-            "layer": "6_stat_tests",
-            "layer_label": "Layer 6: statistical tests",
-            "options": [
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "none"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "pesaran_timmermann"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "binomial_hit"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "mcnemar"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "roc_comparison"
-              }
-            ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "density_interval",
@@ -7094,7 +7861,50 @@
                 "value": "interval_coverage"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "direction",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "pesaran_timmermann"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "binomial_hit"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "mcnemar"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "roc_comparison"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "residual_diagnostics",
@@ -7158,61 +7968,61 @@
                 "value": "serial_dependence_loss_diff"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
-            "axis": "cpa_instability",
+            "axis": "test_scope",
             "layer": "6_stat_tests",
             "layer_label": "Layer 6: statistical tests",
             "options": [
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_target'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "none"
+                "value": "per_target"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cpa"
+                "value": "per_horizon"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rossi"
+                "value": "per_model_pair"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rolling_dm"
+                "value": "full_grid_pairwise"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "fluctuation_test"
+                "value": "benchmark_vs_all"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "chow_break_forecast"
+                "value": "regime_specific_tests"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cusum_on_loss"
+                "value": "subsample_tests"
               }
             ],
             "selected": null
@@ -7231,24 +8041,46 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
+                "status": "operational",
+                "value": "block_bootstrap"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "overlap_handling",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'allow_overlap'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "block_bootstrap"
+                "value": "allow_overlap"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'evaluate_with_hac'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "evaluate_with_hac"
               }
             ],
             "selected": null
@@ -7353,6 +8185,93 @@
             "selected": "none"
           },
           {
+            "axis": "importance_scope",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'global'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "global"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'local'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "local"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'both'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "both"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_native",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'tree_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tree_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'linear_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "linear_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'feature_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_gain"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_agnostic",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'kernel_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "kernel_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'permutation_importance'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "permutation_importance"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
             "axis": "importance_shap",
             "layer": "7_importance",
             "layer_label": "Layer 7: interpretation and importance",
@@ -7377,6 +8296,217 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "linear_shap"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_local_surrogate",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'lime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "lime"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_partial_dependence",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'pdp'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pdp"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ice'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ice"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ale'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ale"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_grouped",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'grouped_permutation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "grouped_permutation"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'variable_root_groups'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "variable_root_groups"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_stability",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'importance_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "importance_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'bootstrap_rank_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "bootstrap_rank_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'seed_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "seed_stability"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_aggregation",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_abs'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_abs"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_signed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_signed"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'top_k'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "top_k"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_output_style",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'ranked_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ranked_table"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'curve_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "curve_bundle"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'nested_report'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "nested_report"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_temporal",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'static_snapshot'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "static_snapshot"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'time_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "time_average"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'rolling_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_path"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_gradient_path",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'coefficient_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "coefficient_path"
               }
             ],
             "selected": null
@@ -7577,13 +8707,29 @@
           "active_rules": [],
           "recommendations": [],
           "selected": {
+            "agg_horizon": "equal_weight",
+            "agg_target": "report_separately_only",
+            "agg_time": "full_oos_average",
+            "artifact_granularity": "aggregated",
             "benchmark_family": "zero_change",
+            "benchmark_scope": "same_for_all",
+            "benchmark_window": "expanding",
             "compute_mode": "serial",
+            "cpa_instability": "none",
             "dataset": "fred_md",
+            "decomposition_order": "marginal_effect_only",
+            "decomposition_target": "preprocessing_effect",
+            "density_interval": "none",
+            "density_metrics": "pinball_loss",
+            "dependence_correction": "none",
             "dimensionality_reduction_policy": "none",
+            "direction": "none",
+            "direction_metrics": "directional_accuracy",
+            "equal_predictive": "none",
             "evaluation_scale": "raw_level",
             "exogenous_x_path_policy": "unavailable",
             "experiment_unit": "single_target_single_model",
+            "export_format": "json",
             "failure_policy": "fail_fast",
             "feature_builder": "autoreg_lagged_target",
             "feature_selection_policy": "none",
@@ -7598,13 +8744,26 @@
             "inverse_transform_policy": "none",
             "manifest_mode": "full",
             "model_family": "ar",
+            "multiple_model": "none",
+            "nested": "none",
+            "oos_period": "all_oos_data",
+            "point_metrics": "MSFE",
             "preprocess_fit_scope": "not_applicable",
             "preprocess_order": "none",
             "primary_metric": "msfe",
+            "provenance_fields": "full",
             "random_seed": 42,
+            "ranking": "mean_metric_rank",
             "recursive_x_model_family": "none",
+            "regime_definition": "none",
+            "regime_metrics": "all_main_metrics_by_regime",
+            "regime_use": "eval_only",
+            "relative_metrics": "relative_MSFE",
+            "report_style": "tidy_dataframe",
             "reproducibility_mode": "seeded_reproducible",
             "research_design": "single_path_benchmark",
+            "residual_diagnostics": "none",
+            "saved_objects": "full_bundle",
             "scaling_policy": "none",
             "source_adapter": "fred_md",
             "stat_test": "none",
@@ -10608,7 +11767,7 @@
                 "value": "TheilU"
               }
             ],
-            "selected": null
+            "selected": "MSFE"
           },
           {
             "axis": "density_metrics",
@@ -10672,7 +11831,7 @@
                 "value": "PIT_based_metric"
               }
             ],
-            "selected": null
+            "selected": "pinball_loss"
           },
           {
             "axis": "direction_metrics",
@@ -10743,7 +11902,7 @@
                 "value": "Brier_score"
               }
             ],
-            "selected": null
+            "selected": "directional_accuracy"
           },
           {
             "axis": "relative_metrics",
@@ -10793,7 +11952,237 @@
                 "value": "CSFE_difference"
               }
             ],
+            "selected": "relative_MSFE"
+          },
+          {
+            "axis": "economic_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'utility_gain'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "utility_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'certainty_equivalent'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "certainty_equivalent"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'cost_sensitive_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "cost_sensitive_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'policy_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "policy_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'turning_point_value'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "turning_point_value"
+              }
+            ],
             "selected": null
+          },
+          {
+            "axis": "benchmark_window",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'expanding'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expanding"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'rolling'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'fixed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fixed"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'paper_exact_window'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_exact_window"
+              }
+            ],
+            "selected": "expanding"
+          },
+          {
+            "axis": "benchmark_scope",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'same_for_all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "same_for_all"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "target_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'horizon_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "horizon_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_horizon_specific'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "target_horizon_specific"
+              }
+            ],
+            "selected": "same_for_all"
+          },
+          {
+            "axis": "agg_time",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'full_oos_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_oos_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'rolling_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'regime_subsample_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "regime_subsample_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'event_window_average'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "event_window_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'pre_post_break_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pre_post_break_average"
+              }
+            ],
+            "selected": "full_oos_average"
+          },
+          {
+            "axis": "agg_horizon",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'short_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "short_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'long_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "long_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "equal_weight"
+          },
+          {
+            "axis": "agg_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'scale_adjusted_weight'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "scale_adjusted_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'economic_priority_weight'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "economic_priority_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "report_separately_only"
           },
           {
             "axis": "ranking",
@@ -10850,7 +12239,501 @@
                 "value": "ensemble_selection_rank"
               }
             ],
-            "selected": null
+            "selected": "mean_metric_rank"
+          },
+          {
+            "axis": "report_style",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'tidy_dataframe'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tidy_dataframe"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'latex_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "latex_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'markdown_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "markdown_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'plot_dashboard'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "plot_dashboard"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'paper_ready_bundle'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_ready_bundle"
+              }
+            ],
+            "selected": "tidy_dataframe"
+          },
+          {
+            "axis": "regime_definition",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'NBER_recession'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "NBER_recession"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'quantile_uncertainty'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "quantile_uncertainty"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'financial_stress'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "financial_stress"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'volatility_regime'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "volatility_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'Markov_switching_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Markov_switching_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'clustering_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "clustering_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'user_defined_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "user_defined_regime"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "regime_use",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'eval_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "eval_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_only'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_and_eval'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_and_eval"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_specific_model'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_specific_model"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_interaction_features'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_interaction_features"
+              }
+            ],
+            "selected": "eval_only"
+          },
+          {
+            "axis": "regime_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'all_main_metrics_by_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_main_metrics_by_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'regime_transition_performance'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regime_transition_performance"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'crisis_period_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "crisis_period_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'state_dependent_oos_r2'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "state_dependent_oos_r2"
+              }
+            ],
+            "selected": "all_main_metrics_by_regime"
+          },
+          {
+            "axis": "decomposition_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'nonlinearity_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "nonlinearity_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'regularization_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regularization_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'cv_scheme_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "cv_scheme_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'loss_function_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "loss_function_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'preprocessing_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "preprocessing_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_representation_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_representation_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_builder_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_builder_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'benchmark_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "benchmark_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'importance_method_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "importance_method_effect"
+              }
+            ],
+            "selected": "preprocessing_effect"
+          },
+          {
+            "axis": "decomposition_order",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'marginal_effect_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "marginal_effect_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'two_way_interaction'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "two_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'three_way_interaction'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "three_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'full_factorial'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "full_factorial"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'Shapley_style_effect_decomp'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Shapley_style_effect_decomp"
+              }
+            ],
+            "selected": "marginal_effect_only"
+          },
+          {
+            "axis": "oos_period",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'all_oos_data'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_oos_data"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'recession_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "recession_only_oos"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'expansion_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expansion_only_oos"
+              }
+            ],
+            "selected": "all_oos_data"
+          },
+          {
+            "axis": "export_format",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'parquet'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "parquet"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json+csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json+csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all"
+              }
+            ],
+            "selected": "json"
+          },
+          {
+            "axis": "saved_objects",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_and_metrics'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_and_metrics"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'full_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_bundle"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'models_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "models_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'data_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "data_only"
+              }
+            ],
+            "selected": "full_bundle"
+          },
+          {
+            "axis": "provenance_fields",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'minimal'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "minimal"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'standard'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "standard"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'full'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full"
+              }
+            ],
+            "selected": "full"
+          },
+          {
+            "axis": "artifact_granularity",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target_horizon'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target_horizon"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'aggregated'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "aggregated"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'hierarchical'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "hierarchical"
+              }
+            ],
+            "selected": "aggregated"
           },
           {
             "axis": "stat_test",
@@ -11055,7 +12938,7 @@
                 "value": "wilcoxon_signed_rank"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "nested",
@@ -11105,7 +12988,64 @@
                 "value": "forecast_encompassing_nested"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "cpa_instability",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cpa"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rossi"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_dm"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fluctuation_test"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "chow_break_forecast"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cusum_on_loss"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "multiple_model",
@@ -11155,50 +13095,7 @@
                 "value": "bootstrap_best_model"
               }
             ],
-            "selected": null
-          },
-          {
-            "axis": "direction",
-            "layer": "6_stat_tests",
-            "layer_label": "Layer 6: statistical tests",
-            "options": [
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "none"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "pesaran_timmermann"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "binomial_hit"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "mcnemar"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "roc_comparison"
-              }
-            ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "density_interval",
@@ -11262,7 +13159,50 @@
                 "value": "interval_coverage"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "direction",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "pesaran_timmermann"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "binomial_hit"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "mcnemar"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "roc_comparison"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "residual_diagnostics",
@@ -11326,61 +13266,61 @@
                 "value": "serial_dependence_loss_diff"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
-            "axis": "cpa_instability",
+            "axis": "test_scope",
             "layer": "6_stat_tests",
             "layer_label": "Layer 6: statistical tests",
             "options": [
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_target'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "none"
+                "value": "per_target"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cpa"
+                "value": "per_horizon"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rossi"
+                "value": "per_model_pair"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rolling_dm"
+                "value": "full_grid_pairwise"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "fluctuation_test"
+                "value": "benchmark_vs_all"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "chow_break_forecast"
+                "value": "regime_specific_tests"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cusum_on_loss"
+                "value": "subsample_tests"
               }
             ],
             "selected": null
@@ -11399,24 +13339,46 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
+                "status": "operational",
+                "value": "block_bootstrap"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "overlap_handling",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'allow_overlap'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "block_bootstrap"
+                "value": "allow_overlap"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'evaluate_with_hac'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "evaluate_with_hac"
               }
             ],
             "selected": null
@@ -11521,6 +13483,93 @@
             "selected": "none"
           },
           {
+            "axis": "importance_scope",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'global'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "global"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'local'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "local"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'both'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "both"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_native",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'tree_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tree_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'linear_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "linear_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'feature_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_gain"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_agnostic",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'kernel_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "kernel_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'permutation_importance'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "permutation_importance"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
             "axis": "importance_shap",
             "layer": "7_importance",
             "layer_label": "Layer 7: interpretation and importance",
@@ -11545,6 +13594,217 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "linear_shap"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_local_surrogate",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'lime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "lime"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_partial_dependence",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'pdp'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pdp"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ice'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ice"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ale'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ale"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_grouped",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'grouped_permutation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "grouped_permutation"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'variable_root_groups'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "variable_root_groups"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_stability",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'importance_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "importance_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'bootstrap_rank_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "bootstrap_rank_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'seed_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "seed_stability"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_aggregation",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_abs'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_abs"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_signed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_signed"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'top_k'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "top_k"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_output_style",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'ranked_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ranked_table"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'curve_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "curve_bundle"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'nested_report'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "nested_report"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_temporal",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'static_snapshot'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "static_snapshot"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'time_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "time_average"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'rolling_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_path"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_gradient_path",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'coefficient_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "coefficient_path"
               }
             ],
             "selected": null
@@ -11794,12 +14054,26 @@
           "active_rules": [],
           "recommendations": [],
           "selected": {
+            "agg_horizon": "equal_weight",
+            "agg_target": "report_separately_only",
+            "agg_time": "full_oos_average",
             "artifact_granularity": "aggregated",
             "benchmark_family": "ar_bic",
+            "benchmark_scope": "same_for_all",
+            "benchmark_window": "expanding",
             "compute_mode": "serial",
             "contemporaneous_x_rule": "forbid_contemporaneous",
+            "cpa_instability": "none",
             "dataset": "fred_md",
+            "decomposition_order": "marginal_effect_only",
+            "decomposition_target": "preprocessing_effect",
+            "density_interval": "none",
+            "density_metrics": "pinball_loss",
+            "dependence_correction": "none",
             "dimensionality_reduction_policy": "none",
+            "direction": "none",
+            "direction_metrics": "directional_accuracy",
+            "equal_predictive": "none",
             "evaluation_scale": "raw_level",
             "exogenous_x_path_policy": "unavailable",
             "export_format": "json",
@@ -11826,19 +14100,30 @@
             "manifest_mode": "full",
             "missing_availability": "zero_fill_before_start",
             "model_family": "ridge",
+            "multiple_model": "none",
+            "nested": "none",
             "official_transform_policy": "dataset_tcode",
             "official_transform_scope": "apply_tcode_to_both",
+            "oos_period": "all_oos_data",
+            "point_metrics": "MSFE",
             "preprocess_fit_scope": "train_only",
             "preprocess_order": "tcode_then_extra",
             "primary_metric": "msfe",
             "provenance_fields": "full",
             "random_seed": 42,
+            "ranking": "mean_metric_rank",
             "raw_missing_policy": "zero_fill_leading_x_before_tcode",
             "raw_outlier_policy": "preserve_raw_outliers",
             "recursive_x_model_family": "none",
+            "regime_definition": "none",
+            "regime_metrics": "all_main_metrics_by_regime",
+            "regime_use": "eval_only",
+            "relative_metrics": "relative_MSFE",
             "release_lag_rule": "ignore_release_lag",
+            "report_style": "tidy_dataframe",
             "reproducibility_mode": "seeded_reproducible",
             "research_design": "single_path_benchmark",
+            "residual_diagnostics": "none",
             "rotation_feature_block": "none",
             "saved_objects": "full_bundle",
             "scaling_policy": "standard",
@@ -14898,7 +17183,7 @@
                 "value": "TheilU"
               }
             ],
-            "selected": null
+            "selected": "MSFE"
           },
           {
             "axis": "density_metrics",
@@ -14962,7 +17247,7 @@
                 "value": "PIT_based_metric"
               }
             ],
-            "selected": null
+            "selected": "pinball_loss"
           },
           {
             "axis": "direction_metrics",
@@ -15033,7 +17318,7 @@
                 "value": "Brier_score"
               }
             ],
-            "selected": null
+            "selected": "directional_accuracy"
           },
           {
             "axis": "relative_metrics",
@@ -15083,7 +17368,237 @@
                 "value": "CSFE_difference"
               }
             ],
+            "selected": "relative_MSFE"
+          },
+          {
+            "axis": "economic_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'utility_gain'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "utility_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'certainty_equivalent'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "certainty_equivalent"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'cost_sensitive_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "cost_sensitive_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'policy_loss'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "policy_loss"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.economic_metrics = 'turning_point_value'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "turning_point_value"
+              }
+            ],
             "selected": null
+          },
+          {
+            "axis": "benchmark_window",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'expanding'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expanding"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'rolling'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'fixed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fixed"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_window = 'paper_exact_window'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_exact_window"
+              }
+            ],
+            "selected": "expanding"
+          },
+          {
+            "axis": "benchmark_scope",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'same_for_all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "same_for_all"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "target_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'horizon_specific'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "horizon_specific"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.benchmark_scope = 'target_horizon_specific'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "target_horizon_specific"
+              }
+            ],
+            "selected": "same_for_all"
+          },
+          {
+            "axis": "agg_time",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'full_oos_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_oos_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'rolling_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'regime_subsample_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "regime_subsample_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'event_window_average'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "event_window_average"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_time = 'pre_post_break_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pre_post_break_average"
+              }
+            ],
+            "selected": "full_oos_average"
+          },
+          {
+            "axis": "agg_horizon",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'short_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "short_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'long_horizon_weighted'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "long_horizon_weighted"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_horizon = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "equal_weight"
+          },
+          {
+            "axis": "agg_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'equal_weight'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "equal_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'scale_adjusted_weight'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "scale_adjusted_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'economic_priority_weight'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "economic_priority_weight"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.agg_target = 'report_separately_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "report_separately_only"
+              }
+            ],
+            "selected": "report_separately_only"
           },
           {
             "axis": "ranking",
@@ -15140,7 +17655,501 @@
                 "value": "ensemble_selection_rank"
               }
             ],
-            "selected": null
+            "selected": "mean_metric_rank"
+          },
+          {
+            "axis": "report_style",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'tidy_dataframe'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tidy_dataframe"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'latex_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "latex_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'markdown_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "markdown_table"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'plot_dashboard'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "plot_dashboard"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.report_style = 'paper_ready_bundle'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "paper_ready_bundle"
+              }
+            ],
+            "selected": "tidy_dataframe"
+          },
+          {
+            "axis": "regime_definition",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'NBER_recession'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "NBER_recession"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'quantile_uncertainty'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "quantile_uncertainty"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'financial_stress'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "financial_stress"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'volatility_regime'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "volatility_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'Markov_switching_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Markov_switching_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'clustering_regime'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "clustering_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_definition = 'user_defined_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "user_defined_regime"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "regime_use",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'eval_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "eval_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_only'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'train_and_eval'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "train_and_eval"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_specific_model'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_specific_model"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_use = 'regime_interaction_features'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "regime_interaction_features"
+              }
+            ],
+            "selected": "eval_only"
+          },
+          {
+            "axis": "regime_metrics",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'all_main_metrics_by_regime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_main_metrics_by_regime"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'regime_transition_performance'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regime_transition_performance"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'crisis_period_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "crisis_period_gain"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.regime_metrics = 'state_dependent_oos_r2'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "state_dependent_oos_r2"
+              }
+            ],
+            "selected": "all_main_metrics_by_regime"
+          },
+          {
+            "axis": "decomposition_target",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'nonlinearity_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "nonlinearity_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'regularization_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "regularization_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'cv_scheme_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "cv_scheme_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'loss_function_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "loss_function_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'preprocessing_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "preprocessing_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_representation_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_representation_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'feature_builder_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_builder_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'benchmark_effect'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "benchmark_effect"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_target = 'importance_method_effect'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "importance_method_effect"
+              }
+            ],
+            "selected": "preprocessing_effect"
+          },
+          {
+            "axis": "decomposition_order",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'marginal_effect_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "marginal_effect_only"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'two_way_interaction'",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
+                "value": "two_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'three_way_interaction'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "three_way_interaction"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'full_factorial'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "full_factorial"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.decomposition_order = 'Shapley_style_effect_decomp'",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
+                "value": "Shapley_style_effect_decomp"
+              }
+            ],
+            "selected": "marginal_effect_only"
+          },
+          {
+            "axis": "oos_period",
+            "layer": "4_evaluation",
+            "layer_label": "Layer 4: evaluation",
+            "options": [
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'all_oos_data'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all_oos_data"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'recession_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "recession_only_oos"
+              },
+              {
+                "canonical_path_effect": "path.4_evaluation.fixed_axes.oos_period = 'expansion_only_oos'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "expansion_only_oos"
+              }
+            ],
+            "selected": "all_oos_data"
+          },
+          {
+            "axis": "export_format",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'parquet'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "parquet"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'json+csv'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "json+csv"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.export_format = 'all'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "all"
+              }
+            ],
+            "selected": "json"
+          },
+          {
+            "axis": "saved_objects",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'predictions_and_metrics'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "predictions_and_metrics"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'full_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full_bundle"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'models_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "models_only"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.saved_objects = 'data_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "data_only"
+              }
+            ],
+            "selected": "full_bundle"
+          },
+          {
+            "axis": "provenance_fields",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'minimal'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "minimal"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'standard'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "standard"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.provenance_fields = 'full'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "full"
+              }
+            ],
+            "selected": "full"
+          },
+          {
+            "axis": "artifact_granularity",
+            "layer": "5_output_provenance",
+            "layer_label": "Layer 5: outputs and provenance",
+            "options": [
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'per_target_horizon'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "per_target_horizon"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'aggregated'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "aggregated"
+              },
+              {
+                "canonical_path_effect": "path.5_output_provenance.fixed_axes.artifact_granularity = 'hierarchical'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "hierarchical"
+              }
+            ],
+            "selected": "aggregated"
           },
           {
             "axis": "stat_test",
@@ -15345,7 +18354,7 @@
                 "value": "wilcoxon_signed_rank"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "nested",
@@ -15395,7 +18404,64 @@
                 "value": "forecast_encompassing_nested"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "cpa_instability",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cpa"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rossi"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_dm"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "fluctuation_test"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "chow_break_forecast"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "cusum_on_loss"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "multiple_model",
@@ -15445,50 +18511,7 @@
                 "value": "bootstrap_best_model"
               }
             ],
-            "selected": null
-          },
-          {
-            "axis": "direction",
-            "layer": "6_stat_tests",
-            "layer_label": "Layer 6: statistical tests",
-            "options": [
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "none"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "pesaran_timmermann"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "binomial_hit"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "mcnemar"
-              },
-              {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "roc_comparison"
-              }
-            ],
-            "selected": null
+            "selected": "none"
           },
           {
             "axis": "density_interval",
@@ -15552,7 +18575,50 @@
                 "value": "interval_coverage"
               }
             ],
-            "selected": null
+            "selected": "none"
+          },
+          {
+            "axis": "direction",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'pesaran_timmermann'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "pesaran_timmermann"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'binomial_hit'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "binomial_hit"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'mcnemar'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "mcnemar"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.direction = 'roc_comparison'",
+                "disabled_reason": "direction tests require forecast_object=direction",
+                "enabled": false,
+                "status": "operational",
+                "value": "roc_comparison"
+              }
+            ],
+            "selected": "none"
           },
           {
             "axis": "residual_diagnostics",
@@ -15616,61 +18682,61 @@
                 "value": "serial_dependence_loss_diff"
               }
             ],
-            "selected": null
+            "selected": "none"
           },
           {
-            "axis": "cpa_instability",
+            "axis": "test_scope",
             "layer": "6_stat_tests",
             "layer_label": "Layer 6: statistical tests",
             "options": [
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'none'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_target'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "none"
+                "value": "per_target"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cpa'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cpa"
+                "value": "per_horizon"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rossi'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rossi"
+                "value": "per_model_pair"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'rolling_dm'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "rolling_dm"
+                "value": "full_grid_pairwise"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'fluctuation_test'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "fluctuation_test"
+                "value": "benchmark_vs_all"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'chow_break_forecast'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "chow_break_forecast"
+                "value": "regime_specific_tests"
               },
               {
-                "canonical_path_effect": "path.6_stat_tests.fixed_axes.cpa_instability = 'cusum_on_loss'",
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "cusum_on_loss"
+                "value": "subsample_tests"
               }
             ],
             "selected": null
@@ -15689,24 +18755,46 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": null,
-                "enabled": true,
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
+                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "enabled": false,
+                "status": "operational",
+                "value": "block_bootstrap"
+              }
+            ],
+            "selected": "none"
+          },
+          {
+            "axis": "overlap_handling",
+            "layer": "6_stat_tests",
+            "layer_label": "Layer 6: statistical tests",
+            "options": [
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'allow_overlap'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
-                "value": "block_bootstrap"
+                "value": "allow_overlap"
+              },
+              {
+                "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'evaluate_with_hac'",
+                "disabled_reason": "evaluate_with_hac requires a HAC-capable stat_test",
+                "enabled": false,
+                "status": "operational",
+                "value": "evaluate_with_hac"
               }
             ],
             "selected": null
@@ -15811,6 +18899,93 @@
             "selected": "none"
           },
           {
+            "axis": "importance_scope",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'global'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "global"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'local'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "local"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_scope = 'both'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "both"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_native",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'tree_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "tree_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'linear_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "linear_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_native = 'feature_gain'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_gain"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_model_agnostic",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'kernel_shap'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "kernel_shap"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'permutation_importance'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "permutation_importance"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_model_agnostic = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
             "axis": "importance_shap",
             "layer": "7_importance",
             "layer_label": "Layer 7: interpretation and importance",
@@ -15835,6 +19010,217 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "linear_shap"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_local_surrogate",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'lime'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "lime"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_local_surrogate = 'feature_ablation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "feature_ablation"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_partial_dependence",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'pdp'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "pdp"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ice'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ice"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_partial_dependence = 'ale'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ale"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_grouped",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'grouped_permutation'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "grouped_permutation"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_grouped = 'variable_root_groups'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "variable_root_groups"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_stability",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'importance_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "importance_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'bootstrap_rank_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "bootstrap_rank_stability"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_stability = 'seed_stability'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "seed_stability"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_aggregation",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_abs'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_abs"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'mean_signed'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "mean_signed"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_aggregation = 'top_k'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "top_k"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_output_style",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'ranked_table'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "ranked_table"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'curve_bundle'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "curve_bundle"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_output_style = 'nested_report'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "nested_report"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_temporal",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'static_snapshot'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "static_snapshot"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'time_average'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "time_average"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_temporal = 'rolling_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "rolling_path"
+              }
+            ],
+            "selected": null
+          },
+          {
+            "axis": "importance_gradient_path",
+            "layer": "7_importance",
+            "layer_label": "Layer 7: interpretation and importance",
+            "options": [
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'none'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "none"
+              },
+              {
+                "canonical_path_effect": "path.7_importance.fixed_axes.importance_gradient_path = 'coefficient_path'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "coefficient_path"
               }
             ],
             "selected": null
@@ -15912,27 +19298,54 @@
       "density_metrics",
       "direction_metrics",
       "relative_metrics",
-      "ranking"
+      "economic_metrics",
+      "benchmark_window",
+      "benchmark_scope",
+      "agg_time",
+      "agg_horizon",
+      "agg_target",
+      "ranking",
+      "report_style",
+      "regime_definition",
+      "regime_use",
+      "regime_metrics",
+      "decomposition_target",
+      "decomposition_order",
+      "oos_period"
+    ],
+    "5_output_provenance": [
+      "export_format",
+      "saved_objects",
+      "provenance_fields",
+      "artifact_granularity"
     ],
     "6_stat_tests": [
       "stat_test",
       "equal_predictive",
       "nested",
-      "multiple_model",
-      "direction",
-      "density_interval",
-      "residual_diagnostics",
       "cpa_instability",
-      "dependence_correction"
+      "multiple_model",
+      "density_interval",
+      "direction",
+      "residual_diagnostics",
+      "test_scope",
+      "dependence_correction",
+      "overlap_handling"
     ],
     "7_importance": [
       "importance_method",
+      "importance_scope",
+      "importance_model_native",
+      "importance_model_agnostic",
       "importance_shap",
-      "model_native",
-      "model_agnostic",
-      "partial_dependence",
-      "grouped",
-      "stability"
+      "importance_local_surrogate",
+      "importance_partial_dependence",
+      "importance_grouped",
+      "importance_stability",
+      "importance_aggregation",
+      "importance_output_style",
+      "importance_temporal",
+      "importance_gradient_path"
     ]
   }
 }

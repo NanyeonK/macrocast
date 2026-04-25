@@ -73,6 +73,62 @@ def _option(axis_view, value):
     return next(item for item in axis_view["options"] if item["value"] == value)
 
 
+def test_navigation_tree_exposes_downstream_layer_axes():
+    view = build_navigation_view(_recipe())
+    axes_by_layer = {}
+    for item in view["tree"]:
+        axes_by_layer.setdefault(item["layer"], set()).add(item["axis"])
+    all_axes = {item["axis"] for item in view["tree"]}
+
+    assert {
+        "benchmark_window",
+        "agg_time",
+        "regime_definition",
+        "oos_period",
+    }.issubset(axes_by_layer["4_evaluation"])
+    assert {
+        "export_format",
+        "saved_objects",
+        "provenance_fields",
+        "artifact_granularity",
+    }.issubset(axes_by_layer["5_output_provenance"])
+    assert {"test_scope", "overlap_handling"}.issubset(axes_by_layer["6_stat_tests"])
+    assert {
+        "importance_model_native",
+        "importance_model_agnostic",
+        "importance_partial_dependence",
+        "importance_gradient_path",
+    }.issubset(axes_by_layer["7_importance"])
+    assert not {
+        "model_native",
+        "model_agnostic",
+        "partial_dependence",
+    }.intersection(all_axes)
+
+
+def test_navigation_tree_populates_downstream_defaults():
+    view = build_navigation_view(_recipe())
+
+    assert _axis(view, "export_format")["selected"] == "json"
+    assert _axis(view, "saved_objects")["selected"] == "full_bundle"
+    assert _axis(view, "regime_definition")["selected"] == "none"
+    assert _axis(view, "importance_method")["selected"] == "none"
+    assert _option(_axis(view, "export_format"), "parquet")["canonical_path_effect"].endswith(
+        "fixed_axes.export_format = 'parquet'"
+    )
+
+
+def test_navigator_ui_data_tree_includes_output_layer():
+    payload = navigator_ui_data(("examples/recipes/model-benchmark.yaml",))
+    tree_axes = {
+        item["axis"]
+        for item in payload["samples"][0]["view"]["tree"]
+        if item["layer"] == "5_output_provenance"
+    }
+
+    assert {"export_format", "saved_objects", "provenance_fields", "artifact_granularity"}.issubset(tree_axes)
+
+
 def test_navigation_disables_tree_shap_for_non_tree_model():
     recipe = _recipe()
     recipe["path"]["7_importance"]["fixed_axes"]["importance_method"] = "tree_shap"
