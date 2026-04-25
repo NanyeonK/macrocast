@@ -175,7 +175,9 @@ _DEFAULT_SELECTIONS = {
     "density_interval": "none",
     "direction": "none",
     "residual_diagnostics": "none",
+    "test_scope": "per_target",
     "dependence_correction": "none",
+    "overlap_handling": "allow_overlap",
     "importance_method": "none",
 }
 
@@ -220,6 +222,40 @@ _DENSITY_INTERVAL_STATS = frozenset(
         "christoffersen_conditional",
         "interval_coverage",
     }
+)
+_STAT_TEST_SPLIT_AXES = (
+    "equal_predictive",
+    "nested",
+    "cpa_instability",
+    "multiple_model",
+    "density_interval",
+    "direction",
+    "residual_diagnostics",
+)
+_LEGACY_STAT_TEST_TO_SPLIT = {
+    "dm": ("equal_predictive", "dm"),
+    "dm_hln": ("equal_predictive", "dm_hln"),
+    "dm_modified": ("equal_predictive", "dm_modified"),
+    "cw": ("nested", "cw"),
+    "enc_new": ("nested", "enc_new"),
+    "mse_f": ("nested", "mse_f"),
+    "mse_t": ("nested", "mse_t"),
+    "cpa": ("cpa_instability", "cpa"),
+    "rossi": ("cpa_instability", "rossi"),
+    "rolling_dm": ("cpa_instability", "rolling_dm"),
+    "reality_check": ("multiple_model", "reality_check"),
+    "spa": ("multiple_model", "spa"),
+    "mcs": ("multiple_model", "mcs"),
+    "pesaran_timmermann": ("direction", "pesaran_timmermann"),
+    "binomial_hit": ("direction", "binomial_hit"),
+    "mincer_zarnowitz": ("residual_diagnostics", "mincer_zarnowitz"),
+    "ljung_box": ("residual_diagnostics", "ljung_box"),
+    "arch_lm": ("residual_diagnostics", "arch_lm"),
+    "bias_test": ("residual_diagnostics", "bias_test"),
+    "diagnostics_full": ("residual_diagnostics", "diagnostics_full"),
+}
+_HAC_COMPATIBLE_STAT_TESTS = frozenset(
+    {"dm_hln", "dm_modified", "cw", "enc_new", "mse_t", "cpa", "spa", "mcs"}
 )
 
 
@@ -307,6 +343,30 @@ def _status_disabled_reason(status: str) -> str | None:
     return None
 
 
+def _selected_stat_tests(
+    selected: Mapping[str, Any],
+    *,
+    override_axis: str | None = None,
+    override_value: str | None = None,
+) -> dict[str, str]:
+    values = {axis: str(selected.get(axis, "none")) for axis in _STAT_TEST_SPLIT_AXES}
+    legacy = str(selected.get("stat_test", "none"))
+    if legacy != "none" and legacy in _LEGACY_STAT_TEST_TO_SPLIT:
+        axis, value = _LEGACY_STAT_TEST_TO_SPLIT[legacy]
+        if values.get(axis, "none") == "none":
+            values[axis] = value
+    if override_axis == "stat_test":
+        if legacy != "none" and legacy in _LEGACY_STAT_TEST_TO_SPLIT:
+            axis, _ = _LEGACY_STAT_TEST_TO_SPLIT[legacy]
+            values[axis] = "none"
+        if override_value and override_value != "none" and override_value in _LEGACY_STAT_TEST_TO_SPLIT:
+            axis, value = _LEGACY_STAT_TEST_TO_SPLIT[override_value]
+            values[axis] = value
+    elif override_axis in values and override_value is not None:
+        values[str(override_axis)] = override_value
+    return {axis: value for axis, value in values.items() if value != "none"}
+
+
 def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any]) -> str | None:
     model = str(selected.get("model_family", ""))
     feature_builder = str(selected.get("feature_builder", ""))
@@ -362,22 +422,34 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
             return "interval/density calibration tests live on the density_interval axis, not legacy stat_test"
         if forecast_object == "quantile" and value not in _QUANTILE_STATS:
             return "quantile tasks should avoid legacy point-forecast-only tests"
+        if str(selected.get("overlap_handling", "allow_overlap")) == "evaluate_with_hac":
+            active_tests = _selected_stat_tests(selected, override_axis=axis_name, override_value=value)
+            incompatible = {test for test in active_tests.values() if test not in _HAC_COMPATIBLE_STAT_TESTS}
+            if incompatible:
+                return "evaluate_with_hac requires HAC-capable Layer 6 tests"
     if axis_name == "density_interval":
         if forecast_object not in {"interval", "density", "quantile"} and value != "none":
             return "density/interval tests require interval, density, or quantile forecast objects"
     if axis_name == "direction":
         if forecast_object != "direction" and value != "none":
             return "direction tests require forecast_object=direction"
+    if axis_name in _STAT_TEST_SPLIT_AXES and str(selected.get("overlap_handling", "allow_overlap")) == "evaluate_with_hac":
+        active_tests = _selected_stat_tests(selected, override_axis=axis_name, override_value=value)
+        incompatible = {test for test in active_tests.values() if test not in _HAC_COMPATIBLE_STAT_TESTS}
+        if incompatible:
+            return "evaluate_with_hac requires HAC-capable Layer 6 tests"
     if axis_name == "dependence_correction":
-        selected_stat_test = str(selected.get("stat_test", "none"))
-        hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
-        if value in {"nw_hac", "nw_hac_auto", "block_bootstrap"} and selected_stat_test not in hac_compatible:
-            return "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values"
+        active_tests = _selected_stat_tests(selected)
+        if value in {"nw_hac", "nw_hac_auto", "block_bootstrap"} and not active_tests:
+            return "dependence corrections are active only when a Layer 6 test is selected"
+        incompatible = {test for test in active_tests.values() if test not in _HAC_COMPATIBLE_STAT_TESTS}
+        if value in {"nw_hac", "nw_hac_auto", "block_bootstrap"} and incompatible:
+            return "dependence corrections require HAC/bootstrap-compatible Layer 6 tests"
     if axis_name == "overlap_handling":
-        selected_stat_test = str(selected.get("stat_test", "none"))
-        hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
-        if value == "evaluate_with_hac" and selected_stat_test not in hac_compatible and selected_stat_test != "none":
-            return "evaluate_with_hac requires a HAC-capable stat_test"
+        active_tests = _selected_stat_tests(selected)
+        incompatible = {test for test in active_tests.values() if test not in _HAC_COMPATIBLE_STAT_TESTS}
+        if value == "evaluate_with_hac" and incompatible:
+            return "evaluate_with_hac requires HAC-capable Layer 6 tests"
     return None
 
 

@@ -322,6 +322,7 @@ def test_compile_cw_recipe_is_executable_and_writes_artifact(tmp_path: Path) -> 
     )
     manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
     assert manifest["stat_test_spec"]["stat_test"] == "cw"
+    assert manifest["stat_test_spec"]["nested"] == "cw"
     assert manifest["stat_test_file"] == "stat_test_cw.json"
 
 
@@ -3176,8 +3177,66 @@ def test_compile_manifest_includes_output_spec_defaults() -> None:
 def test_compile_extended_stage6_stat_test_manifest() -> None:
     compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
     stat_test_spec = compile_result.manifest["stat_test_spec"]
+    assert stat_test_spec == {
+        "stat_test": "none",
+        "equal_predictive": "none",
+        "nested": "none",
+        "cpa_instability": "none",
+        "multiple_model": "none",
+        "density_interval": "none",
+        "direction": "none",
+        "residual_diagnostics": "none",
+        "test_scope": "per_target",
+        "dependence_correction": "none",
+        "overlap_handling": "allow_overlap",
+    }
+
+
+def test_compile_stage6_split_stat_test_manifest() -> None:
+    recipe = {
+        "recipe_id": "stage6-split-test",
+        "path": {
+            "0_meta": {"fixed_axes": {"research_design": "single_path_benchmark"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "fred_md",
+                    "information_set_type": "revised",
+                    "target_structure": "single_target_point_forecast",
+                },
+                "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level",
+                "tcode_policy": "raw_only", "target_missing_policy": "none",
+                "x_missing_policy": "none", "target_outlier_policy": "none",
+                "x_outlier_policy": "none", "scaling_policy": "none",
+                "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable",
+                "inverse_transform_policy": "none", "evaluation_scale": "raw_level",
+            }},
+            "3_training": {"fixed_axes": {
+                "framework": "expanding", "benchmark_family": "zero_change",
+                "feature_builder": "autoreg_lagged_target", "model_family": "ar",
+            }},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {
+                "equal_predictive": "dm_hln",
+                "dependence_correction": "nw_hac",
+                "overlap_handling": "evaluate_with_hac",
+                "test_scope": "per_target",
+            }},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    compile_result = compile_recipe_dict(recipe)
+    stat_test_spec = compile_result.manifest["stat_test_spec"]
+    assert compile_result.compiled.execution_status == "executable"
     assert stat_test_spec["stat_test"] == "none"
-    assert stat_test_spec["dependence_correction"] == "none"
+    assert stat_test_spec["equal_predictive"] == "dm_hln"
+    assert stat_test_spec["dependence_correction"] == "nw_hac"
+    assert stat_test_spec["overlap_handling"] == "evaluate_with_hac"
+    assert compile_result.manifest["data_task_spec"]["overlap_handling"] == "evaluate_with_hac"
 
 
 

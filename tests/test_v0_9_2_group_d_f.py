@@ -26,11 +26,7 @@ METADATA_FLIPS = (
     ("data_richness_mode", "factor_plus_lags"),
     ("data_richness_mode", "selected_sparse_X"),
     ("y_lag_count", "cv_select"),
-    # stat test meta + importance
-    ("test_scope", "full_grid_pairwise"),
-    ("test_scope", "benchmark_vs_all"),
-    ("test_scope", "regime_specific_tests"),
-    ("test_scope", "subsample_tests"),
+    # importance
     ("importance_temporal", "time_average"),
     ("importance_temporal", "rolling_path"),
     ("importance_gradient_path", "coefficient_path"),
@@ -43,6 +39,16 @@ def test_metadata_flip_is_operational(axis, value):
     defs = _discover_axis_definitions()
     status = next(e.status for e in defs[axis].entries if e.id == value)
     assert status == "operational"
+
+
+def test_test_scope_metadata_statuses_match_layer6_runtime_contract():
+    defs = _discover_axis_definitions()
+    statuses = {entry.id: entry.status for entry in defs["test_scope"].entries}
+    assert statuses["per_target"] == "operational"
+    assert statuses["benchmark_vs_all"] == "registry_only"
+    assert statuses["full_grid_pairwise"] == "future"
+    assert statuses["regime_specific_tests"] == "future"
+    assert statuses["subsample_tests"] == "future"
 
 
 def _preds(n=40, seed=1):

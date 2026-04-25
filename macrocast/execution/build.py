@@ -70,6 +70,7 @@ from .lag_polynomial_rotation import (
     build_marx_rotation_frame as _build_marx_rotation_frame,
     marx_rotation_public_feature_name as _marx_rotation_public_feature_name,
 )
+from .stat_tests.dispatch import active_stat_test_axes, canonicalize_stat_test_spec
 from ..raw.windowing import WindowSpec as _WindowSpec, _resolve_min_train_obs as _resolve_min_train_obs
 from .nber import filter_origins_by_regime as _filter_origins_by_regime
 from .deterministic import augment_array as _augment_deterministic_array
@@ -5638,7 +5639,7 @@ def _build_noop_contract() -> PreprocessContract:
 
 def _stat_test_spec(provenance_payload: dict | None) -> dict[str, object]:
     compiler = (provenance_payload or {}).get("compiler", {}) if provenance_payload else {}
-    return dict(compiler.get("stat_test_spec", {"stat_test": "none", "dependence_correction": "none"}))
+    return canonicalize_stat_test_spec(dict(compiler.get("stat_test_spec", {})))
 
 
 def _evaluation_spec(provenance_payload: dict | None) -> dict[str, object]:
@@ -5705,6 +5706,7 @@ def _output_spec(provenance_payload: dict | None) -> dict[str, object]:
 
 
 _OUTPUT_ARTIFACT_CONTRACT_VERSION = "layer5_output_artifact_manifest_v1"
+_STAT_TEST_CONTRACT_VERSION = "layer6_stat_test_split_v1"
 _SUPPORTED_SAVED_OBJECTS = {"predictions_only", "predictions_and_metrics", "full_bundle"}
 _SUPPORTED_ARTIFACT_GRANULARITY = {"aggregated"}
 
@@ -5875,6 +5877,10 @@ def _compute_nw_hac_variance(errors: np.ndarray, max_lag: int | None = None) -> 
 
 def _dependence_correction(stat_test_spec: dict[str, object]) -> str:
     return str(stat_test_spec.get("dependence_correction", "none"))
+
+
+def _has_active_stat_tests(stat_test_spec: dict[str, object]) -> bool:
+    return bool(active_stat_test_axes(stat_test_spec))
 
 
 def _bootstrap_mean_distribution(values: np.ndarray, *, block_length: int = 4, n_boot: int = 199, seed: int = 42) -> np.ndarray:
@@ -8504,7 +8510,7 @@ def execute_recipe(
     elif evaluation_spec.get("report_style") == "latex_table":
         evaluation_report_file = "evaluation_report.tex"
         evaluation_report_text = _evaluation_summary_latex(evaluation_summary)
-    if recipe.targets and stat_test_spec.get("stat_test") != "none":
+    if recipe.targets and _has_active_stat_tests(stat_test_spec):
         raise ExecutionError("multi-target point-forecast slice does not yet support statistical-test artifacts")
     if recipe.targets and importance_spec.get("importance_method") != "none":
         raise ExecutionError("multi-target point-forecast slice does not yet support importance artifacts")
@@ -8533,6 +8539,7 @@ def execute_recipe(
         "training_spec": dict(recipe.training_spec),
         "evaluation_spec": evaluation_spec,
         "stat_test_spec": stat_test_spec,
+        "stat_test_contract": _STAT_TEST_CONTRACT_VERSION,
         "importance_spec": importance_spec,
         "reproducibility_spec": reproducibility_spec,
         "reproducibility_applied": _reproducibility_applied,
@@ -8766,7 +8773,6 @@ def execute_recipe(
             regime_files['parquet'] = 'regime_summary.parquet'
         manifest['regime_files'] = regime_files
         manifest['regime_file'] = regime_files.get('json') or regime_files.get('csv') or regime_files.get('parquet')
-    stat_test_name = str(stat_test_spec.get("stat_test", "none"))
     dependence_correction = _dependence_correction(stat_test_spec)
     if write_full_bundle:
         from macrocast.execution.stat_tests import dispatch_stat_tests
@@ -8803,7 +8809,7 @@ def execute_recipe(
                 manifest["stat_test_file"] = "stat_tests.json"
             if per_test_files:
                 manifest["stat_test_files"] = per_test_files
-    elif stat_test_name != "none":
+    elif _has_active_stat_tests(stat_test_spec):
         manifest["stat_tests_skipped_by_saved_objects"] = saved_objects
     importance_method = str(importance_spec.get("importance_method", "none"))
     importance_dispatch = {

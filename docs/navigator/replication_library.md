@@ -54,7 +54,7 @@ The package-native route uses:
 3_training.model_family=ridge
 3_training.benchmark_family=ar_bic
 4_evaluation.primary_metric=msfe
-6_stat_tests.stat_test=dm
+6_stat_tests.equal_predictive=dm
 ```
 
 The key Layer 2 detail is that `t-code + standardize` is not `tcode_only`. It is `tcode_then_extra_preprocess` with train-only scaling.

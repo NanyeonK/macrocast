@@ -1,6 +1,6 @@
 # Horizon & Evaluation Window (1.3)
 
-Declares **which observations count as training data, which count as OOS, and how OOS rows are filtered or aggregated**. This page is the historical 1.3 user-guide entry; canonical ownership is split across later layers. `oos_period` is now a Layer 4 evaluation axis, with the old Layer 1 placement accepted only as a compatibility alias.
+Declares **which observations count as training data, which count as OOS, and how OOS rows are filtered or aggregated**. This page is the historical 1.3 user-guide entry; canonical ownership is split across later layers. `oos_period` is now a Layer 4 evaluation axis, and `overlap_handling` is now a Layer 6 inference axis. Old Layer 1 placement is accepted only as a compatibility alias.
 
 | Section | axis | Role |
 |---|---|---|
@@ -18,7 +18,7 @@ Declares **which observations count as training data, which count as OOS, and ho
 - `min_train_size = fixed_n_obs` — your recipe's `benchmark_config.minimum_train_size` is the observation count.
 - `training_start_rule = earliest_possible` — training starts at the first feasible row. Override only for paper-replication (calendar-exact) start dates.
 - `oos_period = all_oos_data` — no regime filter. Switch to `recession_only_oos` / `expansion_only_oos` for NBER-conditioned evaluation.
-- `overlap_handling = allow_overlap` — DM / CW / MCS tests run with their default covariance. Switch to `evaluate_with_hac` only with an HAC-capable stat test and h > 1.
+- `overlap_handling = allow_overlap` — stat tests run with their default covariance. Switch to `evaluate_with_hac` only with an HAC-capable Layer 6 test and h > 1.
 
 **Most research runs leave all four at the default.**
 
@@ -141,18 +141,19 @@ path:
 
 ## 1.3.4 `overlap_handling`
 
-**Selects how the correlation in overlapping forecast errors (h>1) is handled at the stat test layer.** Two operational values.
+**Selects how the correlation in overlapping forecast errors (h>1) is handled at the stat test layer.** Two operational values. Canonical placement is `path.6_stat_tests.fixed_axes.overlap_handling`.
 
 ### Value catalog
 
 | Value | Status | What it does |
 |---|---|---|
 | `allow_overlap` | operational | Default, no-op. Stat tests receive loss differentials with no HAC adjustment (they may still apply it internally). |
-| `evaluate_with_hac` | operational | Compile-time gate that requires a HAC-capable stat test. `dm_hln` / `dm_modified` use Newey-West HAC covariance internally. |
+| `evaluate_with_hac` | operational | Compile-time gate that requires HAC-capable split Layer 6 tests such as `equal_predictive=dm_hln`, `equal_predictive=dm_modified`, `nested=cw`, `nested=enc_new`, `nested=mse_t`, `cpa_instability=cpa`, `multiple_model=spa`, or `multiple_model=mcs`. |
 
 ### Compatibility guard (v1.0)
 
-- `overlap_handling = evaluate_with_hac` + `stat_test` not in `{dm_hln, dm_modified, spa, mcs, cw, cpa, none}` → `blocked_by_incompatibility`.
+- `overlap_handling = evaluate_with_hac` + any active test not in the HAC-compatible set → `blocked_by_incompatibility`.
+- Legacy `stat_test` values are still accepted and routed into the split axis before this guard runs.
 
 ### Functions & features
 
@@ -171,14 +172,14 @@ path:
 # h>1 forecast + HAC-adjusted DM test
 path:
   1_data_task:
-    fixed_axes:
-      overlap_handling: evaluate_with_hac
     leaf_config:
       target: INDPRO
       horizons: [3, 6, 12]
   6_stat_tests:
     fixed_axes:
-      stat_test: dm_hln
+      overlap_handling: evaluate_with_hac
+      equal_predictive: dm_hln
+      dependence_correction: nw_hac
 ```
 
 ---
@@ -189,6 +190,6 @@ path:
 - `min_train_size` exposes the five rules already implemented in `raw.windowing`, now live in the main execution path.
 - `training_start_rule = fixed_start` unlocks calendar-exact replication of published paper samples via `leaf_config.training_start_date`.
 - `oos_period` delivers NBER regime conditioning without recipe-side date bookkeeping. Use `path.4_evaluation.fixed_axes.oos_period`; the compiler still accepts the old Layer 1 placement as a compatibility alias.
-- `overlap_handling = evaluate_with_hac` wires the HAC requirement into compile-time validation rather than leaving it implicit in stat-test choice.
+- `overlap_handling = evaluate_with_hac` wires the HAC requirement into compile-time validation rather than leaving it implicit in stat-test choice. Use `path.6_stat_tests.fixed_axes.overlap_handling`; old Layer 1 placement remains a compatibility alias.
 
 Next group: 1.4 Benchmark & predictor universe (coming).

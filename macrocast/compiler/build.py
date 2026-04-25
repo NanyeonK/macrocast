@@ -17,6 +17,11 @@ from ..execution.horizon_target import (
 from ..execution.lag_polynomial_rotation import (
     build_marx_rotation_contract as _build_marx_rotation_contract,
 )
+from ..execution.stat_tests.dispatch import (
+    STAT_TEST_AXIS_NAMES,
+    active_stat_test_axes,
+    canonicalize_stat_test_spec,
+)
 from ..preprocessing import (
     CUSTOM_FEATURE_BLOCK_CONTRACT_VERSION,
     build_preprocess_contract,
@@ -154,6 +159,16 @@ _FACTOR_FEATURE_BLOCK_COMPATIBLE_DIMRED = {
 }
 _FACTOR_BRIDGE_BUILDERS = {"factor_pca", "factors_plus_AR"}
 _FACTOR_DIMRED_BRIDGES = {"pca", "static_factor"}
+_HAC_COMPATIBLE_STAT_TESTS = {
+    "dm_hln",
+    "dm_modified",
+    "cw",
+    "enc_new",
+    "mse_t",
+    "cpa",
+    "spa",
+    "mcs",
+}
 
 
 def load_recipe_yaml(path: str | Path) -> dict[str, Any]:
@@ -1115,6 +1130,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "official_transform_source": _official_transform_source_payload(selection_map),
         "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
         "information_set_type": information_set_type,
+        # Compatibility mirror: canonical owner is Layer 6 stat_test_spec.
         "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
         "sample_start_date": leaf_config.get("sample_start_date"),
         "sample_end_date": leaf_config.get("sample_end_date"),
@@ -3015,15 +3031,19 @@ def _execution_status(
         if _ts_rule == "fixed_start" and not leaf_config.get("training_start_date"):
             blocked.append("training_start_rule='fixed_start' requires leaf_config.training_start_date (ISO date string)")
 
-    # 1.3 overlap_handling=evaluate_with_hac compatibility (v1.0)
-    _overlap = _selection_value(selection_map, "overlap_handling", default="allow_overlap")
-    if _overlap == "evaluate_with_hac":
-        _stat_test = _selection_value(selection_map, "stat_test", default="none")
-        _hac_compatible = {"dm_hln", "dm_modified", "spa", "mcs", "cw", "cpa"}
-        if _stat_test not in _hac_compatible and _stat_test != "none":
+    # Layer 6 overlap_handling=evaluate_with_hac compatibility.
+    _stat_spec = _stat_test_spec(selection_map)
+    if _stat_spec["overlap_handling"] == "evaluate_with_hac":
+        incompatible_hac = {
+            axis: value
+            for axis, value in active_stat_test_axes(_stat_spec).items()
+            if value not in _HAC_COMPATIBLE_STAT_TESTS
+        }
+        if incompatible_hac:
+            bad = ", ".join(f"{axis}={value!r}" for axis, value in sorted(incompatible_hac.items()))
             blocked.append(
-                f"overlap_handling='evaluate_with_hac' requires a HAC-capable stat_test "
-                f"(one of {sorted(_hac_compatible)}); got stat_test={_stat_test!r}"
+                "overlap_handling='evaluate_with_hac' requires HAC-capable Layer 6 tests "
+                f"(one of {sorted(_HAC_COMPATIBLE_STAT_TESTS)}); got {bad}"
             )
 
     if feature_runtime is not None:
@@ -3496,6 +3516,20 @@ def _output_spec(selection_map):
         "provenance_fields": _selection_value(selection_map, "provenance_fields", default="full"),
         "artifact_granularity": _selection_value(selection_map, "artifact_granularity", default="aggregated"),
     }
+
+
+def _stat_test_spec(selection_map: dict[str, AxisSelection]) -> dict[str, str]:
+    raw = {
+        "stat_test": _selection_value(selection_map, "stat_test", default="none"),
+        "test_scope": _selection_value(selection_map, "test_scope", default="per_target"),
+        "dependence_correction": _selection_value(selection_map, "dependence_correction", default="none"),
+        "overlap_handling": _selection_value(selection_map, "overlap_handling", default="allow_overlap"),
+    }
+    for axis in STAT_TEST_AXIS_NAMES:
+        raw[axis] = _selection_value(selection_map, axis, default="none")
+    return canonicalize_stat_test_spec(raw)
+
+
 def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
     selection_map = {selection.axis_name: selection for selection in compiled.axis_selections}
     return {
@@ -3522,10 +3556,7 @@ def compiled_spec_to_dict(compiled: CompiledRecipeSpec) -> dict[str, Any]:
         "layer2_representation_spec": dict(compiled.recipe_spec.layer2_representation_spec),
         "layer3_capability_matrix": _layer3_capability_matrix(selection_map, compiled.leaf_config),
         "evaluation_spec": _evaluation_spec(selection_map, compiled.leaf_config),
-        "stat_test_spec": {
-            "stat_test": _selection_value(selection_map, "stat_test", default="none"),
-            "dependence_correction": _selection_value(selection_map, "dependence_correction", default="none"),
-        },
+        "stat_test_spec": _stat_test_spec(selection_map),
         "importance_spec": {
             "importance_method": _selection_value(selection_map, "importance_method"),
         },

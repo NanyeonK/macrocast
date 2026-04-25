@@ -15,7 +15,7 @@ from typing import Any, Callable
 import pandas as pd
 
 
-AXIS_NAMES: tuple[str, ...] = (
+STAT_TEST_AXIS_NAMES: tuple[str, ...] = (
     "equal_predictive",
     "nested",
     "cpa_instability",
@@ -23,8 +23,27 @@ AXIS_NAMES: tuple[str, ...] = (
     "density_interval",
     "direction",
     "residual_diagnostics",
+)
+
+META_AXIS_NAMES: tuple[str, ...] = (
     "test_scope",
 )
+
+AXIS_NAMES: tuple[str, ...] = STAT_TEST_AXIS_NAMES + META_AXIS_NAMES
+
+DEFAULT_STAT_TEST_SPEC: dict[str, str] = {
+    "stat_test": "none",
+    "equal_predictive": "none",
+    "nested": "none",
+    "cpa_instability": "none",
+    "multiple_model": "none",
+    "density_interval": "none",
+    "direction": "none",
+    "residual_diagnostics": "none",
+    "test_scope": "per_target",
+    "dependence_correction": "none",
+    "overlap_handling": "allow_overlap",
+}
 
 
 LEGACY_TO_NEW: dict[str, tuple[str, str]] = {
@@ -55,6 +74,33 @@ LEGACY_TO_NEW: dict[str, tuple[str, str]] = {
     "bias_test":        ("residual_diagnostics", "bias_test"),
     "diagnostics_full": ("residual_diagnostics", "diagnostics_full"),
 }
+
+
+def canonicalize_stat_test_spec(raw_spec: dict[str, Any] | None) -> dict[str, str]:
+    """Return the Layer 6 split-axis spec with defaults and legacy routing."""
+
+    spec = dict(DEFAULT_STAT_TEST_SPEC)
+    if raw_spec:
+        for key in spec:
+            if key in raw_spec:
+                spec[key] = str(raw_spec[key])
+    legacy = spec.get("stat_test", "none")
+    if legacy != "none" and legacy in LEGACY_TO_NEW:
+        axis, value = LEGACY_TO_NEW[legacy]
+        if spec.get(axis, "none") == "none":
+            spec[axis] = value
+    return spec
+
+
+def active_stat_test_axes(raw_spec: dict[str, Any] | None) -> dict[str, str]:
+    """Return selected executable test-family axes, excluding meta controls."""
+
+    spec = canonicalize_stat_test_spec(raw_spec)
+    return {
+        axis: spec[axis]
+        for axis in STAT_TEST_AXIS_NAMES
+        if spec.get(axis, "none") != "none"
+    }
 
 
 def _build_handlers(
@@ -164,21 +210,7 @@ def _build_handlers(
 
 
 def _as_spec(raw_spec: dict[str, Any] | None) -> dict[str, str]:
-    if raw_spec is None:
-        return {}
-    spec: dict[str, str] = {}
-    for axis in AXIS_NAMES:
-        value = raw_spec.get(axis)
-        if value is None:
-            continue
-        spec[axis] = str(value)
-    legacy = raw_spec.get("stat_test")
-    if legacy is not None and legacy != "none":
-        legacy_str = str(legacy)
-        if legacy_str in LEGACY_TO_NEW:
-            axis, value = LEGACY_TO_NEW[legacy_str]
-            spec.setdefault(axis, value)
-    return spec
+    return canonicalize_stat_test_spec(raw_spec)
 
 
 def dispatch_stat_tests(
@@ -207,21 +239,17 @@ def dispatch_stat_tests(
     """
 
     spec = _as_spec(stat_test_spec)
-    if not spec:
+    active_axes = active_stat_test_axes(spec)
+    if not active_axes:
+        raw_keys = set(stat_test_spec or {})
+        if raw_keys == {"test_scope"}:
+            return {"test_scope": {"axis": "test_scope", "scope": spec["test_scope"]}}
         return {}
 
     handlers = _build_handlers(predictions, dependence_correction)
     out: dict[str, dict[str, Any]] = {}
 
-    for axis in AXIS_NAMES:
-        value = spec.get(axis)
-        if value is None or value == "none":
-            continue
-        if axis == "test_scope":
-            # Meta-control axis: record the scope selection but do not run
-            # a test implementation (scope influences orchestration only).
-            out[axis] = {"axis": axis, "scope": value}
-            continue
+    for axis, value in active_axes.items():
         axis_handlers = handlers.get(axis, {})
         if value not in axis_handlers:
             out[axis] = {

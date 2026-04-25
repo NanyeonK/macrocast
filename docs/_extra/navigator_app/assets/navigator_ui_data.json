@@ -2888,13 +2888,13 @@
       "axis_type": "enum",
       "compatible_with": {},
       "current_status": {
-        "benchmark_vs_all": "operational",
-        "full_grid_pairwise": "operational",
-        "per_horizon": "operational",
-        "per_model_pair": "operational",
+        "benchmark_vs_all": "registry_only",
+        "full_grid_pairwise": "future",
+        "per_horizon": "registry_only",
+        "per_model_pair": "registry_only",
         "per_target": "operational",
-        "regime_specific_tests": "operational",
-        "subsample_tests": "operational"
+        "regime_specific_tests": "future",
+        "subsample_tests": "future"
       },
       "default_policy": "fixed",
       "incompatible_with": {},
@@ -3209,19 +3209,20 @@
         "3_training.model_family=ridge",
         "3_training.benchmark_family=ar_bic",
         "4_evaluation.primary_metric=msfe",
-        "6_stat_tests.stat_test=dm"
+        "6_stat_tests.equal_predictive=dm"
       ],
       "expected_outputs": [
         "manifest.json",
         "predictions.csv",
         "metrics.json",
         "comparison_summary.json",
+        "stat_tests.json",
         "stat_test_dm.json"
       ],
       "id": "goulet-coulombe-2021-fred-md-ridge",
       "notebook_snippet": "from macrocast.navigator import get_replication_entry, replication_recipe_yaml\nfrom macrocast import compile_recipe_dict, run_compiled_recipe\nimport yaml\nrecipe = yaml.safe_load(replication_recipe_yaml('goulet-coulombe-2021-fred-md-ridge'))\ncompiled = compile_recipe_dict(recipe)\nresult = run_compiled_recipe(compiled.compiled, output_root='results/gc2021')\n",
       "paper_name": "Goulet Coulombe et al. (2021), International Journal of Forecasting",
-      "recipe_yaml": "recipe_id: goulet-coulombe-2021-fred-md-ridge\npath:\n  0_meta:\n    fixed_axes:\n      research_design: single_path_benchmark\n      failure_policy: fail_fast\n      compute_mode: serial\n      reproducibility_mode: seeded_reproducible\n    leaf_config:\n      random_seed: 42\n  1_data_task:\n    fixed_axes:\n      dataset: fred_md\n      source_adapter: fred_md\n      frequency: monthly\n      information_set_type: revised\n      target_structure: single_target_point_forecast\n      variable_universe: all_variables\n      missing_availability: zero_fill_before_start\n      release_lag_rule: ignore_release_lag\n      contemporaneous_x_rule: forbid_contemporaneous\n      official_transform_policy: dataset_tcode\n      official_transform_scope: apply_tcode_to_both\n      raw_missing_policy: zero_fill_leading_x_before_tcode\n      raw_outlier_policy: preserve_raw_outliers\n    leaf_config:\n      target: INDPRO\n      horizons:\n      - 1\n      - 3\n      - 6\n      - 12\n  2_preprocessing:\n    fixed_axes:\n      horizon_target_construction: future_target_level_t_plus_h\n      target_transform_policy: tcode_transformed\n      x_transform_policy: dataset_tcode_transformed\n      tcode_policy: tcode_then_extra_preprocess\n      target_missing_policy: none\n      x_missing_policy: none\n      target_outlier_policy: none\n      x_outlier_policy: none\n      scaling_policy: standard\n      dimensionality_reduction_policy: none\n      feature_selection_policy: none\n      preprocess_order: tcode_then_extra\n      preprocess_fit_scope: train_only\n      inverse_transform_policy: target_only\n      evaluation_scale: raw_level\n      target_lag_block: none\n      x_lag_feature_block: none\n      factor_feature_block: none\n      level_feature_block: none\n      temporal_feature_block: none\n      rotation_feature_block: none\n      feature_block_combination: replace_with_blocks\n  3_training:\n    fixed_axes:\n      framework: expanding\n      benchmark_family: ar_bic\n      feature_builder: raw_feature_panel\n      model_family: ridge\n      forecast_type: direct\n      forecast_object: point_mean\n  4_evaluation:\n    fixed_axes:\n      primary_metric: msfe\n  5_output_provenance:\n    fixed_axes:\n      export_format: json\n      saved_objects: full_bundle\n      provenance_fields: full\n      artifact_granularity: aggregated\n    leaf_config:\n      manifest_mode: full\n      benchmark_config:\n        minimum_train_size: 60\n  6_stat_tests:\n    fixed_axes:\n      stat_test: dm\n  7_importance:\n    fixed_axes:\n      importance_method: none\n",
+      "recipe_yaml": "recipe_id: goulet-coulombe-2021-fred-md-ridge\npath:\n  0_meta:\n    fixed_axes:\n      research_design: single_path_benchmark\n      failure_policy: fail_fast\n      compute_mode: serial\n      reproducibility_mode: seeded_reproducible\n    leaf_config:\n      random_seed: 42\n  1_data_task:\n    fixed_axes:\n      dataset: fred_md\n      source_adapter: fred_md\n      frequency: monthly\n      information_set_type: revised\n      target_structure: single_target_point_forecast\n      variable_universe: all_variables\n      missing_availability: zero_fill_before_start\n      release_lag_rule: ignore_release_lag\n      contemporaneous_x_rule: forbid_contemporaneous\n      official_transform_policy: dataset_tcode\n      official_transform_scope: apply_tcode_to_both\n      raw_missing_policy: zero_fill_leading_x_before_tcode\n      raw_outlier_policy: preserve_raw_outliers\n    leaf_config:\n      target: INDPRO\n      horizons:\n      - 1\n      - 3\n      - 6\n      - 12\n  2_preprocessing:\n    fixed_axes:\n      horizon_target_construction: future_target_level_t_plus_h\n      target_transform_policy: tcode_transformed\n      x_transform_policy: dataset_tcode_transformed\n      tcode_policy: tcode_then_extra_preprocess\n      target_missing_policy: none\n      x_missing_policy: none\n      target_outlier_policy: none\n      x_outlier_policy: none\n      scaling_policy: standard\n      dimensionality_reduction_policy: none\n      feature_selection_policy: none\n      preprocess_order: tcode_then_extra\n      preprocess_fit_scope: train_only\n      inverse_transform_policy: target_only\n      evaluation_scale: raw_level\n      target_lag_block: none\n      x_lag_feature_block: none\n      factor_feature_block: none\n      level_feature_block: none\n      temporal_feature_block: none\n      rotation_feature_block: none\n      feature_block_combination: replace_with_blocks\n  3_training:\n    fixed_axes:\n      framework: expanding\n      benchmark_family: ar_bic\n      feature_builder: raw_feature_panel\n      model_family: ridge\n      forecast_type: direct\n      forecast_object: point_mean\n  4_evaluation:\n    fixed_axes:\n      primary_metric: msfe\n  5_output_provenance:\n    fixed_axes:\n      export_format: json\n      saved_objects: full_bundle\n      provenance_fields: full\n      artifact_granularity: aggregated\n    leaf_config:\n      manifest_mode: full\n      benchmark_config:\n        minimum_train_size: 60\n  6_stat_tests:\n    fixed_axes:\n      equal_predictive: dm\n  7_importance:\n    fixed_axes:\n      importance_method: none\n",
       "short_description": "FRED-MD style macro forecasting path with official transformations, raw-panel ridge generator, AR-BIC benchmark, and MSFE evaluation."
     },
     {
@@ -3465,6 +3466,7 @@
             "multiple_model": "none",
             "nested": "none",
             "oos_period": "all_oos_data",
+            "overlap_handling": "allow_overlap",
             "point_metrics": "MSFE",
             "preprocess_fit_scope": "not_applicable",
             "preprocess_order": "none",
@@ -3488,6 +3490,7 @@
             "target_structure": "single_target_point_forecast",
             "target_transform_policy": "raw_level",
             "tcode_policy": "raw_only",
+            "test_scope": "per_target",
             "x_missing_policy": "none",
             "x_outlier_policy": "none",
             "x_transform_policy": "raw_level"
@@ -7984,48 +7987,48 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_horizon"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_model_pair"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "full_grid_pairwise"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "benchmark_vs_all"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "regime_specific_tests"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "subsample_tests"
               }
             ],
-            "selected": null
+            "selected": "per_target"
           },
           {
             "axis": "dependence_correction",
@@ -8041,21 +8044,21 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "block_bootstrap"
@@ -8083,7 +8086,7 @@
                 "value": "evaluate_with_hac"
               }
             ],
-            "selected": null
+            "selected": "allow_overlap"
           },
           {
             "axis": "importance_method",
@@ -8747,6 +8750,7 @@
             "multiple_model": "none",
             "nested": "none",
             "oos_period": "all_oos_data",
+            "overlap_handling": "allow_overlap",
             "point_metrics": "MSFE",
             "preprocess_fit_scope": "not_applicable",
             "preprocess_order": "none",
@@ -8773,6 +8777,7 @@
             "target_structure": "single_target_point_forecast",
             "target_transform_policy": "raw_level",
             "tcode_policy": "raw_only",
+            "test_scope": "per_target",
             "x_missing_policy": "none",
             "x_outlier_policy": "none",
             "x_transform_policy": "raw_level"
@@ -13282,48 +13287,48 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_horizon"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_model_pair"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "full_grid_pairwise"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "benchmark_vs_all"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "regime_specific_tests"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "subsample_tests"
               }
             ],
-            "selected": null
+            "selected": "per_target"
           },
           {
             "axis": "dependence_correction",
@@ -13339,21 +13344,21 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections are active only when a Layer 6 test is selected",
                 "enabled": false,
                 "status": "operational",
                 "value": "block_bootstrap"
@@ -13381,7 +13386,7 @@
                 "value": "evaluate_with_hac"
               }
             ],
-            "selected": null
+            "selected": "allow_overlap"
           },
           {
             "axis": "importance_method",
@@ -13912,7 +13917,7 @@
           },
           "6_stat_tests": {
             "fixed_axes": {
-              "stat_test": "dm"
+              "equal_predictive": "dm"
             }
           },
           "7_importance": {
@@ -13923,7 +13928,7 @@
         },
         "recipe_id": "goulet-coulombe-2021-fred-md-ridge"
       },
-      "recipe_yaml": "recipe_id: goulet-coulombe-2021-fred-md-ridge\npath:\n  0_meta:\n    fixed_axes:\n      research_design: single_path_benchmark\n      failure_policy: fail_fast\n      compute_mode: serial\n      reproducibility_mode: seeded_reproducible\n    leaf_config:\n      random_seed: 42\n  1_data_task:\n    fixed_axes:\n      dataset: fred_md\n      source_adapter: fred_md\n      frequency: monthly\n      information_set_type: revised\n      target_structure: single_target_point_forecast\n      variable_universe: all_variables\n      missing_availability: zero_fill_before_start\n      release_lag_rule: ignore_release_lag\n      contemporaneous_x_rule: forbid_contemporaneous\n      official_transform_policy: dataset_tcode\n      official_transform_scope: apply_tcode_to_both\n      raw_missing_policy: zero_fill_leading_x_before_tcode\n      raw_outlier_policy: preserve_raw_outliers\n    leaf_config:\n      target: INDPRO\n      horizons:\n      - 1\n      - 3\n      - 6\n      - 12\n  2_preprocessing:\n    fixed_axes:\n      horizon_target_construction: future_target_level_t_plus_h\n      target_transform_policy: tcode_transformed\n      x_transform_policy: dataset_tcode_transformed\n      tcode_policy: tcode_then_extra_preprocess\n      target_missing_policy: none\n      x_missing_policy: none\n      target_outlier_policy: none\n      x_outlier_policy: none\n      scaling_policy: standard\n      dimensionality_reduction_policy: none\n      feature_selection_policy: none\n      preprocess_order: tcode_then_extra\n      preprocess_fit_scope: train_only\n      inverse_transform_policy: target_only\n      evaluation_scale: raw_level\n      target_lag_block: none\n      x_lag_feature_block: none\n      factor_feature_block: none\n      level_feature_block: none\n      temporal_feature_block: none\n      rotation_feature_block: none\n      feature_block_combination: replace_with_blocks\n  3_training:\n    fixed_axes:\n      framework: expanding\n      benchmark_family: ar_bic\n      feature_builder: raw_feature_panel\n      model_family: ridge\n      forecast_type: direct\n      forecast_object: point_mean\n  4_evaluation:\n    fixed_axes:\n      primary_metric: msfe\n  5_output_provenance:\n    fixed_axes:\n      export_format: json\n      saved_objects: full_bundle\n      provenance_fields: full\n      artifact_granularity: aggregated\n    leaf_config:\n      manifest_mode: full\n      benchmark_config:\n        minimum_train_size: 60\n  6_stat_tests:\n    fixed_axes:\n      stat_test: dm\n  7_importance:\n    fixed_axes:\n      importance_method: none\n",
+      "recipe_yaml": "recipe_id: goulet-coulombe-2021-fred-md-ridge\npath:\n  0_meta:\n    fixed_axes:\n      research_design: single_path_benchmark\n      failure_policy: fail_fast\n      compute_mode: serial\n      reproducibility_mode: seeded_reproducible\n    leaf_config:\n      random_seed: 42\n  1_data_task:\n    fixed_axes:\n      dataset: fred_md\n      source_adapter: fred_md\n      frequency: monthly\n      information_set_type: revised\n      target_structure: single_target_point_forecast\n      variable_universe: all_variables\n      missing_availability: zero_fill_before_start\n      release_lag_rule: ignore_release_lag\n      contemporaneous_x_rule: forbid_contemporaneous\n      official_transform_policy: dataset_tcode\n      official_transform_scope: apply_tcode_to_both\n      raw_missing_policy: zero_fill_leading_x_before_tcode\n      raw_outlier_policy: preserve_raw_outliers\n    leaf_config:\n      target: INDPRO\n      horizons:\n      - 1\n      - 3\n      - 6\n      - 12\n  2_preprocessing:\n    fixed_axes:\n      horizon_target_construction: future_target_level_t_plus_h\n      target_transform_policy: tcode_transformed\n      x_transform_policy: dataset_tcode_transformed\n      tcode_policy: tcode_then_extra_preprocess\n      target_missing_policy: none\n      x_missing_policy: none\n      target_outlier_policy: none\n      x_outlier_policy: none\n      scaling_policy: standard\n      dimensionality_reduction_policy: none\n      feature_selection_policy: none\n      preprocess_order: tcode_then_extra\n      preprocess_fit_scope: train_only\n      inverse_transform_policy: target_only\n      evaluation_scale: raw_level\n      target_lag_block: none\n      x_lag_feature_block: none\n      factor_feature_block: none\n      level_feature_block: none\n      temporal_feature_block: none\n      rotation_feature_block: none\n      feature_block_combination: replace_with_blocks\n  3_training:\n    fixed_axes:\n      framework: expanding\n      benchmark_family: ar_bic\n      feature_builder: raw_feature_panel\n      model_family: ridge\n      forecast_type: direct\n      forecast_object: point_mean\n  4_evaluation:\n    fixed_axes:\n      primary_metric: msfe\n  5_output_provenance:\n    fixed_axes:\n      export_format: json\n      saved_objects: full_bundle\n      provenance_fields: full\n      artifact_granularity: aggregated\n    leaf_config:\n      manifest_mode: full\n      benchmark_config:\n        minimum_train_size: 60\n  6_stat_tests:\n    fixed_axes:\n      equal_predictive: dm\n  7_importance:\n    fixed_axes:\n      importance_method: none\n",
       "view": {
         "canonical_path": {
           "0_meta": {
@@ -14035,7 +14040,7 @@
           },
           "6_stat_tests": {
             "fixed_axes": {
-              "stat_test": "dm"
+              "equal_predictive": "dm"
             },
             "label": "Layer 6: statistical tests",
             "leaf_config": {},
@@ -14073,7 +14078,7 @@
             "dimensionality_reduction_policy": "none",
             "direction": "none",
             "direction_metrics": "directional_accuracy",
-            "equal_predictive": "none",
+            "equal_predictive": "dm",
             "evaluation_scale": "raw_level",
             "exogenous_x_path_policy": "unavailable",
             "export_format": "json",
@@ -14105,6 +14110,7 @@
             "official_transform_policy": "dataset_tcode",
             "official_transform_scope": "apply_tcode_to_both",
             "oos_period": "all_oos_data",
+            "overlap_handling": "allow_overlap",
             "point_metrics": "MSFE",
             "preprocess_fit_scope": "train_only",
             "preprocess_order": "tcode_then_extra",
@@ -14128,7 +14134,7 @@
             "saved_objects": "full_bundle",
             "scaling_policy": "standard",
             "source_adapter": "fred_md",
-            "stat_test": "dm",
+            "stat_test": "none",
             "target": "INDPRO",
             "target_lag_block": "none",
             "target_missing_policy": "none",
@@ -14137,6 +14143,7 @@
             "target_transform_policy": "tcode_transformed",
             "tcode_policy": "tcode_then_extra_preprocess",
             "temporal_feature_block": "none",
+            "test_scope": "per_target",
             "variable_universe": "all_variables",
             "x_lag_feature_block": "none",
             "x_missing_policy": "none",
@@ -14450,7 +14457,6 @@
               "saved_objects": "5_output_provenance",
               "scaling_policy": "2_preprocessing",
               "source_adapter": "1_data_task",
-              "stat_test": "6_stat_tests",
               "target_lag_block": "2_preprocessing",
               "target_missing_policy": "2_preprocessing",
               "target_outlier_policy": "2_preprocessing",
@@ -14518,7 +14524,6 @@
               "saved_objects": "full_bundle",
               "scaling_policy": "standard",
               "source_adapter": "fred_md",
-              "stat_test": "dm",
               "target_lag_block": "none",
               "target_missing_policy": "none",
               "target_outlier_policy": "none",
@@ -18304,7 +18309,7 @@
                 "value": "diagnostics_full"
               }
             ],
-            "selected": "dm"
+            "selected": "none"
           },
           {
             "axis": "equal_predictive",
@@ -18354,7 +18359,7 @@
                 "value": "wilcoxon_signed_rank"
               }
             ],
-            "selected": "none"
+            "selected": "dm"
           },
           {
             "axis": "nested",
@@ -18698,48 +18703,48 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_horizon'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_horizon"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'per_model_pair'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "per_model_pair"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'full_grid_pairwise'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "full_grid_pairwise"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'benchmark_vs_all'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
+                "enabled": false,
+                "status": "registry_only",
                 "value": "benchmark_vs_all"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'regime_specific_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "regime_specific_tests"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.test_scope = 'subsample_tests'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
+                "disabled_reason": "future design value; runtime contract is not open",
+                "enabled": false,
+                "status": "future",
                 "value": "subsample_tests"
               }
             ],
-            "selected": null
+            "selected": "per_target"
           },
           {
             "axis": "dependence_correction",
@@ -18755,21 +18760,21 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections require HAC/bootstrap-compatible Layer 6 tests",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'nw_hac_auto'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections require HAC/bootstrap-compatible Layer 6 tests",
                 "enabled": false,
                 "status": "operational",
                 "value": "nw_hac_auto"
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.dependence_correction = 'block_bootstrap'",
-                "disabled_reason": "dependence corrections currently attach to HAC/bootstrap-compatible legacy stat_test values",
+                "disabled_reason": "dependence corrections require HAC/bootstrap-compatible Layer 6 tests",
                 "enabled": false,
                 "status": "operational",
                 "value": "block_bootstrap"
@@ -18791,13 +18796,13 @@
               },
               {
                 "canonical_path_effect": "path.6_stat_tests.fixed_axes.overlap_handling = 'evaluate_with_hac'",
-                "disabled_reason": "evaluate_with_hac requires a HAC-capable stat_test",
+                "disabled_reason": "evaluate_with_hac requires HAC-capable Layer 6 tests",
                 "enabled": false,
                 "status": "operational",
                 "value": "evaluate_with_hac"
               }
             ],
-            "selected": null
+            "selected": "allow_overlap"
           },
           {
             "axis": "importance_method",

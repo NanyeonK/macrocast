@@ -19,7 +19,7 @@ The Compatibility Engine is the constraint-aware view over the registry and comp
 | `artifact_granularity != aggregated` | Disabled in the current runtime because per-target/per-horizon/hierarchical result-object readers are not implemented. |
 | `regime_definition != none` | Treats regime handling as post-forecast evaluation filtering unless a future training-time regime gate is opened. |
 | `direction` statistical tests | Enabled for `forecast_object=direction`; otherwise direction tests stay inactive. |
-| HAC/bootstrap dependence correction | Attached to HAC/bootstrap-compatible test choices. Split Layer 6 axes are visible now; runtime harmonization is handled in the Layer 6 cleanup slice. |
+| HAC/bootstrap dependence correction | Attached to HAC/bootstrap-compatible Layer 6 choices across legacy `stat_test` and split axes. `evaluate_with_hac` stays disabled when any active test is not HAC-capable. |
 
 ## Why Disabled Branches Matter
 

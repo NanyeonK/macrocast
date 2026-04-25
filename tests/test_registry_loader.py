@@ -446,6 +446,9 @@ def test_registry_loader_discovers_stage6_test_axes() -> None:
     assert registry["stat_test"].current_status["spa"] == "operational"
     assert registry["stat_test"].current_status["diagnostics_full"] == "operational"
     assert registry["dependence_correction"].current_status["block_bootstrap"] == "operational"
+    assert registry["test_scope"].current_status["per_target"] == "operational"
+    assert registry["test_scope"].current_status["per_horizon"] == "registry_only"
+    assert registry["test_scope"].current_status["full_grid_pairwise"] == "future"
 
 
 
