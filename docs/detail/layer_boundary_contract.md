@@ -191,6 +191,13 @@ Layer 4 should not fit models, transform predictors/target, or run statistical t
 During migration, `data_task_spec.oos_period` remains a compatibility mirror,
 but `evaluation_spec.oos_period` is the canonical runtime input.
 
+Runtime output must include `evaluation_summary.json`. It is the Layer 4
+contract artifact that records the selected primary metric, per-horizon
+summary, selected metric-family availability, aggregation choices, and optional
+report target. `report_style=markdown_table` may add `evaluation_report.md`;
+`report_style=latex_table` may add `evaluation_report.tex`. Statistical tests
+remain Layer 6 artifacts even when they consume the same forecast-error table.
+
 ## Layer 5: Artifacts
 
 Owns what gets saved:

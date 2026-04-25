@@ -11,6 +11,8 @@ runs/
     predictions.csv             # OOS prediction table
     metrics.json                # Per-horizon evaluation metrics
     comparison_summary.json     # Model vs benchmark summary
+    evaluation_summary.json     # Layer 4 evaluation contract summary
+    evaluation_report.md        # Optional report when report_style=markdown_table
     tuning_result.json          # HP tuning result
     summary.txt                 # Human-readable summary
     data_preview.csv            # Raw data sample
@@ -53,6 +55,25 @@ Per-horizon evaluation metrics:
 | `csfe` | Cumulative squared forecast error | Time-aggregated loss |
 | `benchmark_win_rate` | Fraction of dates where model < benchmark | Higher is better |
 | `directional_accuracy` | Fraction of correct direction forecasts | Higher is better |
+
+## evaluation_summary.json
+
+Layer 4 writes a canonical summary of the selected evaluation contract. This
+file does not recompute forecasts. It records:
+
+| Field | Meaning |
+|-------|---------|
+| `contract_version` | Evaluation summary schema version |
+| `evaluation_spec` | Exact Layer 4 choices used at runtime |
+| `summary.primary_metric` | Metric selected for headline ranking |
+| `summary.by_horizon` | Per-horizon model, benchmark, and winner records |
+| `summary.overall_equal_weight` | Equal-weight aggregate when available |
+| `summary.selected_metric_availability` | Whether each selected metric family is materialized by the current payload |
+
+When `evaluation_spec.report_style=markdown_table`, execution also writes
+`evaluation_report.md`. When `report_style=latex_table`, it writes
+`evaluation_report.tex`. `report_style=tidy_dataframe` keeps the structured
+JSON summary only.
 
 ## stat_test_{name}.json
 
@@ -119,6 +140,9 @@ The complete provenance record. Key fields:
 | `preprocess_contract` | Exact preprocessing configuration |
 | `model_spec` | Model family, feature builder, executor name |
 | `benchmark_spec` | Benchmark family and configuration |
+| `evaluation_spec` | Layer 4 evaluation choices |
+| `evaluation_summary_file` | Canonical Layer 4 summary artifact |
+| `evaluation_report_file` | Optional human/table report artifact |
 | `stat_test_spec` | Statistical test requested |
 | `importance_spec` | Importance method requested |
 | `tuning_result` | HP tuning result (best_hp, trials, score) |

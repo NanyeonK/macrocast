@@ -11,11 +11,18 @@ The facade does not replace artifacts. It reads saved files and exposes
 `forecasts`, `metrics`, `comparison`, and `manifest` directly to researchers.
 Use `metrics_json` and `comparison_json` when the exact artifact payload matters.
 
+Layer 4 evaluation writes `evaluation_summary.json` for every run. It records
+the selected evaluation spec, primary metric, per-horizon summary, aggregation
+choices, and metric-family availability. If `report_style=markdown_table`, the
+run also writes `evaluation_report.md`; if `report_style=latex_table`, it writes
+`evaluation_report.tex`.
+
 This page should eventually document:
 
 - output directory layout
 - forecasts artifact
 - metrics artifact
+- evaluation summary artifact
 - comparison summary
 - sweep manifest
 - raw-data manifest
