@@ -256,12 +256,27 @@ def test_execute_recipe_runs_raw_panel_iterated_hold_last_observed(tmp_path: Pat
     assert manifest["raw_panel_iterated_runtime_contract"] == "raw_panel_iterated_hold_last_observed_v1"
     assert manifest["exogenous_x_path_policy"] == "hold_last_observed"
     assert predictions["payload_family"].eq("raw_panel_iterated").all()
+    assert predictions["raw_panel_iterated_payload_contract"].eq("multi_step_raw_panel_payload_v1").all()
     assert predictions["raw_panel_iterated_x_path_policy"].eq("hold_last_observed").all()
+    assert predictions["raw_panel_iterated_model_target_scale"].eq("transformed_target_scale").all()
+    assert predictions["raw_panel_iterated_forecast_scale"].eq("original_target_scale").all()
+    assert predictions["raw_panel_iterated_evaluation_scale"].eq("raw_level").all()
+    assert predictions["raw_panel_iterated_target_normalization"].eq("none").all()
+    assert predictions["raw_panel_iterated_step_predictions"].map(json.loads).map(len).eq(
+        predictions["raw_panel_iterated_step_count"]
+    ).all()
+    assert (
+        predictions["raw_panel_iterated_final_step_prediction"].astype(float)
+        == predictions["y_pred_model_scale"].astype(float)
+    ).all()
     assert steps["payload_contract"].eq("multi_step_raw_panel_payload_v1").all()
     assert steps["x_path_policy"].eq("hold_last_observed").all()
     assert steps["x_source_date"].eq(steps["origin_date"]).all()
     assert int(steps["step"].max()) == max(recipe.horizons)
     assert payloads
+    payload_record = json.loads(payloads[0])
+    assert payload_record["raw_panel_iterated_payload_contract"] == "multi_step_raw_panel_payload_v1"
+    assert payload_record["raw_panel_iterated_forecast_scale"] == "original_target_scale"
 
 
 def test_execute_recipe_runs_raw_panel_iterated_observed_future_x(tmp_path: Path) -> None:

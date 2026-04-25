@@ -389,6 +389,13 @@ trace, the future-X path reference, recursive target-history updates,
 configured scheduled-known columns or recursive-X model family when
 applicable, and a final horizon prediction under
 `multi_step_raw_panel_payload_v1`.
+The current payload envelope records the raw-panel iterated payload contract,
+step-prediction trace, final step prediction, model target scale, forecast
+scale, evaluation scale, target transform policy, and target normalization
+state in prediction rows and JSONL payload artifacts. `evaluation_scale='raw_level'`
+is recorded as `original_target_scale` at the forecast scale. This is raw-level
+scale provenance, not support for transformed or normalized target-scale
+composition.
 
 Broader raw-panel iterated cells remain blocked by the Layer 3 capability
 matrix until richer recursively forecast future-X model families have explicit

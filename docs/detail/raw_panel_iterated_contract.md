@@ -82,10 +82,17 @@ Required fields:
 - `target_history_updates`;
 - `exogenous_x_path_ref`;
 - `recursive_state_trace`;
+- `model_target_scale`;
+- `forecast_scale`;
+- `evaluation_scale`;
 - `payload_metrics`.
 
 The artifact writer should project the final horizon prediction into
-`predictions.csv` and write the step trace to a separate long-form artifact.
+`predictions.csv`, write the step trace to a separate long-form artifact, and
+copy the raw-panel iterated payload/scale envelope into `forecast_payloads.jsonl`.
+The current operational slice evaluates `evaluation_scale='raw_level'` as
+`original_target_scale`: target normalization, custom target transformers, and
+transformed target-scale composition remain gated.
 The JSONL payload should preserve the step-level trace.
 
 ## Opening Checklist
