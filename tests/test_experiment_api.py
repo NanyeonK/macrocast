@@ -537,6 +537,158 @@ def test_fred_sd_mixed_frequency_representation_does_not_drop_target(tmp_path: P
         exp.run(output_root=tmp_path / "runs", local_raw_source=source)
 
 
+def test_fred_sd_native_frequency_block_payload_runs_with_custom_model(tmp_path: Path) -> None:
+    clear_custom_extensions()
+    dates = pd.date_range("2000-01-01", periods=18, freq="MS")
+    source = tmp_path / "mixed_fred_sd.csv"
+    pd.DataFrame(
+        {
+            "date": dates,
+            "UR_CA": [5.0 + idx / 10 for idx in range(len(dates))],
+            "NQGSP_CA": [100.0 + idx if idx % 3 == 0 else None for idx in range(len(dates))],
+        }
+    ).to_csv(source, index=False)
+    calls: list[dict[str, object]] = []
+
+    @custom_model("fred_sd_block_custom")
+    def _fred_sd_block_custom(X_train, y_train, X_test, context):
+        auxiliary = context["auxiliary_payloads"]
+        block_payload = auxiliary["fred_sd_native_frequency_block_payload"]
+        assert block_payload["contract_version"] == "fred_sd_native_frequency_block_payload_v1"
+        assert "monthly" in block_payload["blocks"]
+        assert "quarterly" in block_payload["blocks"]
+        assert block_payload["column_to_native_frequency"]["NQGSP_CA"] == "quarterly"
+        assert context["alignment"]["fred_sd_native_frequency_block_payload_contract"] == (
+            "fred_sd_native_frequency_block_payload_v1"
+        )
+        calls.append(block_payload)
+        return float(y_train[-1])
+
+    try:
+        result = (
+            Experiment(
+                dataset="fred_sd",
+                target="UR_CA",
+                start="2000-01",
+                end="2001-06",
+                horizons=[1],
+                frequency="monthly",
+                model_family="fred_sd_block_custom",
+                feature_builder="raw_feature_panel",
+                benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5},
+            )
+            .use_fred_sd_selection(states=["CA"], variables=["UR", "NQGSP"])
+            .use_fred_sd_native_frequency_blocks()
+            .run(output_root=tmp_path / "runs", local_raw_source=source)
+        )
+
+        artifact_dir = Path(result.artifact_dir)
+        manifest = json.loads((artifact_dir / "manifest.json").read_text())
+        block_payload = json.loads((artifact_dir / "fred_sd_native_frequency_block_payload.json").read_text())
+
+        assert calls
+        assert manifest["fred_sd_native_frequency_block_payload_contract"] == (
+            "fred_sd_native_frequency_block_payload_v1"
+        )
+        assert manifest["fred_sd_native_frequency_block_payload_file"] == (
+            "fred_sd_native_frequency_block_payload.json"
+        )
+        assert manifest["model_spec"]["executor_name"].endswith(
+            "fred_sd_native_frequency_block_payload_v1"
+        )
+        assert block_payload["blocks"]["quarterly"]["columns"] == ["NQGSP_CA"]
+        assert (
+            manifest["layer2_representation_contract_metadata"]["auxiliary_payloads"][
+                "fred_sd_native_frequency_block_payload"
+            ]["contract_version"]
+            == "fred_sd_native_frequency_block_payload_v1"
+        )
+    finally:
+        clear_custom_extensions()
+
+
+def test_fred_sd_mixed_frequency_adapter_runs_with_custom_model(tmp_path: Path) -> None:
+    clear_custom_extensions()
+    dates = pd.date_range("2000-01-01", periods=18, freq="MS")
+    source = tmp_path / "mixed_fred_sd.csv"
+    pd.DataFrame(
+        {
+            "date": dates,
+            "UR_CA": [5.0 + idx / 10 for idx in range(len(dates))],
+            "NQGSP_CA": [100.0 + idx if idx % 3 == 0 else None for idx in range(len(dates))],
+        }
+    ).to_csv(source, index=False)
+
+    @custom_model("fred_sd_adapter_custom")
+    def _fred_sd_adapter_custom(X_train, y_train, X_test, context):
+        adapter = context["auxiliary_payloads"]["fred_sd_mixed_frequency_model_adapter"]
+        assert adapter["contract_version"] == "fred_sd_mixed_frequency_model_adapter_v1"
+        assert adapter["input_payload_contract"] == "fred_sd_native_frequency_block_payload_v1"
+        return float(y_train.mean())
+
+    try:
+        result = (
+            Experiment(
+                dataset="fred_sd",
+                target="UR_CA",
+                start="2000-01",
+                end="2001-06",
+                horizons=[1],
+                frequency="monthly",
+                model_family="fred_sd_adapter_custom",
+                feature_builder="raw_feature_panel",
+                benchmark_config={"minimum_train_size": 5, "rolling_window_size": 5},
+            )
+            .use_fred_sd_selection(states=["CA"], variables=["UR", "NQGSP"])
+            .use_fred_sd_mixed_frequency_adapter()
+            .run(output_root=tmp_path / "runs", local_raw_source=source)
+        )
+
+        manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
+
+        assert manifest["fred_sd_mixed_frequency_model_adapter_contract"] == (
+            "fred_sd_mixed_frequency_model_adapter_v1"
+        )
+        assert manifest["fred_sd_mixed_frequency_model_adapter_file"] == (
+            "fred_sd_mixed_frequency_model_adapter.json"
+        )
+        assert manifest["model_spec"]["executor_name"].endswith(
+            "fred_sd_mixed_frequency_model_adapter_v1"
+        )
+    finally:
+        clear_custom_extensions()
+
+
+def test_fred_sd_advanced_mixed_frequency_requires_custom_model(tmp_path: Path) -> None:
+    dates = pd.date_range("2000-01-01", periods=18, freq="MS")
+    source = tmp_path / "mixed_fred_sd.csv"
+    pd.DataFrame(
+        {
+            "date": dates,
+            "UR_CA": [5.0 + idx / 10 for idx in range(len(dates))],
+            "NQGSP_CA": [100.0 + idx if idx % 3 == 0 else None for idx in range(len(dates))],
+        }
+    ).to_csv(source, index=False)
+
+    exp = (
+        Experiment(
+            dataset="fred_sd",
+            target="UR_CA",
+            start="2000-01",
+            end="2001-06",
+            horizons=[1],
+            frequency="monthly",
+            model_family="ridge",
+            feature_builder="raw_feature_panel",
+        )
+        .use_fred_sd_selection(states=["CA"], variables=["UR", "NQGSP"])
+        .use_fred_sd_native_frequency_blocks()
+    )
+
+    with pytest.raises(CompileValidationError, match="registered custom Layer 3 model"):
+        exp.run(output_root=tmp_path / "runs", local_raw_source=source)
+
+
 def test_experiment_fred_sd_selection_lowers_to_layer1_axes() -> None:
     recipe = (
         Experiment(dataset="fred_sd+fred_qd", target="GDPC1", start="2000-01", end="2002-06", horizons=[1])

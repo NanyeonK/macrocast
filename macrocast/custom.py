@@ -98,9 +98,14 @@ def custom_model_contract_metadata() -> dict[str, Any]:
             "block_order",
             "block_roles",
             "alignment",
+            "auxiliary_payloads",
             "leakage_contract",
             "mode",
             "contract_version",
+        ),
+        "auxiliary_payload_contracts": (
+            "fred_sd_native_frequency_block_payload_v1",
+            "fred_sd_mixed_frequency_model_adapter_v1",
         ),
         "leakage_rule": "consume only Layer 2 train/pred matrices supplied by runtime",
     }

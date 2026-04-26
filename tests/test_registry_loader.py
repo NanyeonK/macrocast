@@ -52,6 +52,18 @@ def test_axis_governance_table_matches_discovered_registry() -> None:
     by_name = {row["axis_name"]: row for row in table}
     assert by_name["importance_method"]["current_status"]["minimal_importance"] == "operational"
     assert by_name["feature_builder"]["current_status"]["factor_pca"] == "operational"
+    assert (
+        by_name["fred_sd_mixed_frequency_representation"]["current_status"][
+            "native_frequency_block_payload"
+        ]
+        == "operational_narrow"
+    )
+    assert (
+        by_name["fred_sd_mixed_frequency_representation"]["current_status"][
+            "mixed_frequency_model_adapter"
+        ]
+        == "operational_narrow"
+    )
 
 
 def test_base_registry_types_available() -> None:

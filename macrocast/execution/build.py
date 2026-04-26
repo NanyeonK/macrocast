@@ -316,6 +316,8 @@ def _fred_sd_series_metadata_summary(report: Mapping[str, object] | None) -> dic
 _FRED_SD_FREQUENCY_REPORT_CONTRACT_VERSION = "fred_sd_frequency_report_v1"
 _FRED_SD_FREQUENCY_POLICY_REPORT_CONTRACT_VERSION = "fred_sd_frequency_policy_v1"
 _FRED_SD_MIXED_FREQUENCY_REPRESENTATION_CONTRACT_VERSION = "fred_sd_mixed_frequency_representation_v1"
+_FRED_SD_NATIVE_FREQUENCY_BLOCK_PAYLOAD_CONTRACT_VERSION = "fred_sd_native_frequency_block_payload_v1"
+_FRED_SD_MIXED_FREQUENCY_MODEL_ADAPTER_CONTRACT_VERSION = "fred_sd_mixed_frequency_model_adapter_v1"
 _FRED_SD_FREQUENCY_POLICIES = {
     "report_only",
     "allow_mixed_frequency",
@@ -326,6 +328,12 @@ _FRED_SD_MIXED_FREQUENCY_REPRESENTATIONS = {
     "calendar_aligned_frame",
     "drop_unknown_native_frequency",
     "drop_non_target_native_frequency",
+    "native_frequency_block_payload",
+    "mixed_frequency_model_adapter",
+}
+_FRED_SD_NATIVE_FREQUENCY_BLOCK_POLICIES = {
+    "native_frequency_block_payload",
+    "mixed_frequency_model_adapter",
 }
 
 
@@ -463,11 +471,111 @@ def _fred_sd_mixed_frequency_representation_policy(recipe: RecipeSpec) -> str:
     )
 
 
+def _fred_sd_native_frequency_blocks_payload(
+    *,
+    frame: pd.DataFrame,
+    present_fred_sd_columns: Sequence[object],
+    native_by_column: Mapping[str, str],
+) -> dict[str, object]:
+    blocks: dict[str, list[str]] = {}
+    column_to_native_frequency: dict[str, str] = {}
+    for column in present_fred_sd_columns:
+        column_name = str(column)
+        if column_name not in frame.columns:
+            continue
+        native_frequency = _normalized_frequency_name(native_by_column.get(column_name, "unknown"))
+        blocks.setdefault(native_frequency, []).append(column_name)
+        column_to_native_frequency[column_name] = native_frequency
+    block_payload = {
+        "schema_version": _FRED_SD_NATIVE_FREQUENCY_BLOCK_PAYLOAD_CONTRACT_VERSION,
+        "contract_version": _FRED_SD_NATIVE_FREQUENCY_BLOCK_PAYLOAD_CONTRACT_VERSION,
+        "owner_layer": "2_preprocessing",
+        "materialization": "calendar_aligned_dataframe_columns_with_native_frequency_blocks",
+        "block_order": sorted(blocks),
+        "blocks": {
+            native_frequency: {
+                "native_frequency": native_frequency,
+                "columns": columns,
+                "column_count": len(columns),
+            }
+            for native_frequency, columns in sorted(blocks.items())
+        },
+        "column_to_native_frequency": dict(sorted(column_to_native_frequency.items())),
+        "block_count": len(blocks),
+        "fred_sd_column_count": len(column_to_native_frequency),
+    }
+    return block_payload
+
+
+def _fred_sd_mixed_frequency_report_from_frame(frame: pd.DataFrame) -> dict[str, object] | None:
+    reports = dict(getattr(frame, "attrs", {}).get("macrocast_reports", {}) or {})
+    report = reports.get("fred_sd_mixed_frequency_representation")
+    if isinstance(report, Mapping):
+        return dict(report)
+    return None
+
+
+def _fred_sd_representation_auxiliary_payloads(frame: pd.DataFrame) -> dict[str, object]:
+    report = _fred_sd_mixed_frequency_report_from_frame(frame)
+    if not isinstance(report, Mapping):
+        return {}
+    payloads: dict[str, object] = {
+        "fred_sd_mixed_frequency_representation": dict(report),
+    }
+    block_payload = report.get("native_frequency_block_payload")
+    if isinstance(block_payload, Mapping):
+        payloads["fred_sd_native_frequency_block_payload"] = dict(block_payload)
+    adapter_payload = report.get("mixed_frequency_model_adapter")
+    if isinstance(adapter_payload, Mapping):
+        payloads["fred_sd_mixed_frequency_model_adapter"] = dict(adapter_payload)
+    return payloads
+
+
+def _fred_sd_representation_alignment_payload(frame: pd.DataFrame) -> dict[str, object]:
+    report = _fred_sd_mixed_frequency_report_from_frame(frame)
+    if not isinstance(report, Mapping):
+        return {}
+    payload: dict[str, object] = {
+        "fred_sd_mixed_frequency_representation": report.get("policy"),
+        "fred_sd_mixed_frequency_representation_contract": report.get("contract_version"),
+    }
+    block_payload = report.get("native_frequency_block_payload")
+    if isinstance(block_payload, Mapping):
+        payload["fred_sd_native_frequency_block_payload_contract"] = block_payload.get("contract_version")
+        payload["fred_sd_native_frequency_block_order"] = list(block_payload.get("block_order", []) or [])
+    adapter_payload = report.get("mixed_frequency_model_adapter")
+    if isinstance(adapter_payload, Mapping):
+        payload["fred_sd_mixed_frequency_model_adapter_contract"] = adapter_payload.get("contract_version")
+        payload["fred_sd_mixed_frequency_model_adapter_kind"] = adapter_payload.get("adapter_kind")
+    return payload
+
+
+def _fred_sd_feature_block_roles(
+    feature_names: Sequence[str],
+    frame: pd.DataFrame,
+) -> dict[str, str]:
+    report = _fred_sd_mixed_frequency_report_from_frame(frame)
+    if not isinstance(report, Mapping):
+        return {}
+    block_payload = report.get("native_frequency_block_payload")
+    if not isinstance(block_payload, Mapping):
+        return {}
+    column_to_frequency = dict(block_payload.get("column_to_native_frequency", {}) or {})
+    roles: dict[str, str] = {}
+    for name in feature_names:
+        frequency = column_to_frequency.get(str(name))
+        if frequency is not None:
+            roles[str(name)] = f"fred_sd_native_frequency:{frequency}"
+    return roles
+
+
 def _fred_sd_mixed_frequency_representation_summary(
     report: Mapping[str, object] | None,
 ) -> dict[str, object] | None:
     if not isinstance(report, Mapping):
         return None
+    block_payload = report.get("native_frequency_block_payload")
+    adapter_payload = report.get("mixed_frequency_model_adapter")
     return {
         "schema_version": report.get("schema_version"),
         "contract_version": report.get("contract_version"),
@@ -476,6 +584,15 @@ def _fred_sd_mixed_frequency_representation_summary(
         "kept_fred_sd_column_count": report.get("kept_fred_sd_column_count"),
         "dropped_fred_sd_column_count": report.get("dropped_fred_sd_column_count"),
         "dropped_by_native_frequency": dict(report.get("dropped_by_native_frequency", {}) or {}),
+        "native_frequency_block_payload_contract": (
+            block_payload.get("contract_version") if isinstance(block_payload, Mapping) else None
+        ),
+        "native_frequency_block_order": (
+            list(block_payload.get("block_order", []) or []) if isinstance(block_payload, Mapping) else []
+        ),
+        "mixed_frequency_model_adapter_contract": (
+            adapter_payload.get("contract_version") if isinstance(adapter_payload, Mapping) else None
+        ),
     }
 
 
@@ -545,29 +662,60 @@ def _apply_fred_sd_mixed_frequency_representation(raw_result, recipe: RecipeSpec
         raise ExecutionError(
             f"fred_sd_mixed_frequency_representation={policy!r} dropped all available FRED-SD columns"
         )
+    native_frequency_block_payload = None
+    if policy in _FRED_SD_NATIVE_FREQUENCY_BLOCK_POLICIES:
+        native_frequency_block_payload = _fred_sd_native_frequency_blocks_payload(
+            frame=frame,
+            present_fred_sd_columns=present_fred_sd_columns,
+            native_by_column=native_by_column,
+        )
+    mixed_frequency_model_adapter = None
+    if policy == "mixed_frequency_model_adapter":
+        mixed_frequency_model_adapter = {
+            "schema_version": _FRED_SD_MIXED_FREQUENCY_MODEL_ADAPTER_CONTRACT_VERSION,
+            "contract_version": _FRED_SD_MIXED_FREQUENCY_MODEL_ADAPTER_CONTRACT_VERSION,
+            "owner_layer": "3_training",
+            "adapter_kind": "registered_custom_model",
+            "input_payload_contract": _FRED_SD_NATIVE_FREQUENCY_BLOCK_PAYLOAD_CONTRACT_VERSION,
+            "runtime_rule": (
+                "Layer 2 emits native-frequency blocks; Layer 3 must use a registered "
+                "custom model that consumes context['auxiliary_payloads']."
+            ),
+        }
+
+    report_payload = {
+        "schema_version": _FRED_SD_MIXED_FREQUENCY_REPRESENTATION_CONTRACT_VERSION,
+        "contract_version": _FRED_SD_MIXED_FREQUENCY_REPRESENTATION_CONTRACT_VERSION,
+        "owner_layer": "2_preprocessing",
+        "policy": policy,
+        "representation_family": (
+            "native_frequency_blocks"
+            if policy in _FRED_SD_NATIVE_FREQUENCY_BLOCK_POLICIES
+            else "calendar_aligned_tabular_frame"
+        ),
+        "target_frequency": target_frequency,
+        "source_series_metadata_contract": (
+            None if metadata_report is None else metadata_report.get("contract_version")
+        ),
+        "source_frequency_report_contract": _FRED_SD_FREQUENCY_REPORT_CONTRACT_VERSION,
+        "selected_fred_sd_column_count": int(len(present_fred_sd_columns)),
+        "kept_fred_sd_column_count": int(len(kept_fred_sd_columns)),
+        "dropped_fred_sd_column_count": int(len(drop_columns)),
+        "kept_fred_sd_columns": kept_fred_sd_columns,
+        "dropped_fred_sd_columns": [str(column) for column in drop_columns],
+        "drop_reasons": drop_reasons,
+        "dropped_by_native_frequency": dict(sorted(dropped_by_native_frequency.items())),
+        "non_fred_sd_column_count": non_fred_sd_column_count,
+    }
+    if native_frequency_block_payload is not None:
+        report_payload["native_frequency_block_payload"] = native_frequency_block_payload
+    if mixed_frequency_model_adapter is not None:
+        report_payload["mixed_frequency_model_adapter"] = mixed_frequency_model_adapter
 
     _append_frame_report(
         frame,
         "fred_sd_mixed_frequency_representation",
-        {
-            "schema_version": _FRED_SD_MIXED_FREQUENCY_REPRESENTATION_CONTRACT_VERSION,
-            "contract_version": _FRED_SD_MIXED_FREQUENCY_REPRESENTATION_CONTRACT_VERSION,
-            "owner_layer": "2_preprocessing",
-            "policy": policy,
-            "target_frequency": target_frequency,
-            "source_series_metadata_contract": (
-                None if metadata_report is None else metadata_report.get("contract_version")
-            ),
-            "source_frequency_report_contract": _FRED_SD_FREQUENCY_REPORT_CONTRACT_VERSION,
-            "selected_fred_sd_column_count": int(len(present_fred_sd_columns)),
-            "kept_fred_sd_column_count": int(len(kept_fred_sd_columns)),
-            "dropped_fred_sd_column_count": int(len(drop_columns)),
-            "kept_fred_sd_columns": kept_fred_sd_columns,
-            "dropped_fred_sd_columns": [str(column) for column in drop_columns],
-            "drop_reasons": drop_reasons,
-            "dropped_by_native_frequency": dict(sorted(dropped_by_native_frequency.items())),
-            "non_fred_sd_column_count": non_fred_sd_column_count,
-        },
+        report_payload,
     )
     transform_codes = {
         str(column): code
@@ -2016,7 +2164,49 @@ def _recipe_for_target(recipe: RecipeSpec, target: str) -> RecipeSpec:
     return replace(recipe, target=target, targets=())
 
 
-def _model_executor_name(model_family: str, feature_runtime_builder: str) -> str:
+def _requires_fred_sd_mixed_frequency_custom_model(recipe: RecipeSpec) -> bool:
+    return (
+        _fred_sd_mixed_frequency_representation_policy(recipe)
+        in _FRED_SD_NATIVE_FREQUENCY_BLOCK_POLICIES
+    )
+
+
+def _validate_fred_sd_mixed_frequency_model_route(recipe: RecipeSpec) -> None:
+    policy = _fred_sd_mixed_frequency_representation_policy(recipe)
+    if policy not in _FRED_SD_NATIVE_FREQUENCY_BLOCK_POLICIES:
+        return
+    feature_runtime_builder = _feature_runtime_builder(recipe)
+    model_family = _model_family(recipe)
+    if feature_runtime_builder != "raw_feature_panel":
+        raise ExecutionError(
+            f"fred_sd_mixed_frequency_representation={policy!r} requires "
+            "feature_runtime_builder='raw_feature_panel'"
+        )
+    if not is_custom_model(model_family):
+        raise ExecutionError(
+            f"fred_sd_mixed_frequency_representation={policy!r} requires a registered "
+            "custom model until built-in mixed-frequency adapters are implemented"
+        )
+    if _forecast_type(recipe) != "direct":
+        raise ExecutionError(
+            f"fred_sd_mixed_frequency_representation={policy!r} currently supports "
+            "forecast_type='direct' only"
+        )
+
+
+def _model_executor_name(model_family: str, feature_runtime_builder: str, recipe: RecipeSpec | None = None) -> str:
+    if recipe is not None and _requires_fred_sd_mixed_frequency_custom_model(recipe):
+        policy = _fred_sd_mixed_frequency_representation_policy(recipe)
+        if is_custom_model(model_family):
+            suffix = (
+                "fred_sd_mixed_frequency_model_adapter_v1"
+                if policy == "mixed_frequency_model_adapter"
+                else "fred_sd_native_frequency_block_payload_v1"
+            )
+            return f"custom_model:{model_family}:{suffix}"
+        raise ExecutionError(
+            f"fred_sd_mixed_frequency_representation={policy!r} requires a registered custom model"
+        )
     if feature_runtime_builder == "autoreg_lagged_target":
         if is_custom_model(model_family):
             return f"custom_model:{model_family}:autoreg_lagged_target_v0"
@@ -2089,7 +2279,9 @@ def _model_spec(recipe: RecipeSpec) -> dict[str, object]:
         "feature_runtime_builder": runtime_feature_builder,
         "feature_runtime": _feature_runtime_name(recipe),
         "feature_dispatch_source": "layer2_feature_blocks",
-        "executor_name": _model_executor_name(model_family, runtime_feature_builder),
+        "executor_name": _model_executor_name(model_family, runtime_feature_builder, recipe),
+        "fred_sd_mixed_frequency_representation": _fred_sd_mixed_frequency_representation_policy(recipe),
+        "fred_sd_mixed_frequency_custom_model_required": _requires_fred_sd_mixed_frequency_custom_model(recipe),
         "framework": recipe.stage0.fixed_design.sample_split,
         "lag_selection": _LAG_SELECTION if model_family == "ar" else "fixed_lag_feature_builder",
         "max_ar_lag": _max_ar_lag(recipe),
@@ -2821,6 +3013,7 @@ def _layer1_official_frame_contract(
 def _get_model_executor(recipe: RecipeSpec):
     model_family = _model_family(recipe)
     feature_runtime_builder = _feature_runtime_builder(recipe)
+    _validate_fred_sd_mixed_frequency_model_route(recipe)
     if is_custom_model(model_family) and feature_runtime_builder == "autoreg_lagged_target":
         return _run_custom_autoreg_executor
     if is_custom_model(model_family) and feature_runtime_builder == "raw_feature_panel":
@@ -4936,11 +5129,25 @@ def _build_raw_panel_representation(
     block_roles = fit_state_block_roles or {
         name: _raw_panel_feature_role(name) for name in feature_names
     }
+    fred_sd_block_roles = _fred_sd_feature_block_roles(feature_names, frame)
+    block_roles.update(fred_sd_block_roles)
     block_order = (
         tuple(dict.fromkeys(block_roles.get(name, _raw_panel_feature_role(name)) for name in feature_names))
         if fit_state_block_roles is not None
         else _raw_panel_block_order(recipe, fit_state)
     )
+    if fred_sd_block_roles:
+        block_order = tuple(
+            dict.fromkeys(
+                [
+                    *block_order,
+                    *[role for role in fred_sd_block_roles.values()],
+                ]
+            )
+        )
+    fred_sd_auxiliary_payloads = _fred_sd_representation_auxiliary_payloads(frame)
+    alignment = _raw_panel_alignment(recipe, spec=spec, fit_state=fit_state)
+    alignment.update(_fred_sd_representation_alignment_payload(frame))
     return Layer2Representation(
         Z_train=np.asarray(X_train, dtype=float),
         y_train=np.asarray(y_train, dtype=float),
@@ -4949,7 +5156,8 @@ def _build_raw_panel_representation(
         block_order=block_order,
         block_roles=block_roles,
         fit_state=tuple(dict(payload) for payload in fit_state),
-        alignment=_raw_panel_alignment(recipe, spec=spec, fit_state=fit_state),
+        alignment=alignment,
+        auxiliary_payloads=fred_sd_auxiliary_payloads,
         leakage_contract=_raw_panel_leakage_contract(spec),
         feature_builder=_feature_runtime_builder(recipe),
         feature_runtime_builder=_feature_runtime_builder(recipe),
@@ -5569,6 +5777,7 @@ def _layer2_representation_tuning_payload(representation: Layer2Representation) 
         "layer2_block_order": list(representation.block_order),
         "layer2_block_roles": dict(representation.block_roles),
         "layer2_alignment": dict(representation.alignment),
+        "layer2_auxiliary_payloads": dict(representation.auxiliary_payloads),
         "layer2_leakage_contract": representation.leakage_contract,
     }
     if representation.latest_fit_state is not None:
@@ -9502,6 +9711,16 @@ def execute_recipe(
         if isinstance(fred_sd_mixed_frequency_representation_report, Mapping)
         else None
     )
+    fred_sd_native_frequency_block_payload = (
+        fred_sd_mixed_frequency_representation_report.get("native_frequency_block_payload")
+        if isinstance(fred_sd_mixed_frequency_representation_report, Mapping)
+        else None
+    )
+    fred_sd_mixed_frequency_model_adapter = (
+        fred_sd_mixed_frequency_representation_report.get("mixed_frequency_model_adapter")
+        if isinstance(fred_sd_mixed_frequency_representation_report, Mapping)
+        else None
+    )
     manifest = {
         "recipe_id": recipe.recipe_id,
         "run_id": run.run_id,
@@ -9549,6 +9768,18 @@ def execute_recipe(
         ),
         "fred_sd_mixed_frequency_representation_file": None,
         "fred_sd_mixed_frequency_representation_summary": fred_sd_mixed_frequency_representation_summary,
+        "fred_sd_native_frequency_block_payload_contract": (
+            fred_sd_native_frequency_block_payload.get("contract_version")
+            if isinstance(fred_sd_native_frequency_block_payload, Mapping)
+            else None
+        ),
+        "fred_sd_native_frequency_block_payload_file": None,
+        "fred_sd_mixed_frequency_model_adapter_contract": (
+            fred_sd_mixed_frequency_model_adapter.get("contract_version")
+            if isinstance(fred_sd_mixed_frequency_model_adapter, Mapping)
+            else None
+        ),
+        "fred_sd_mixed_frequency_model_adapter_file": None,
         "execution_architecture": _EXECUTION_ARCHITECTURE,
         "forecast_engine": _model_spec(recipe)["executor_name"],
         "model_spec": _model_spec(recipe),
@@ -9685,6 +9916,32 @@ def execute_recipe(
             file_format="json",
         )
         manifest["fred_sd_mixed_frequency_representation_file"] = "fred_sd_mixed_frequency_representation.json"
+
+    if isinstance(fred_sd_native_frequency_block_payload, Mapping):
+        _write_json(
+            run_dir / "fred_sd_native_frequency_block_payload.json",
+            dict(fred_sd_native_frequency_block_payload),
+        )
+        _record_artifact(
+            "fred_sd_native_frequency_block_payload.json",
+            artifact_type="fred_sd_native_frequency_block_payload",
+            layer="2_preprocessing",
+            file_format="json",
+        )
+        manifest["fred_sd_native_frequency_block_payload_file"] = "fred_sd_native_frequency_block_payload.json"
+
+    if isinstance(fred_sd_mixed_frequency_model_adapter, Mapping):
+        _write_json(
+            run_dir / "fred_sd_mixed_frequency_model_adapter.json",
+            dict(fred_sd_mixed_frequency_model_adapter),
+        )
+        _record_artifact(
+            "fred_sd_mixed_frequency_model_adapter.json",
+            artifact_type="fred_sd_mixed_frequency_model_adapter",
+            layer="3_training",
+            file_format="json",
+        )
+        manifest["fred_sd_mixed_frequency_model_adapter_file"] = "fred_sd_mixed_frequency_model_adapter.json"
 
     # Provenance injection based on provenance_fields level
     if provenance_fields in ('standard', 'full'):

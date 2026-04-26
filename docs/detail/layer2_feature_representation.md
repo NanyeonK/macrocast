@@ -124,14 +124,15 @@ and writes `fred_sd_mixed_frequency_representation_v1` at runtime.
 | `calendar_aligned_frame` | operational | Default. Keep selected FRED-SD columns on the recipe target calendar after generic frequency conversion. |
 | `drop_unknown_native_frequency` | operational | Drop FRED-SD columns whose inferred native frequency is `unknown`. |
 | `drop_non_target_native_frequency` | operational | Keep only FRED-SD columns whose inferred native frequency matches the recipe target frequency. |
-| `native_frequency_block_payload` | planned | Future separate native-frequency block payload for feature builders. |
-| `mixed_frequency_model_adapter` | planned | Future adapter path for MIDAS/state-space style models. |
+| `native_frequency_block_payload` | operational narrow | Emit `fred_sd_native_frequency_block_payload_v1` in the Layer 2 representation context. Requires FRED-SD data, `feature_builder=raw_feature_panel`, `forecast_type=direct`, and a registered custom Layer 3 model. |
+| `mixed_frequency_model_adapter` | operational narrow | Emit the native-frequency block payload plus `fred_sd_mixed_frequency_model_adapter_v1` for a registered custom mixed-frequency model adapter. Built-in MIDAS/state-space estimators remain future. |
 
 This is an input-panel shaping decision, not a model-family choice. Layer 3 may
-later consume native-frequency blocks through compatible models, but the
+consume native-frequency blocks through compatible custom models, but the
 decision to preserve, drop, or split the selected FRED-SD panel belongs here.
 The current runtime blocks any representation that would silently drop a
-FRED-SD target column.
+FRED-SD target column, and it blocks advanced block/adapter routes unless the
+Layer 3 generator is explicitly custom and block-aware.
 
 Operational support is currently narrow:
 

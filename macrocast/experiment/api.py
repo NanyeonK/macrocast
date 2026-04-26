@@ -293,6 +293,16 @@ class Experiment:
         self.fred_sd_mixed_frequency_representation = str(policy)
         return self
 
+    def use_fred_sd_native_frequency_blocks(self) -> "Experiment":
+        """Emit FRED-SD native-frequency block payloads for custom Layer 3 models."""
+
+        return self.use_fred_sd_mixed_frequency_representation("native_frequency_block_payload")
+
+    def use_fred_sd_mixed_frequency_adapter(self) -> "Experiment":
+        """Route FRED-SD native-frequency blocks through a custom mixed-frequency adapter."""
+
+        return self.use_fred_sd_mixed_frequency_representation("mixed_frequency_model_adapter")
+
     def sweep(self, choices: dict[str, Any]) -> "Experiment":
         """Sweep a small set of user-facing aliases.
 

@@ -123,6 +123,8 @@
     const treeModels = asSet(groups.tree_models);
     const linearModels = asSet(groups.linear_models);
     const deepModels = asSet(groups.deep_sequence_models);
+    const builtinModels = asSet(((data.axis_catalog.model_family || {}).allowed_values) || []);
+    const advancedFredSdMixedFrequency = asSet(["native_frequency_block_payload", "mixed_frequency_model_adapter"]);
     const rawPanelBuilders = asSet(groups.raw_panel_builders);
     const hacCompatible = asSet(((data.state_engine.stat_tests || {}).hac_compatible) || []);
     const importanceSplitAxes = asSet(((data.state_engine.importance || {}).split_axes) || []);
@@ -135,6 +137,7 @@
     const featureBuilder = String(selected.feature_builder || "");
     const forecastType = String(selected.forecast_type || "direct");
     const forecastObject = String(selected.forecast_object || "point_mean");
+    const fredSdMixedFrequency = String(selected.fred_sd_mixed_frequency_representation || "calendar_aligned_frame");
     const xPath = String(selected.exogenous_x_path_policy || "unavailable");
     const importance = String(selected.importance_method || "none");
     const importanceMethods = selectedImportanceMethods(data, engineState);
@@ -153,8 +156,16 @@
     if (axisName === "fred_sd_mixed_frequency_representation" && value !== "calendar_aligned_frame" && !hasFredSd) {
       return "fred_sd_mixed_frequency_representation requires dataset to include fred_sd";
     }
+    if (axisName === "fred_sd_mixed_frequency_representation" && advancedFredSdMixedFrequency.has(value)) {
+      if (featureBuilder !== "raw_feature_panel") return "advanced FRED-SD mixed-frequency representation requires a raw-panel feature builder";
+      if (builtinModels.has(model)) return "advanced FRED-SD mixed-frequency representation requires a registered custom model";
+      if (forecastType !== "direct") return "advanced FRED-SD mixed-frequency representation currently supports forecast_type=direct only";
+    }
 
     if (axisName === "feature_builder") {
+      if (advancedFredSdMixedFrequency.has(fredSdMixedFrequency) && value !== "raw_feature_panel") {
+        return "advanced FRED-SD mixed-frequency representation requires a raw-panel feature builder";
+      }
       if (deepModels.has(model)) {
         if (value === "autoreg_lagged_target") return null;
         if (value === "sequence_tensor") return "full multivariate sequence_tensor remains gated; current deep slice is univariate target-history sequence";
@@ -166,6 +177,9 @@
     }
 
     if (axisName === "model_family") {
+      if (advancedFredSdMixedFrequency.has(fredSdMixedFrequency) && builtinModels.has(value)) {
+        return "advanced FRED-SD mixed-frequency representation requires a registered custom model";
+      }
       if (rawPanelBuilders.has(featureBuilder) && value === "ar") return "raw-panel feature builders cannot feed the AR-BIC target-lag generator";
       if (featureBuilder === "sequence_tensor" && !deepModels.has(value)) return "sequence_tensor is reserved for sequence/tensor generators";
       if ((importance === "tree_shap" || importanceMethods.includes("tree_shap")) && !treeModels.has(value)) return "importance_method=tree_shap requires a tree model";
@@ -178,6 +192,9 @@
       if ((value === "interval" || value === "density") && String(selected.target_normalization || "none") !== "none") {
         return "interval/density payload wrappers currently require target_normalization=none";
       }
+    }
+    if (axisName === "forecast_type" && advancedFredSdMixedFrequency.has(fredSdMixedFrequency) && value !== "direct") {
+      return "advanced FRED-SD mixed-frequency representation currently supports forecast_type=direct only";
     }
 
     if (axisName === "importance_method" || importanceSplitAxes.has(axisName)) {

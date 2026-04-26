@@ -127,7 +127,7 @@ Layer 2 FRED-SD follow-up:
 
 | Axis | Values | What it governs |
 |---|---|---|
-| `fred_sd_mixed_frequency_representation` | `calendar_aligned_frame`, `drop_unknown_native_frequency`, `drop_non_target_native_frequency`, planned `native_frequency_block_payload`, planned `mixed_frequency_model_adapter` | Post-Layer-1 FRED-SD panel shaping before representation construction; runtime writes `fred_sd_mixed_frequency_representation.json` |
+| `fred_sd_mixed_frequency_representation` | `calendar_aligned_frame`, `drop_unknown_native_frequency`, `drop_non_target_native_frequency`, operational-narrow `native_frequency_block_payload`, operational-narrow `mixed_frequency_model_adapter` | Post-Layer-1 FRED-SD panel shaping before representation construction; runtime writes `fred_sd_mixed_frequency_representation.json`, and advanced routes write native-frequency block / adapter artifacts for registered custom models |
 
 Moved out of Layer 1:
 

@@ -128,6 +128,7 @@ class Layer2Representation:
     block_roles: dict[str, str] = field(default_factory=dict)
     fit_state: tuple[dict[str, Any], ...] = ()
     alignment: dict[str, Any] = field(default_factory=dict)
+    auxiliary_payloads: dict[str, Any] = field(default_factory=dict)
     leakage_contract: str = "forecast_origin_only"
     feature_builder: str = ""
     feature_runtime_builder: str = ""
@@ -159,6 +160,7 @@ class Layer2Representation:
             "block_order": list(self.block_order),
             "block_roles": dict(self.block_roles),
             "alignment": dict(self.alignment),
+            "auxiliary_payloads": dict(self.auxiliary_payloads),
             "leakage_contract": self.leakage_contract,
             "feature_runtime_builder": self.feature_runtime_builder,
             "legacy_feature_builder": self.legacy_feature_builder,
@@ -177,5 +179,6 @@ class Layer2Representation:
             "block_order": list(self.block_order),
             "block_roles": dict(self.block_roles),
             "alignment": dict(self.alignment),
+            "auxiliary_payloads": dict(self.auxiliary_payloads),
             "leakage_contract": self.leakage_contract,
         }
