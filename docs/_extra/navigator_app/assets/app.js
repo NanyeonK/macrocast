@@ -5,6 +5,7 @@ const state = {
   layerFilter: "all",
   activeAxis: null,
   engineState: null,
+  loadedSource: null,
 };
 
 const els = {
@@ -22,7 +23,12 @@ const els = {
   replicationList: document.getElementById("replication-list"),
   yamlPreview: document.getElementById("yaml-preview"),
   copyYaml: document.getElementById("copy-yaml"),
+  downloadYaml: document.getElementById("download-yaml"),
+  importYaml: document.getElementById("import-yaml"),
+  importYamlInput: document.getElementById("import-yaml-input"),
   resetPath: document.getElementById("reset-path"),
+  pathSource: document.getElementById("path-source"),
+  resolverPreview: document.getElementById("resolver-preview"),
 };
 
 function escapeHtml(value) {
@@ -38,12 +44,22 @@ function currentSample() {
   return state.data.samples[state.sampleIndex];
 }
 
+function currentSource() {
+  return state.loadedSource || currentSample();
+}
+
 function currentView() {
-  return currentSample().view;
+  return currentSource().view || currentSample().view;
 }
 
 function resetEngineState() {
-  state.engineState = NavigatorStateEngine.createState(state.data, currentSample());
+  state.engineState = NavigatorStateEngine.createStateFromRecipe(state.data, currentSource().recipe || {});
+}
+
+function loadSource(source) {
+  state.loadedSource = source;
+  state.activeAxis = null;
+  resetEngineState();
 }
 
 function allAxes() {
@@ -91,6 +107,9 @@ function renderSummary() {
   els.executionStatus.textContent = selectedDisabled.length ? "browser_blocked" : (Object.keys(state.engineState.edits).length ? "browser_preview" : (preview.execution_status || "-"));
   els.blockedCount.textContent = String(selectedDisabled.length);
   els.disabledCount.textContent = String(liveDisabled || disabled);
+  els.pathSource.textContent = state.loadedSource
+    ? `loaded: ${state.loadedSource.label || state.loadedSource.id}`
+    : `sample: ${currentSample().label}`;
 }
 
 function renderAxisList() {
@@ -163,11 +182,17 @@ function renderReplications() {
   els.replicationList.innerHTML = state.data.replications
     .map((entry) => {
       const outputs = (entry.expected_outputs || []).join(", ");
+      const path = (entry.exact_tree_path || []).join(" | ");
+      const deviations = (entry.deviations_from_original_paper || []).join(" ");
       return `
-        <article class="replication-card">
+        <article class="replication-card" data-replication-card="${escapeHtml(entry.id)}">
           <strong>${escapeHtml(entry.id)}</strong>
+          <p>${escapeHtml(entry.paper_name)}</p>
           <p>${escapeHtml(entry.short_description)}</p>
+          <p><b>Path:</b> ${escapeHtml(path)}</p>
           <p><b>Outputs:</b> ${escapeHtml(outputs)}</p>
+          <p><b>Deviations:</b> ${escapeHtml(deviations)}</p>
+          <button type="button" class="secondary-action" data-replication-id="${escapeHtml(entry.id)}">Load path</button>
         </article>
       `;
     })
@@ -175,7 +200,29 @@ function renderReplications() {
 }
 
 function renderYaml() {
-  els.yamlPreview.textContent = NavigatorStateEngine.recipeYaml(state.data, currentSample(), state.engineState);
+  els.yamlPreview.textContent = NavigatorStateEngine.recipeYaml(state.data, currentSource(), state.engineState);
+}
+
+function renderResolverPreview() {
+  const selectedDisabled = NavigatorStateEngine.selectedDisabledReasons(state.data, state.engineState);
+  const source = currentSource();
+  const filename = `${sanitizeFilename((source.recipe || {}).recipe_id || source.label || "navigator-recipe")}.yaml`;
+  const status = selectedDisabled.length ? "browser_blocked" : (Object.keys(state.engineState.edits).length || state.loadedSource ? "browser_preview" : (currentView().compile_preview || {}).execution_status || "unknown");
+  const blockedHtml = selectedDisabled.length
+    ? selectedDisabled.map((item) => `<div class="rule blocked"><strong>${escapeHtml(item.axis)}=${escapeHtml(item.value)}</strong><p>${escapeHtml(item.reason)}</p></div>`).join("")
+    : `<p class="muted">No selected branch is blocked in the browser state engine.</p>`;
+  const snapshot = !state.loadedSource && !Object.keys(state.engineState.edits).length && currentView().compile_preview
+    ? `<p class="muted">Compiler snapshot: ${escapeHtml(currentView().compile_preview.status || currentView().compile_preview.execution_status || "available")}</p>`
+    : `<p class="muted">Browser preview only. Run the resolver command against the downloaded YAML before execution.</p>`;
+  els.resolverPreview.innerHTML = `
+    <div class="rule">
+      <strong>${escapeHtml(status)}</strong>
+      ${snapshot}
+      <div class="effect">macrocast-navigate resolve ${escapeHtml(filename)}</div>
+      <div class="effect">macrocast-navigate run ${escapeHtml(filename)} --output-root results/${escapeHtml(filename.replace(/\.ya?ml$/, ""))}</div>
+    </div>
+    ${blockedHtml}
+  `;
 }
 
 function render() {
@@ -186,12 +233,48 @@ function render() {
   renderOptions();
   renderCompatibility();
   renderReplications();
+  renderResolverPreview();
   renderYaml();
+}
+
+function sanitizeFilename(value) {
+  return String(value || "navigator-recipe")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "navigator-recipe";
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/yaml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importYamlFile(file) {
+  const text = await file.text();
+  const recipe = NavigatorStateEngine.recipeFromYaml(text);
+  loadSource({
+    id: `imported:${file.name}`,
+    label: (recipe && recipe.recipe_id) || file.name,
+    path: file.name,
+    recipe,
+    recipe_yaml: text.endsWith("\n") ? text : `${text}\n`,
+    source_type: "imported_yaml",
+  });
+  render();
 }
 
 function bindEvents() {
   els.sampleSelect.addEventListener("change", (event) => {
     state.sampleIndex = Number(event.target.value);
+    state.loadedSource = null;
     state.activeAxis = null;
     resetEngineState();
     render();
@@ -229,6 +312,45 @@ function bindEvents() {
   els.resetPath.addEventListener("click", () => {
     resetEngineState();
     render();
+  });
+
+  els.replicationList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-replication-id]");
+    if (!button) return;
+    const entry = state.data.replications.find((item) => item.id === button.dataset.replicationId);
+    if (!entry || !entry.recipe) return;
+    loadSource({
+      id: entry.id,
+      label: entry.id,
+      path: entry.id,
+      recipe: entry.recipe,
+      recipe_yaml: entry.recipe_yaml,
+      source_type: "replication",
+      replication: entry,
+    });
+    render();
+  });
+
+  els.downloadYaml.addEventListener("click", () => {
+    const source = currentSource();
+    const filename = `${sanitizeFilename((source.recipe || {}).recipe_id || source.label || "navigator-recipe")}.yaml`;
+    downloadText(filename, els.yamlPreview.textContent);
+  });
+
+  els.importYaml.addEventListener("click", () => {
+    els.importYamlInput.click();
+  });
+
+  els.importYamlInput.addEventListener("change", async () => {
+    const file = els.importYamlInput.files && els.importYamlInput.files[0];
+    if (!file) return;
+    try {
+      await importYamlFile(file);
+    } catch (error) {
+      els.resolverPreview.innerHTML = `<div class="rule blocked"><strong>import_failed</strong><p>${escapeHtml(error.message)}</p></div>`;
+    } finally {
+      els.importYamlInput.value = "";
+    }
   });
 
   els.copyYaml.addEventListener("click", async () => {

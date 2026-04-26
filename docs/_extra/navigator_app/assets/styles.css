@@ -67,6 +67,12 @@ h2 {
   gap: 10px;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .top-actions a,
 .section-heading button,
 .secondary-action {
@@ -77,6 +83,7 @@ h2 {
   color: var(--text);
   font-size: 14px;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .layout {
@@ -109,6 +116,13 @@ label {
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
+}
+
+.source-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 select,
@@ -311,6 +325,10 @@ input {
   border-radius: 7px;
   padding: 10px;
   margin-bottom: 8px;
+}
+
+.replication-card button {
+  margin-top: 10px;
 }
 
 .rule.blocked {

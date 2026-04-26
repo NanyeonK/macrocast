@@ -22,7 +22,12 @@
       <section class="panel controls" aria-label="Navigator controls">
         <label for="sample-select">Recipe path</label>
         <select id="sample-select"></select>
+        <p id="path-source" class="source-note">sample: -</p>
         <button id="reset-path" type="button" class="secondary-action">Reset path</button>
+        <div class="action-row">
+          <button id="import-yaml" type="button" class="secondary-action">Import YAML</button>
+          <input id="import-yaml-input" type="file" accept=".yaml,.yml,text/yaml,text/plain" hidden />
+        </div>
 
         <label for="axis-search">Filter axes</label>
         <input id="axis-search" type="search" placeholder="model, tcode, forecast..." />
@@ -82,8 +87,18 @@
 
         <section class="panel">
           <div class="section-heading compact">
+            <h2>Resolver Preview</h2>
+          </div>
+          <div id="resolver-preview"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading compact">
             <h2>YAML Preview</h2>
-            <button id="copy-yaml" type="button">Copy</button>
+            <div class="action-row">
+              <button id="copy-yaml" type="button">Copy</button>
+              <button id="download-yaml" type="button">Download</button>
+            </div>
           </div>
           <pre id="yaml-preview" class="code-block"></pre>
         </section>

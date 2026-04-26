@@ -30,8 +30,29 @@
   }
 
   function createState(data, sample) {
+    return createStateFromRecipe(data, (sample || {}).recipe || {});
+  }
+
+  function extractRecipeSelections(data, recipe) {
+    const knownAxes = new Set([
+      ...Object.keys(data.axis_catalog || {}),
+      ...Object.keys(data.state_engine.default_selections || {}),
+    ]);
+    const selections = {};
+    Object.values(((recipe || {}).path) || {}).forEach((layerSpec) => {
+      Object.entries((layerSpec || {}).fixed_axes || {}).forEach(([axisName, value]) => {
+        if (knownAxes.has(axisName)) selections[axisName] = value;
+      });
+      Object.entries((layerSpec || {}).leaf_config || {}).forEach(([axisName, value]) => {
+        if (knownAxes.has(axisName)) selections[axisName] = value;
+      });
+    });
+    return selections;
+  }
+
+  function createStateFromRecipe(data, recipe) {
     const defaults = data.state_engine.default_selections || {};
-    const selected = (((sample || {}).view || {}).compatibility || {}).selected || {};
+    const selected = extractRecipeSelections(data, recipe);
     return {
       selections: { ...defaults, ...selected },
       edits: {},
@@ -333,10 +354,119 @@
     }
   }
 
-  function recipeWithEdits(data, sample, engineState) {
-    const recipe = clone(sample.recipe || {});
+  function recipeWithEdits(data, source, engineState) {
+    const recipe = clone((source || {}).recipe || {});
     Object.entries(engineState.edits).forEach(([axisName, value]) => applyEditToRecipe(data, recipe, axisName, value));
     return recipe;
+  }
+
+  function stripComment(line) {
+    let quote = null;
+    for (let idx = 0; idx < line.length; idx += 1) {
+      const ch = line[idx];
+      if ((ch === '"' || ch === "'") && line[idx - 1] !== "\\") {
+        quote = quote === ch ? null : (quote || ch);
+      }
+      if (ch === "#" && !quote && (idx === 0 || /\s/.test(line[idx - 1]))) return line.slice(0, idx);
+    }
+    return line;
+  }
+
+  function yamlLines(text) {
+    return String(text || "")
+      .replace(/\t/g, "  ")
+      .split(/\r?\n/)
+      .map((raw) => {
+        const clean = stripComment(raw).replace(/\s+$/, "");
+        return { indent: clean.length - clean.trimStart().length, text: clean.trimStart() };
+      })
+      .filter((line) => line.text);
+  }
+
+  function yamlScalarToValue(value) {
+    const text = String(value).trim();
+    if (text === "null" || text === "~") return null;
+    if (text === "true") return true;
+    if (text === "false") return false;
+    if (text === "[]") return [];
+    if (text === "{}") return {};
+    if (/^-?\d+(\.\d+)?$/.test(text)) return Number(text);
+    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+      try {
+        return text.startsWith('"') ? JSON.parse(text) : text.slice(1, -1).replaceAll("''", "'");
+      } catch {
+        return text.slice(1, -1);
+      }
+    }
+    return text;
+  }
+
+  function parseYamlKeyValue(text) {
+    const idx = text.indexOf(":");
+    if (idx < 0) throw new Error(`Cannot parse YAML line: ${text}`);
+    return [text.slice(0, idx).trim(), text.slice(idx + 1).trim()];
+  }
+
+  function parseYamlBlock(lines, start, indent) {
+    let index = start;
+    let out = null;
+    while (index < lines.length) {
+      const line = lines[index];
+      if (line.indent < indent) break;
+      if (line.indent > indent) throw new Error(`Unexpected YAML indentation near: ${line.text}`);
+
+      if (line.text.startsWith("- ")) {
+        if (out === null) out = [];
+        if (!Array.isArray(out)) throw new Error("Cannot mix YAML mapping and sequence at the same indentation");
+        const itemText = line.text.slice(2).trim();
+        if (!itemText) {
+          const childIndent = lines[index + 1] ? lines[index + 1].indent : indent + 2;
+          const child = parseYamlBlock(lines, index + 1, childIndent);
+          out.push(child.value);
+          index = child.index;
+        } else if (itemText.includes(":") && !itemText.startsWith('"') && !itemText.startsWith("'")) {
+          const [key, value] = parseYamlKeyValue(itemText);
+          const item = {};
+          item[key] = value ? yamlScalarToValue(value) : {};
+          out.push(item);
+          index += 1;
+        } else {
+          out.push(yamlScalarToValue(itemText));
+          index += 1;
+        }
+        continue;
+      }
+
+      if (out === null) out = {};
+      if (Array.isArray(out)) throw new Error("Cannot mix YAML sequence and mapping at the same indentation");
+      const [key, value] = parseYamlKeyValue(line.text);
+      if (value) {
+        out[key] = yamlScalarToValue(value);
+        index += 1;
+      } else {
+        const next = lines[index + 1];
+        if (!next || next.indent < indent || (next.indent === indent && !next.text.startsWith("- "))) {
+          out[key] = {};
+          index += 1;
+        } else {
+          const childIndent = next.text.startsWith("- ") && next.indent === indent ? indent : next.indent;
+          const child = parseYamlBlock(lines, index + 1, childIndent);
+          out[key] = child.value;
+          index = child.index;
+        }
+      }
+    }
+    return { value: out === null ? {} : out, index };
+  }
+
+  function recipeFromYaml(text) {
+    const lines = yamlLines(text);
+    if (!lines.length) throw new Error("YAML is empty");
+    const parsed = parseYamlBlock(lines, 0, lines[0].indent).value;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !parsed.path) {
+      throw new Error("YAML does not look like a macrocast recipe: missing path");
+    }
+    return parsed;
   }
 
   function yamlScalar(value) {
@@ -368,18 +498,23 @@
     return `${pad}${yamlScalar(value)}`;
   }
 
-  function recipeYaml(data, sample, engineState) {
-    if (!Object.keys(engineState.edits).length) return sample.recipe_yaml || "";
-    return `${toYaml(recipeWithEdits(data, sample, engineState))}\n`;
+  function recipeYaml(data, source, engineState) {
+    if (!Object.keys(engineState.edits).length && (source || {}).recipe_yaml) {
+      const text = source.recipe_yaml;
+      return text.endsWith("\n") ? text : `${text}\n`;
+    }
+    return `${toYaml(recipeWithEdits(data, source, engineState))}\n`;
   }
 
   const api = {
     createState,
+    createStateFromRecipe,
     buildTree,
     selectOption,
     selectedDisabledReasons,
     compatibility,
     recipeWithEdits,
+    recipeFromYaml,
     recipeYaml,
   };
 
