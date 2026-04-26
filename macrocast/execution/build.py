@@ -1072,6 +1072,10 @@ def _combine_raw_results(dataset: str, target_frequency: str, components):
             "dataset": dataset,
             "components": [name for name, _ in converted_components],
             "frequency": target_frequency,
+            "component_source_contracts": [
+                _component_source_contract(component_name, result)
+                for component_name, result in converted_components
+            ],
         },
         "components": component_reports,
     }
@@ -2132,6 +2136,100 @@ def _raw_artifact_payload(raw_result) -> dict[str, object]:
     }
 
 
+_SOURCE_AVAILABILITY_CONTRACT_VERSION = "source_availability_contract_v1"
+
+
+def _source_url_kind(source_url: object) -> str | None:
+    if source_url is None:
+        return None
+    value = str(source_url)
+    if value.startswith(("http://", "https://")):
+        return "remote_url"
+    if value:
+        return "local_path"
+    return None
+
+
+def _component_source_contract(component_name: str, raw_result) -> dict[str, object]:
+    metadata = _raw_dataset_metadata_payload(raw_result)
+    artifact = _raw_artifact_payload(raw_result)
+    source_kind = _source_url_kind(artifact.get("source_url"))
+    return {
+        "component": component_name,
+        "dataset": metadata.get("dataset"),
+        "source_family": metadata.get("source_family"),
+        "frequency": metadata.get("frequency"),
+        "version_mode": metadata.get("version_mode"),
+        "vintage": metadata.get("vintage"),
+        "data_through": metadata.get("data_through"),
+        "support_tier": metadata.get("support_tier"),
+        "source_url": artifact.get("source_url"),
+        "source_url_kind": source_kind,
+        "uses_local_source": source_kind == "local_path",
+        "uses_remote_source": source_kind == "remote_url",
+        "artifact_local_path": artifact.get("local_path"),
+        "artifact_file_format": artifact.get("file_format"),
+        "artifact_file_sha256": artifact.get("file_sha256"),
+        "artifact_file_size_bytes": artifact.get("file_size_bytes"),
+        "artifact_cache_hit": artifact.get("cache_hit"),
+    }
+
+
+def _source_availability_contract(
+    raw_result,
+    recipe: RecipeSpec,
+    *,
+    index_start: str | None,
+    index_end: str | None,
+    metadata: Mapping[str, object],
+    artifact_payload: Mapping[str, object],
+) -> dict[str, object]:
+    data_reports = _data_reports(raw_result)
+    combined_dataset = data_reports.get("combined_dataset", {})
+    component_source_contracts: list[object] = []
+    if isinstance(combined_dataset, Mapping):
+        components = combined_dataset.get("component_source_contracts", [])
+        if isinstance(components, list):
+            component_source_contracts = components
+    source_kind = _source_url_kind(artifact_payload.get("source_url"))
+    source_adapter = (
+        recipe.data_task_spec.get("source_adapter")
+        or recipe.data_task_spec.get("dataset_source")
+        or recipe.raw_dataset
+    )
+    return {
+        "schema_version": _SOURCE_AVAILABILITY_CONTRACT_VERSION,
+        "contract_version": _SOURCE_AVAILABILITY_CONTRACT_VERSION,
+        "owner_layer": "1_data_task",
+        "raw_dataset": recipe.raw_dataset,
+        "dataset": metadata.get("dataset", recipe.raw_dataset),
+        "source_adapter": source_adapter,
+        "source_family": metadata.get("source_family"),
+        "frequency": metadata.get("frequency"),
+        "version_mode": metadata.get("version_mode"),
+        "vintage": metadata.get("vintage"),
+        "data_vintage_requested": recipe.data_vintage,
+        "data_through": metadata.get("data_through"),
+        "support_tier": metadata.get("support_tier"),
+        "observed_data_window": {
+            "index_start": index_start,
+            "index_end": index_end,
+            "data_through": metadata.get("data_through"),
+        },
+        "source_url": artifact_payload.get("source_url"),
+        "source_url_kind": source_kind,
+        "uses_local_source": source_kind == "local_path",
+        "uses_remote_source": source_kind == "remote_url",
+        "artifact_local_path": artifact_payload.get("local_path"),
+        "artifact_file_format": artifact_payload.get("file_format"),
+        "artifact_file_sha256": artifact_payload.get("file_sha256"),
+        "artifact_file_size_bytes": artifact_payload.get("file_size_bytes"),
+        "artifact_cache_hit": artifact_payload.get("cache_hit"),
+        "component_count": len(component_source_contracts) or 1,
+        "component_source_contracts": component_source_contracts,
+    }
+
+
 def _transform_code_coverage(transform_codes: Mapping[str, int], columns: Sequence[str]) -> dict[str, object]:
     tcode_columns = {str(col) for col in transform_codes}
     data_columns = [str(col) for col in columns if str(col).lower() != "date"]
@@ -2174,6 +2272,14 @@ def _layer1_official_frame_contract(
     missing_availability = _data_task_axis(recipe, "missing_availability")
     transform_code_coverage = _transform_code_coverage(transform_codes, columns)
     artifact_payload = _raw_artifact_payload(raw_result)
+    source_availability_contract = _source_availability_contract(
+        raw_result,
+        recipe,
+        index_start=index_start,
+        index_end=index_end,
+        metadata=metadata,
+        artifact_payload=artifact_payload,
+    )
     information_set_contract = {
         "version_mode": version_mode,
         "vintage": vintage,
@@ -2184,6 +2290,7 @@ def _layer1_official_frame_contract(
         "data_vintage_requested": recipe.data_vintage,
         "uses_vintage_source": version_mode == "vintage",
         "raw_artifact_sha256": artifact_payload.get("file_sha256"),
+        "source_availability_contract": source_availability_contract["contract_version"],
     }
     payload = {
         "schema_version": LAYER1_OFFICIAL_FRAME_CONTRACT_VERSION,
@@ -2230,6 +2337,7 @@ def _layer1_official_frame_contract(
         "min_train_size_rule": _training_axis(recipe, "min_train_size"),
         "training_start_rule": _training_axis(recipe, "training_start_rule"),
         "information_set_contract": information_set_contract,
+        "source_availability_contract": source_availability_contract,
         "data_task_spec": dict(getattr(recipe, "data_task_spec", {}) or {}),
         "dataset_metadata": metadata,
         "raw_artifact": artifact_payload,
@@ -8927,6 +9035,9 @@ def execute_recipe(
             "frame_shape": layer1_official_frame_contract["frame_shape"],
             "index_start": layer1_official_frame_contract["index_start"],
             "index_end": layer1_official_frame_contract["index_end"],
+            "source_availability_contract": layer1_official_frame_contract["source_availability_contract"]["contract_version"],
+            "source_url_kind": layer1_official_frame_contract["source_availability_contract"]["source_url_kind"],
+            "artifact_cache_hit": layer1_official_frame_contract["source_availability_contract"]["artifact_cache_hit"],
             "target_columns_available": layer1_official_frame_contract["target_columns_available"],
             "official_transform_policy": layer1_official_frame_contract["official_transform_policy"],
             "official_transform_scope": layer1_official_frame_contract["official_transform_scope"],

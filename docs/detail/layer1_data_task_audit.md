@@ -145,6 +145,11 @@ record the compile-time input contracts discovered during the Layer 1 audit.
 
 ### 1.5 Data Handling Policies
 
+- `layer1_official_frame_v1` now includes
+  `source_availability_contract_v1`. It records requested dataset, source
+  adapter, version mode, requested vintage, actual vintage, data-through,
+  observed frame window, local-vs-remote source kind, artifact SHA/size/cache
+  status, and component source contracts when a composite dataset is loaded.
 - `missing_availability=zero_fill_before_start` is the default policy in the compiler and public experiment defaults.
 - `zero_fill_before_start` is sample-period aware: predictor leading missing values are zero-filled, fully missing predictors are zero-filled with warnings, predictor mid-sample missing values are reported, target leading missing values are reported, and target mid-sample missing values block execution.
 - `missing_availability=x_impute_only` requires `leaf_config.x_imputation` in `{mean, median, ffill, bfill}`.

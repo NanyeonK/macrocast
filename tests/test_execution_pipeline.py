@@ -235,6 +235,29 @@ def test_execute_recipe_records_layer1_official_frame_contract(tmp_path: Path) -
     assert contract["variable_universe"] == "all_variables"
     assert contract["dataset_metadata"]["dataset"] == "fred_md"
     assert contract["raw_artifact"]["local_path"]
+    source_contract = contract["source_availability_contract"]
+    assert source_contract["contract_version"] == "source_availability_contract_v1"
+    assert source_contract["raw_dataset"] == "fred_md"
+    assert source_contract["dataset"] == "fred_md"
+    assert source_contract["source_adapter"] == "fred_md"
+    assert source_contract["version_mode"] == "current"
+    assert source_contract["vintage"] is None
+    assert source_contract["data_vintage_requested"] is None
+    assert source_contract["data_through"] == contract["data_through"]
+    assert source_contract["observed_data_window"] == {
+        "index_start": contract["index_start"],
+        "index_end": contract["index_end"],
+        "data_through": contract["data_through"],
+    }
+    assert source_contract["source_url_kind"] == "local_path"
+    assert source_contract["uses_local_source"] is True
+    assert source_contract["uses_remote_source"] is False
+    assert source_contract["artifact_file_sha256"] == contract["raw_artifact"]["file_sha256"]
+    assert source_contract["artifact_file_size_bytes"] == contract["raw_artifact"]["file_size_bytes"]
+    assert source_contract["component_count"] == 1
+    assert source_contract["component_source_contracts"] == []
+    assert manifest["layer1_official_frame_summary"]["source_availability_contract"] == "source_availability_contract_v1"
+    assert manifest["layer1_official_frame_summary"]["source_url_kind"] == "local_path"
     assert "layer1_official_frame.json" in {
         item["path"] for item in artifact_manifest["artifacts"] if item["artifact_type"] == "layer1_official_frame"
     }
@@ -277,7 +300,17 @@ def test_layer1_official_frame_contract_records_local_vintage_evidence(tmp_path:
         "data_vintage_requested": "2020-01",
         "uses_vintage_source": True,
         "raw_artifact_sha256": contract["raw_artifact"]["file_sha256"],
+        "source_availability_contract": "source_availability_contract_v1",
     }
+    source_contract = contract["source_availability_contract"]
+    assert source_contract["contract_version"] == "source_availability_contract_v1"
+    assert source_contract["version_mode"] == "vintage"
+    assert source_contract["vintage"] == "2020-01"
+    assert source_contract["data_vintage_requested"] == "2020-01"
+    assert source_contract["uses_local_source"] is True
+    assert source_contract["source_url_kind"] == "local_path"
+    assert source_contract["artifact_file_sha256"] == contract["raw_artifact"]["file_sha256"]
+    assert source_contract["observed_data_window"]["index_end"] == contract["index_end"]
     coverage = contract["transform_code_coverage"]
     assert coverage["data_column_count"] == contract["column_count"]
     assert coverage["transform_code_column_count"] == 4

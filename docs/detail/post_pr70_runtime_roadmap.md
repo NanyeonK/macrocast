@@ -109,3 +109,7 @@ Implemented first slice:
 - `layer1_official_frame_v1` records `transform_code_coverage`;
 - local vintage FRED-MD execution is covered by a regression test without live
   network dependency.
+- `layer1_official_frame_v1` records `source_availability_contract_v1`;
+- current and vintage local-source FRED-MD execution now expose source kind,
+  artifact SHA/size/cache evidence, requested vintage, actual vintage, and the
+  observed data window without live network dependency.
