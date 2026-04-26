@@ -49,8 +49,8 @@ researcher could choose. They should not be conflated.
 | policy | unit of decision | what it does | benefit | risk | macrocast status |
 |---|---|---|---|---|---|
 | National-analog transfer | SD variable | If an SD variable is a state version of a national FRED-MD/QD object, use the national official t-code analog and apply it to every state. | Anchored to official MD/QD source metadata; keeps state panels comparable. | May not maximize stationarity for every state; weak for variables without direct national analogs. | Current opt-in `sd-analog-v0.1`, `official=false`. |
-| Variable-global empirical | SD variable | Search candidate codes on all states and select one code per SD variable using state/aggregate diagnostics. | Targets stationarity while keeping one transform per cross-state panel. | Can disagree with official national analog semantics; sample/vintage dependent. | Research-only, not runtime default. |
-| State-variable empirical | SD variable x state | Search candidate codes independently for each state series, for example `UR_CA` and `UR_TX` may differ. | Maximizes stationarity diagnostics column by column. | Breaks cross-state comparability, can overfit small/state-specific samples, and may change by vintage. | Future explicit research override only; not supported by default runtime. |
+| Variable-global empirical | SD variable | Search candidate codes on all states and select one code per SD variable using state/aggregate diagnostics. | Targets stationarity while keeping one transform per cross-state panel. | Can disagree with official national analog semantics; sample/vintage dependent. | Explicit opt-in `sd-variable-global-stationarity-v0.1`, `official=false`. |
+| State-variable empirical | SD variable x state | Search candidate codes independently for each state series, for example `UR_CA` and `UR_TX` may differ. | Maximizes stationarity diagnostics column by column. | Breaks cross-state comparability, can overfit small/state-specific samples, and may change by vintage. | Explicit override `sd-state-series-stationarity-override-v0.1`, `official=false`; user must provide the audited column map. |
 
 Recommended default for package runtime remains:
 
@@ -59,6 +59,23 @@ Recommended default for package runtime remains:
 3. When opting into FRED-SD, use the reviewed national-analog map first.
 4. Treat variable-global or state-variable empirical t-codes as a separate
    research design, with manifest evidence and audit artifacts.
+
+Runtime opt-ins:
+
+```python
+# National-analog reviewed policy.
+exp.use_sd_inferred_tcodes()
+
+# Empirical stationarity policy: one code per SD variable, shared across states.
+exp.use_sd_empirical_tcodes(unit="variable_global")
+
+# Empirical stationarity override: one explicit code per selected state column.
+exp.use_sd_empirical_tcodes(
+    unit="state_series",
+    code_map={"UR_CA": 2, "UR_TX": 5},
+    audit_uri="artifacts/sd_state_series_audit.csv",
+)
+```
 
 ## Review Status
 
@@ -92,9 +109,12 @@ Expected fields:
 
 | field | meaning |
 |---|---|
-| `map_version` | Inferred map version, currently `sd-analog-v0.1`. |
+| `map_version` | Research map version, for example `sd-analog-v0.1`, `sd-variable-global-stationarity-v0.1`, or `sd-state-series-stationarity-override-v0.1`. |
 | `official` | Always `false`. |
-| `source` | `macrocast_inferred_from_md_qd_analogs`. |
+| `source` | Research source identifier, for example `macrocast_inferred_from_md_qd_analogs`, `macrocast_empirical_stationarity_audit_2026_04_26_series_2026_03`, or a user-supplied state-series source. |
+| `policy` | Normalized runtime policy: `inferred_v0_1`, `variable_global_stationarity_v0_1`, or `state_series_stationarity_override_v0_1`. |
+| `policy_family` | `empirical_stationarity` / `empirical_stationarity_override` for empirical modes. |
+| `decision_unit` | `sd_variable` for national-analog and variable-global modes; `sd_variable_x_state` for state-series override. |
 | `frequency` | Normalized experiment frequency. |
 | `allowed_statuses` | Review statuses allowed for this run. |
 | `applied` | Column-to-code map used by t-code preprocessing. |
@@ -104,7 +124,7 @@ Expected fields:
 The manifest also emits a warning:
 
 ```text
-FRED-SD inferred t-codes are macrocast research metadata, not official FRED-SD metadata
+FRED-SD inferred/empirical t-codes are macrocast research metadata, not official FRED-SD metadata
 ```
 
 ## Frequency-Specific Rules
@@ -180,8 +200,29 @@ Interpretation:
   variable-level code.
 - The state-level diagnostic is useful for sensitivity analysis and future
   research modes, but it should not silently replace the national-analog map.
-- A future state-variable empirical mode must write every selected column code,
-  sample window, vintage, test battery, and tie-break rule into the manifest.
+- The variable-global empirical runtime policy uses the
+  `dominant state-level stationarity code` column above as
+  `sd-variable-global-stationarity-v0.1`.
+- The state-variable empirical runtime policy does not ship a silent built-in
+  full state-by-series map. It accepts only an explicit `sd_tcode_code_map`
+  provided by the user or recipe.
+- State-variable empirical runs must write every selected column code, sample
+  window, vintage, test battery, tie-break rule, and audit location into the
+  manifest.
+
+State-series override recipe shape:
+
+```yaml
+path:
+  2_preprocessing:
+    leaf_config:
+      sd_tcode_policy: state_series_stationarity_override_v0_1
+      sd_tcode_map_version: sd-state-series-stationarity-override-v0.1
+      sd_tcode_audit_uri: artifacts/sd_state_series_audit.csv
+      sd_tcode_code_map:
+        UR_CA: 2
+        UR_TX: 5
+```
 
 ## Validation Protocol
 

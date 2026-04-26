@@ -36,7 +36,7 @@ MVP public shapes:
 
 - one default run
 - one model-comparison run
-- fixed custom model, custom preprocessor, target transformer, or FRED-SD inferred t-code policy inside those runs
+- fixed custom model, custom preprocessor, target transformer, or FRED-SD inferred/empirical t-code policy inside those runs
 
 The simple API intentionally exposes only direct single-run and model-comparison routes. Advanced Layer 0 routes are present in the full grammar, but are not surfaced here until their public result contracts are fixed:
 

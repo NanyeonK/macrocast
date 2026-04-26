@@ -12,6 +12,11 @@ from ..compiler import (
 )
 from ..defaults import DEFAULT_PROFILE_NAME, build_default_recipe_dict
 from ..execution import execute_recipe, execute_sweep
+from ..raw.sd_inferred_tcodes import (
+    MAP_VERSION as SD_ANALOG_TCODE_MAP_VERSION,
+    STATE_SERIES_STATIONARITY_OVERRIDE_VERSION,
+    VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION,
+)
 from .results import ExperimentRunResult, ExperimentSweepResult
 
 _SWEEP_ALIASES: dict[str, tuple[str, str]] = {
@@ -127,9 +132,13 @@ class Experiment:
         self.random_seed = int(random_seed)
         self.benchmark_config = dict(benchmark_config or {})
         self.sd_tcode_policy = str(sd_tcode_policy)
+        self.sd_tcode_map_version: str | None = None
         self.sd_tcode_allowed_statuses = (
             None if sd_tcode_allowed_statuses is None else tuple(str(status) for status in sd_tcode_allowed_statuses)
         )
+        self.sd_tcode_code_map: dict[str, int] | None = None
+        self.sd_tcode_source: str | None = None
+        self.sd_tcode_audit_uri: str | None = None
         self._model_families: tuple[str, ...] = (model_family,)
         self._sweep_axes: dict[tuple[str, str], tuple[str, ...]] = {}
         self._custom_preprocessor: str | None = None
@@ -163,7 +172,46 @@ class Experiment:
         """Opt in to reviewed, non-official FRED-SD inferred t-codes."""
 
         self.sd_tcode_policy = "inferred_v0_1"
+        self.sd_tcode_map_version = SD_ANALOG_TCODE_MAP_VERSION
         self.sd_tcode_allowed_statuses = None if statuses is None else tuple(str(status) for status in statuses)
+        self.sd_tcode_code_map = None
+        self.sd_tcode_source = None
+        self.sd_tcode_audit_uri = None
+        return self
+
+    def use_sd_empirical_tcodes(
+        self,
+        *,
+        unit: str = "variable_global",
+        code_map: Mapping[str, int] | None = None,
+        source: str | None = None,
+        audit_uri: str | None = None,
+    ) -> "Experiment":
+        """Opt in to non-official empirical FRED-SD stationarity t-codes.
+
+        `unit="variable_global"` uses macrocast's reviewed 2026-04-26 audit
+        map: one code per FRED-SD variable, shared across states. `unit`
+        values `state_series` and `state_variable` require an explicit
+        column-to-code map such as `{"UR_CA": 2}`.
+        """
+
+        normalized_unit = str(unit).lower().replace("-", "_")
+        if normalized_unit in {"variable", "variable_global", "sd_variable"}:
+            self.sd_tcode_policy = "variable_global_stationarity_v0_1"
+            self.sd_tcode_map_version = VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION
+            self.sd_tcode_allowed_statuses = None
+            self.sd_tcode_code_map = None
+        elif normalized_unit in {"state_series", "state_variable", "sd_variable_x_state", "column"}:
+            if not code_map:
+                raise ValueError("state-series empirical FRED-SD t-codes require a non-empty code_map")
+            self.sd_tcode_policy = "state_series_stationarity_override_v0_1"
+            self.sd_tcode_map_version = STATE_SERIES_STATIONARITY_OVERRIDE_VERSION
+            self.sd_tcode_allowed_statuses = None
+            self.sd_tcode_code_map = {str(column): int(code) for column, code in code_map.items()}
+        else:
+            raise ValueError("unit must be 'variable_global' or 'state_series'")
+        self.sd_tcode_source = source
+        self.sd_tcode_audit_uri = audit_uri
         return self
 
     def sweep(self, choices: dict[str, Any]) -> "Experiment":
@@ -219,9 +267,16 @@ class Experiment:
         if self.sd_tcode_policy != "none":
             preprocessing_leaf = recipe["path"]["2_preprocessing"].setdefault("leaf_config", {})
             preprocessing_leaf["sd_tcode_policy"] = self.sd_tcode_policy
-            preprocessing_leaf["sd_tcode_map_version"] = "sd-analog-v0.1"
+            if self.sd_tcode_map_version is not None:
+                preprocessing_leaf["sd_tcode_map_version"] = self.sd_tcode_map_version
             if self.sd_tcode_allowed_statuses is not None:
                 preprocessing_leaf["sd_tcode_allowed_statuses"] = list(self.sd_tcode_allowed_statuses)
+            if self.sd_tcode_code_map is not None:
+                preprocessing_leaf["sd_tcode_code_map"] = dict(self.sd_tcode_code_map)
+            if self.sd_tcode_source is not None:
+                preprocessing_leaf["sd_tcode_source"] = self.sd_tcode_source
+            if self.sd_tcode_audit_uri is not None:
+                preprocessing_leaf["sd_tcode_audit_uri"] = self.sd_tcode_audit_uri
         for (layer, axis), values in self._sweep_axes.items():
             layer_block = recipe["path"][layer]
             fixed_axes = dict(layer_block.get("fixed_axes") or {})

@@ -1208,6 +1208,9 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         "sd_tcode_policy": leaf_config.get("sd_tcode_policy", "none"),
         "sd_tcode_map_version": leaf_config.get("sd_tcode_map_version"),
         "sd_tcode_allowed_statuses": leaf_config.get("sd_tcode_allowed_statuses"),
+        "sd_tcode_code_map": leaf_config.get("sd_tcode_code_map"),
+        "sd_tcode_source": leaf_config.get("sd_tcode_source"),
+        "sd_tcode_audit_uri": leaf_config.get("sd_tcode_audit_uri"),
         # Compatibility mirror: `oos_period` is a Layer 4 evaluation axis.
         # Keep it in data_task_spec for older runtime/readers until the
         # migration window closes, but treat evaluation_spec as canonical.

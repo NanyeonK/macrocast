@@ -12,7 +12,14 @@ from macrocast.raw.sd_analog_candidates import (
 from macrocast.raw.sd_inferred_tcodes import (
     DEFAULT_RUNTIME_STATUSES,
     SD_INFERRED_TCODE_MAP,
+    STATE_SERIES_STATIONARITY_OVERRIDE_VERSION,
+    VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION,
+    VARIABLE_GLOBAL_STATIONARITY_TCODE_MAP,
     build_sd_inferred_transform_codes,
+    build_sd_state_series_stationarity_transform_codes,
+    build_sd_transform_codes_for_policy,
+    build_sd_variable_global_stationarity_transform_codes,
+    normalize_sd_tcode_policy,
     resolve_sd_inferred_tcode,
 )
 
@@ -75,3 +82,50 @@ def test_build_sd_inferred_transform_codes_maps_state_columns() -> None:
     assert report["official"] is False
     assert report["variables"]["BPPRIVSA"]["status"] == "frequency_specific"
     assert report["skipped"]["CONSTNQGSP_NY"] == "semantic_review"
+
+
+def test_sd_tcode_policy_normalization_supports_empirical_modes() -> None:
+    assert normalize_sd_tcode_policy("sd-analog-v0.1") == "inferred_v0_1"
+    assert normalize_sd_tcode_policy(VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION) == "variable_global_stationarity_v0_1"
+    assert normalize_sd_tcode_policy(STATE_SERIES_STATIONARITY_OVERRIDE_VERSION) == "state_series_stationarity_override_v0_1"
+
+
+def test_variable_global_stationarity_codes_map_state_columns() -> None:
+    codes, report = build_sd_variable_global_stationarity_transform_codes(
+        ["BPPRIVSA_CA", "UR_TX", "STHPI_NY", "UNKNOWN_CA"],
+        frequency="quarterly",
+    )
+
+    assert VARIABLE_GLOBAL_STATIONARITY_TCODE_MAP["BPPRIVSA"]["code"] == 2
+    assert codes == {"BPPRIVSA_CA": 2, "UR_TX": 2, "STHPI_NY": 6}
+    assert report["map_version"] == VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION
+    assert report["decision_unit"] == "sd_variable"
+    assert report["official"] is False
+    assert report["variables"]["STHPI"]["dominant_share"] == 0.901961
+
+
+def test_state_series_stationarity_override_requires_explicit_column_map() -> None:
+    codes, report = build_sd_state_series_stationarity_transform_codes(
+        ["UR_CA", "UR_TX", "BPPRIVSA_CA"],
+        frequency="monthly",
+        code_map={"UR_CA": 2, "UR_TX": 5, "MISSING_AK": 6},
+        audit_uri="artifacts/sd_state_series_audit.csv",
+    )
+
+    assert codes == {"UR_CA": 2, "UR_TX": 5}
+    assert report["map_version"] == STATE_SERIES_STATIONARITY_OVERRIDE_VERSION
+    assert report["decision_unit"] == "sd_variable_x_state"
+    assert report["audit_uri"] == "artifacts/sd_state_series_audit.csv"
+    assert report["unmatched_code_columns"] == ["MISSING_AK"]
+    assert report["skipped"]["BPPRIVSA_CA"] == "missing_state_series_override"
+
+
+def test_build_sd_transform_codes_for_policy_dispatches_empirical_modes() -> None:
+    codes, report = build_sd_transform_codes_for_policy(
+        ["BPPRIVSA_CA"],
+        policy="variable_global_stationarity_v0_1",
+        frequency="monthly",
+    )
+
+    assert codes == {"BPPRIVSA_CA": 2}
+    assert report["map_version"] == VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION

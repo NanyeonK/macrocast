@@ -115,7 +115,9 @@ from ..preprocessing.feature_blocks import (
 from ..raw import load_custom_csv, load_custom_parquet, load_fred_md, load_fred_qd, load_fred_sd
 from ..raw.sd_inferred_tcodes import (
     MAP_VERSION as SD_INFERRED_TCODE_MAP_VERSION,
-    build_sd_inferred_transform_codes,
+    STATE_SERIES_STATIONARITY_OVERRIDE_VERSION,
+    VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION,
+    build_sd_transform_codes_for_policy,
     normalize_sd_tcode_policy,
 )
 from ..recipes import RecipeSpec, RunSpec, build_run_spec, recipe_summary
@@ -415,10 +417,29 @@ def _apply_sd_inferred_tcodes(raw_result, recipe: RecipeSpec):
         raise ExecutionError("sd_tcode_policy was requested, but raw_dataset does not include fred_sd")
 
     requested_version = recipe.data_task_spec.get("sd_tcode_map_version")
-    if requested_version not in {None, "", SD_INFERRED_TCODE_MAP_VERSION}:
+    supported_versions = {
+        None,
+        "",
+        SD_INFERRED_TCODE_MAP_VERSION,
+        VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION,
+        STATE_SERIES_STATIONARITY_OVERRIDE_VERSION,
+    }
+    if requested_version not in supported_versions:
         raise ExecutionError(
             f"unsupported sd_tcode_map_version={requested_version!r}; "
-            f"available version is {SD_INFERRED_TCODE_MAP_VERSION!r}"
+            "available versions are "
+            f"{sorted(str(version) for version in supported_versions if version)}"
+        )
+    expected_versions = {
+        "inferred_v0_1": SD_INFERRED_TCODE_MAP_VERSION,
+        "variable_global_stationarity_v0_1": VARIABLE_GLOBAL_STATIONARITY_MAP_VERSION,
+        "state_series_stationarity_override_v0_1": STATE_SERIES_STATIONARITY_OVERRIDE_VERSION,
+    }
+    expected_version = expected_versions[policy]
+    if requested_version not in {None, "", expected_version}:
+        raise ExecutionError(
+            f"sd_tcode_policy={policy!r} requires sd_tcode_map_version={expected_version!r}; "
+            f"got {requested_version!r}"
         )
 
     data = getattr(raw_result, "data", None)
@@ -428,20 +449,31 @@ def _apply_sd_inferred_tcodes(raw_result, recipe: RecipeSpec):
     frame.attrs.update(getattr(data, "attrs", {}))
     frequency = str(recipe.data_task_spec.get("frequency") or getattr(raw_result.dataset_metadata, "frequency", "monthly"))
     allowed_statuses = recipe.data_task_spec.get("sd_tcode_allowed_statuses")
-    codes, report = build_sd_inferred_transform_codes(
-        frame.columns,
-        frequency=frequency,
-        allowed_statuses=allowed_statuses,
-    )
+    try:
+        codes, report = build_sd_transform_codes_for_policy(
+            frame.columns,
+            policy=policy,
+            frequency=frequency,
+            allowed_statuses=allowed_statuses,
+            code_map=recipe.data_task_spec.get("sd_tcode_code_map"),
+            map_version=requested_version,
+            source=recipe.data_task_spec.get("sd_tcode_source"),
+            audit_uri=recipe.data_task_spec.get("sd_tcode_audit_uri"),
+        )
+    except ValueError as exc:
+        raise ExecutionError(str(exc)) from exc
     report["policy"] = policy
     _append_frame_report(frame, "sd_inferred_tcodes", report)
     if not codes:
-        _append_frame_warning(frame, "sd_tcode_policy requested but no reviewed FRED-SD inferred t-codes matched the loaded columns")
+        _append_frame_warning(frame, "sd_tcode_policy requested but no FRED-SD t-codes matched the loaded columns")
         return _replace_raw_data(raw_result, frame)
 
     existing_tcodes = dict(getattr(raw_result, "transform_codes", {}) or {})
     existing_tcodes.update(codes)
-    _append_frame_warning(frame, "FRED-SD inferred t-codes are macrocast research metadata, not official FRED-SD metadata")
+    _append_frame_warning(
+        frame,
+        "FRED-SD inferred/empirical t-codes are macrocast research metadata, not official FRED-SD metadata",
+    )
     return _raw_result_with(raw_result, data=frame, transform_codes=existing_tcodes)
 
 
