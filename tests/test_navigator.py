@@ -120,7 +120,9 @@ console.log(JSON.stringify({
     equal_dm_hln: option("equal_predictive", "dm_hln"),
     sd_state_west: option("fred_sd_state_group", "census_region_west"),
     sd_variable_labor: option("fred_sd_variable_group", "labor_market_core"),
-    sd_mixed_drop_non_target: option("fred_sd_mixed_frequency_representation", "drop_non_target_native_frequency")
+    sd_mixed_drop_non_target: option("fred_sd_mixed_frequency_representation", "drop_non_target_native_frequency"),
+    sd_mixed_blocks: option("fred_sd_mixed_frequency_representation", "native_frequency_block_payload"),
+    sd_mixed_adapter: option("fred_sd_mixed_frequency_representation", "mixed_frequency_model_adapter")
   },
   selected_disabled: E.selectedDisabledReasons(data, state),
   recipe_id: imported.recipe_id,
@@ -302,6 +304,9 @@ def test_navigator_operational_narrow_contracts_are_source_of_truth():
 
     assert tuple(OPERATIONAL_NARROW_CONTRACTS[0]["values"]) == tuple(contracts["feature_block_set"]["values"])
     assert contracts["feature_block_set"]["contract"] == "feature_block_set_public_axis_v1"
+    assert contracts["fred_sd_mixed_frequency_representation"]["contract"] == (
+        "fred_sd_native_frequency_block_payload_v1"
+    )
     assert contracts["exogenous_x_path_policy"]["contract"] == "exogenous_x_path_contract_v1"
     assert "scheduled_known_future_x_columns" in " ".join(
         contracts["exogenous_x_path_policy"]["required_companions"]
@@ -389,6 +394,9 @@ def test_browser_state_engine_matches_python_fred_sd_group_gate(tmp_path: Path):
     assert js["options"]["sd_mixed_drop_non_target"]["enabled"] == _option(
         _axis(python_view, "fred_sd_mixed_frequency_representation"), "drop_non_target_native_frequency"
     )["enabled"]
+    assert js["options"]["sd_mixed_blocks"]["enabled"] == _option(
+        _axis(python_view, "fred_sd_mixed_frequency_representation"), "native_frequency_block_payload"
+    )["enabled"]
     assert "fred_sd" in js["options"]["sd_state_west"]["disabled_reason"]
     assert "fred_sd" in js["options"]["sd_mixed_drop_non_target"]["disabled_reason"]
 
@@ -406,3 +414,8 @@ def test_browser_state_engine_matches_python_fred_sd_group_gate(tmp_path: Path):
     assert js["options"]["sd_mixed_drop_non_target"]["enabled"] == _option(
         _axis(python_view, "fred_sd_mixed_frequency_representation"), "drop_non_target_native_frequency"
     )["enabled"]
+    assert js["options"]["sd_mixed_blocks"]["enabled"] == _option(
+        _axis(python_view, "fred_sd_mixed_frequency_representation"), "native_frequency_block_payload"
+    )["enabled"]
+    assert "custom model" in js["options"]["sd_mixed_blocks"]["disabled_reason"]
+    assert "custom model" in js["options"]["sd_mixed_adapter"]["disabled_reason"]

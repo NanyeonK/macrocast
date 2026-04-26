@@ -2869,6 +2869,12 @@ def _layer2_representation_spec(
             "contemporaneous_x_rule": contemporaneous_x_rule,
             "fred_sd_mixed_frequency_representation": fred_sd_mixed_frequency_representation,
             "fred_sd_mixed_frequency_representation_contract": "fred_sd_mixed_frequency_representation_v1",
+            "fred_sd_native_frequency_block_payload_contract": "fred_sd_native_frequency_block_payload_v1",
+            "fred_sd_mixed_frequency_model_adapter_contract": (
+                "fred_sd_mixed_frequency_model_adapter_v1"
+                if fred_sd_mixed_frequency_representation == "mixed_frequency_model_adapter"
+                else None
+            ),
         },
         "feature_blocks": {
             "feature_block_set": _feature_block_set_from_bridge(
@@ -3163,6 +3169,30 @@ def _execution_status(
         default=_layer3_forecast_type_default(feature_runtime),
     )
     forecast_object = _selection_value(selection_map, "forecast_object", default="point_mean")
+    fred_sd_mixed_frequency_representation = _selection_value(
+        selection_map,
+        "fred_sd_mixed_frequency_representation",
+        default="calendar_aligned_frame",
+    )
+    if fred_sd_mixed_frequency_representation in {
+        "native_frequency_block_payload",
+        "mixed_frequency_model_adapter",
+    }:
+        if feature_runtime != "raw_feature_panel":
+            blocked.append(
+                f"fred_sd_mixed_frequency_representation={fred_sd_mixed_frequency_representation!r} "
+                "requires raw-panel Layer 2 feature runtime"
+            )
+        if model_family is None or not is_custom_model(model_family):
+            blocked.append(
+                f"fred_sd_mixed_frequency_representation={fred_sd_mixed_frequency_representation!r} "
+                "requires a registered custom Layer 3 model"
+            )
+        if forecast_type != "direct":
+            blocked.append(
+                f"fred_sd_mixed_frequency_representation={fred_sd_mixed_frequency_representation!r} "
+                "currently supports forecast_type='direct' only"
+            )
     horizon_target_construction_for_l3 = _selection_value(
         selection_map,
         "horizon_target_construction",

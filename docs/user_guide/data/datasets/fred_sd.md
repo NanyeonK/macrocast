@@ -57,9 +57,10 @@ Within a single workbook, the monthly series have 12 observations per year while
 - Layer 2 chooses how the selected FRED-SD panel enters the representation
   through `fred_sd_mixed_frequency_representation`.
 
-A **proper mixed-frequency model adapter** (MIDAS-style or state-space filling)
-is still future work. The current executable surface is a panel-shaping
-contract, not a mixed-frequency likelihood/model.
+The built-in estimator set still does not include MIDAS or state-space
+mixed-frequency likelihoods. The current executable surface is a Layer 2
+native-frequency block payload plus a Layer 3 registered-custom-model adapter
+route for researchers who want to bring their own mixed-frequency method.
 
 ## Real-time vintage discipline
 
@@ -207,8 +208,8 @@ Layer 2 can shape the panel with
 | `calendar_aligned_frame` | Default. Keep the selected FRED-SD columns on the recipe target calendar after generic monthly/quarterly conversion. This preserves the current behavior and records a Layer 2 report. |
 | `drop_unknown_native_frequency` | Drop selected FRED-SD columns whose inferred native frequency is `unknown`; keep known monthly, quarterly, annual, and irregular classes. |
 | `drop_non_target_native_frequency` | Keep only selected FRED-SD columns whose inferred native frequency matches the recipe frequency (`monthly` or `quarterly`). This is the strict same-frequency representation choice. |
-| `native_frequency_block_payload` | Planned. Reserved for future separate monthly/quarterly/unknown block payloads. |
-| `mixed_frequency_model_adapter` | Planned. Reserved for future MIDAS/state-space style adapters consumed with compatible Layer 3 models. |
+| `native_frequency_block_payload` | Operational narrow. Preserve the calendar-aligned frame and emit `fred_sd_native_frequency_block_payload_v1`, which groups selected FRED-SD columns by inferred native frequency for registered custom Layer 3 models. |
+| `mixed_frequency_model_adapter` | Operational narrow. Emit the native-frequency block payload and `fred_sd_mixed_frequency_model_adapter_v1`; execution currently requires a registered custom model that consumes the adapter context. |
 
 Simple API:
 
@@ -233,6 +234,52 @@ composite dataset are preserved. A FRED-SD target column is never silently
 dropped; runtime raises an execution error if the selected representation would
 remove it.
 
+Advanced block/adapter choices are deliberately narrow. They require:
+
+- `dataset` includes `fred_sd`
+- `feature_builder="raw_feature_panel"`
+- `forecast_type="direct"`
+- `model_family` is a registered custom model
+
+The custom model receives the regular tabular `X_train`, `y_train`, `X_test`
+plus `context["auxiliary_payloads"]`. For `native_frequency_block_payload`,
+that context includes `fred_sd_native_frequency_block_payload` with
+`blocks`, `block_order`, and `column_to_native_frequency`. For
+`mixed_frequency_model_adapter`, it also includes
+`fred_sd_mixed_frequency_model_adapter`, whose current adapter kind is
+`registered_custom_model`.
+
+```python
+import macrocast as mc
+
+@mc.custom_model("my_fred_sd_mf_model")
+def my_fred_sd_mf_model(X_train, y_train, X_test, context):
+    blocks = context["auxiliary_payloads"]["fred_sd_native_frequency_block_payload"]
+    monthly_columns = blocks["blocks"].get("monthly", {}).get("columns", [])
+    quarterly_columns = blocks["blocks"].get("quarterly", {}).get("columns", [])
+    # Fit a research model using X_train plus the block metadata.
+    return float(y_train[-1])
+
+exp = (
+    mc.Experiment(
+        dataset="fred_sd",
+        target="UR_CA",
+        start="2000-01",
+        end="2020-12",
+        horizons=[1],
+        frequency="monthly",
+        feature_builder="raw_feature_panel",
+        model_family="my_fred_sd_mf_model",
+    )
+    .use_fred_sd_selection(states=["CA"], variables=["UR", "NQGSP"])
+    .use_fred_sd_native_frequency_blocks()
+)
+```
+
+The adapter variant uses `.use_fred_sd_mixed_frequency_adapter()`. Built-in
+MIDAS or state-space estimators are not shipped yet; the package now supplies
+the enforced Layer 2 payload and Layer 3 custom-adapter route.
+
 ## Changes from the 2020 working paper to current
 
 Compared with FRED-MD / FRED-QD the FRED-SD maintenance history is shorter (first release late 2020):
@@ -254,15 +301,15 @@ Compared with FRED-MD / FRED-QD the FRED-SD maintenance history is shorter (firs
 
 ## Known limitations in macrocast v1.0
 
-1. **Mixed-frequency modeling is not implemented** — monthly-to-quarterly and quarterly-to-monthly conversion, strict same-frequency filtering, and unknown-frequency filtering are available and reported, but MIDAS/state-space mixed-frequency modeling is not implemented.
+1. **Built-in mixed-frequency estimators are not implemented** — monthly-to-quarterly and quarterly-to-monthly conversion, strict same-frequency filtering, unknown-frequency filtering, native-frequency block payloads, and a custom adapter route are available and reported, but built-in MIDAS/state-space estimators are not implemented.
 2. **State and SD-variable groups are recipe-level selectors** —
    `fred_sd_state_group` and `fred_sd_variable_group` resolve into explicit
    `sd_states` / `sd_variables` before loading. They are not post-load
    `variable_universe` filters.
 3. **Generic `variable_universe` is post-load** — use `sd_variable_selection` for workbook-sheet selection and `variable_universe` for loaded `VARIABLE_STATE` columns.
 4. **No official T-code row** — `official_transform_policy: dataset_tcode` has no FRED-SD workbook T-code row to consume. FRED-SD inferred T-codes are macrocast research metadata and must be opted into separately.
-5. **`support_tier = provisional`** — keep this label until the future
-   native-frequency block payload / mixed-frequency model-adapter path is
+5. **`support_tier = provisional`** — keep this label until built-in
+   mixed-frequency estimators and broader FRED-SD replication recipes are
    implemented.
 
 ## See also

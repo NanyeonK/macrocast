@@ -1169,8 +1169,8 @@
         "calendar_aligned_frame": "operational",
         "drop_non_target_native_frequency": "operational",
         "drop_unknown_native_frequency": "operational",
-        "mixed_frequency_model_adapter": "planned",
-        "native_frequency_block_payload": "planned"
+        "mixed_frequency_model_adapter": "operational_narrow",
+        "native_frequency_block_payload": "operational_narrow"
       },
       "default_policy": "fixed",
       "incompatible_with": {},
@@ -3384,6 +3384,23 @@
       ]
     },
     {
+      "axis": "fred_sd_mixed_frequency_representation",
+      "contract": "fred_sd_native_frequency_block_payload_v1",
+      "owner_layer": "2_preprocessing",
+      "pruning_surface": "Navigator compatibility, compiler blocked_reasons, and runtime route guard",
+      "required_companions": [
+        "dataset includes fred_sd",
+        "feature_builder=raw_feature_panel",
+        "registered custom model_family",
+        "forecast_type=direct",
+        "mixed_frequency_model_adapter additionally records fred_sd_mixed_frequency_model_adapter_v1"
+      ],
+      "values": [
+        "native_frequency_block_payload",
+        "mixed_frequency_model_adapter"
+      ]
+    },
+    {
       "axis": "exogenous_x_path_policy",
       "contract": "exogenous_x_path_contract_v1",
       "owner_layer": "3_training",
@@ -5277,14 +5294,14 @@
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'native_frequency_block_payload'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "native_frequency_block_payload"
               },
               {
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'mixed_frequency_model_adapter'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "mixed_frequency_model_adapter"
               }
             ],
@@ -10940,14 +10957,14 @@
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'native_frequency_block_payload'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "native_frequency_block_payload"
               },
               {
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'mixed_frequency_model_adapter'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "mixed_frequency_model_adapter"
               }
             ],
@@ -16719,14 +16736,14 @@
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'native_frequency_block_payload'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "native_frequency_block_payload"
               },
               {
                 "canonical_path_effect": "path.2_preprocessing.fixed_axes.fred_sd_mixed_frequency_representation = 'mixed_frequency_model_adapter'",
                 "disabled_reason": "fred_sd_mixed_frequency_representation requires dataset to include fred_sd",
                 "enabled": false,
-                "status": "planned",
+                "status": "operational_narrow",
                 "value": "mixed_frequency_model_adapter"
               }
             ],

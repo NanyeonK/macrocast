@@ -29,14 +29,14 @@ AXIS_DEFINITION = AxisDefinition(
         ),
         EnumRegistryEntry(
             id="native_frequency_block_payload",
-            description="emit separate monthly/quarterly/unknown FRED-SD blocks for a future mixed-frequency feature builder",
-            status="planned",
+            description="emit separate monthly/quarterly/unknown FRED-SD native-frequency block payloads for registered block-aware forecast generators",
+            status="operational_narrow",
             priority="B",
         ),
         EnumRegistryEntry(
             id="mixed_frequency_model_adapter",
-            description="delegate native-frequency blocks to a future MIDAS/state-space style model adapter",
-            status="planned",
+            description="delegate FRED-SD native-frequency block payloads to a registered custom mixed-frequency forecast adapter",
+            status="operational_narrow",
             priority="B",
         ),
     ),

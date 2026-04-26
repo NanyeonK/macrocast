@@ -97,8 +97,16 @@ Useful choices:
   not be inferred.
 - `drop_non_target_native_frequency`: keep only FRED-SD columns matching the
   experiment frequency.
+- `native_frequency_block_payload`: keep the panel and give a registered
+  custom model monthly/quarterly/unknown block metadata.
+- `mixed_frequency_model_adapter`: same block payload plus a custom
+  mixed-frequency adapter contract.
 
-Runtime writes `fred_sd_mixed_frequency_representation.json`.
+The last two choices require `feature_builder="raw_feature_panel"`, a
+registered custom `model_family`, and direct forecasts. Runtime writes
+`fred_sd_mixed_frequency_representation.json`; block runs also write
+`fred_sd_native_frequency_block_payload.json`, and adapter runs write
+`fred_sd_mixed_frequency_model_adapter.json`.
 
 ## Inferred Transforms
 

@@ -259,6 +259,23 @@ OPERATIONAL_NARROW_CONTRACTS = (
         "pruning_surface": "compiler blocked_reasons and skip_failed_cell manifests",
     },
     {
+        "axis": "fred_sd_mixed_frequency_representation",
+        "values": (
+            "native_frequency_block_payload",
+            "mixed_frequency_model_adapter",
+        ),
+        "owner_layer": "2_preprocessing",
+        "contract": "fred_sd_native_frequency_block_payload_v1",
+        "required_companions": (
+            "dataset includes fred_sd",
+            "feature_builder=raw_feature_panel",
+            "registered custom model_family",
+            "forecast_type=direct",
+            "mixed_frequency_model_adapter additionally records fred_sd_mixed_frequency_model_adapter_v1",
+        ),
+        "pruning_surface": "Navigator compatibility, compiler blocked_reasons, and runtime route guard",
+    },
+    {
         "axis": "exogenous_x_path_policy",
         "values": (
             "hold_last_observed",
@@ -305,6 +322,38 @@ _LINEAR_MODELS = frozenset(
     }
 )
 _DEEP_SEQUENCE_MODELS = frozenset({"lstm", "gru", "tcn"})
+_BUILTIN_MODELS = frozenset(
+    {
+        "ar",
+        "ols",
+        "ridge",
+        "lasso",
+        "elasticnet",
+        "bayesianridge",
+        "huber",
+        "adaptivelasso",
+        "svr_linear",
+        "svr_rbf",
+        "componentwise_boosting",
+        "boosting_ridge",
+        "boosting_lasso",
+        "pcr",
+        "pls",
+        "factor_augmented_linear",
+        "quantile_linear",
+        "randomforest",
+        "extratrees",
+        "gbm",
+        "xgboost",
+        "lightgbm",
+        "catboost",
+        "mlp",
+        *_DEEP_SEQUENCE_MODELS,
+    }
+)
+_FRED_SD_ADVANCED_MIXED_FREQUENCY = frozenset(
+    {"native_frequency_block_payload", "mixed_frequency_model_adapter"}
+)
 _RAW_PANEL_BUILDERS = frozenset({"raw_feature_panel", "raw_X_only"})
 _AUTOREG_BUILDERS = frozenset({"autoreg_lagged_target"})
 _QUANTILE_STATS = frozenset({"none", "dm", "dm_hln", "dm_modified"})
@@ -491,6 +540,9 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
     feature_builder = str(selected.get("feature_builder", ""))
     forecast_type = str(selected.get("forecast_type", "direct"))
     forecast_object = str(selected.get("forecast_object", "point_mean"))
+    fred_sd_mixed_frequency = str(
+        selected.get("fred_sd_mixed_frequency_representation", "calendar_aligned_frame")
+    )
     x_path = str(selected.get("exogenous_x_path_policy", "unavailable"))
     importance = str(selected.get("importance_method", "none"))
     importance_methods = set(_selected_importance_methods(selected))
@@ -507,8 +559,17 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
         and not _selection_has_fred_sd(selected)
     ):
         return "fred_sd_mixed_frequency_representation requires dataset to include fred_sd"
+    if axis_name == "fred_sd_mixed_frequency_representation" and value in _FRED_SD_ADVANCED_MIXED_FREQUENCY:
+        if feature_builder != "raw_feature_panel":
+            return "advanced FRED-SD mixed-frequency representation requires a raw-panel feature builder"
+        if model in _BUILTIN_MODELS:
+            return "advanced FRED-SD mixed-frequency representation requires a registered custom model"
+        if forecast_type != "direct":
+            return "advanced FRED-SD mixed-frequency representation currently supports forecast_type=direct only"
 
     if axis_name == "feature_builder":
+        if fred_sd_mixed_frequency in _FRED_SD_ADVANCED_MIXED_FREQUENCY and value != "raw_feature_panel":
+            return "advanced FRED-SD mixed-frequency representation requires a raw-panel feature builder"
         if model in _DEEP_SEQUENCE_MODELS:
             if value == "autoreg_lagged_target":
                 return None
@@ -518,6 +579,8 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
         if model == "ar" and value in _RAW_PANEL_BUILDERS:
             return "model_family=ar is target-lag/autoreg only; raw-panel Z is incompatible"
     if axis_name == "model_family":
+        if fred_sd_mixed_frequency in _FRED_SD_ADVANCED_MIXED_FREQUENCY and value in _BUILTIN_MODELS:
+            return "advanced FRED-SD mixed-frequency representation requires a registered custom model"
         if feature_builder in _RAW_PANEL_BUILDERS and value == "ar":
             return "raw-panel feature builders cannot feed the AR-BIC target-lag generator"
         if feature_builder == "sequence_tensor" and value not in _DEEP_SEQUENCE_MODELS:
@@ -533,6 +596,9 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
             return "quantile forecasts currently require model_family=quantile_linear"
         if value in {"interval", "density"} and str(selected.get("target_normalization", "none")) != "none":
             return "interval/density payload wrappers currently require target_normalization=none"
+    if axis_name == "forecast_type":
+        if fred_sd_mixed_frequency in _FRED_SD_ADVANCED_MIXED_FREQUENCY and value != "direct":
+            return "advanced FRED-SD mixed-frequency representation currently supports forecast_type=direct only"
     if axis_name == "importance_method":
         methods = _selected_importance_methods(selected, override_axis=axis_name, override_value=value)
         if "tree_shap" in methods and model and model not in _TREE_MODELS:
