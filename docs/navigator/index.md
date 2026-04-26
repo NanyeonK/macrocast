@@ -31,12 +31,12 @@ The navigator answers these questions before execution:
 
 1. Start from a default recipe, a replication entry, or a hand-written YAML.
 2. Use the Navigator App to change path choices in the browser, inspect disabled branches, and preview the YAML diff.
-3. Run `macrocast-navigate tree` when you need the same decision tree in a terminal.
-4. Run `macrocast-navigate resolve` to confirm authoritative compiler status before execution.
-5. Save the YAML recipe and run it with `macrocast-navigate run`.
+3. Load a replication entry or import an existing recipe YAML when you want the tree state to start from a known route.
+4. Download the generated YAML and run `macrocast-navigate resolve` to confirm authoritative compiler status before execution.
+5. Run the resolved YAML with `macrocast-navigate run`.
 6. Move to Detailed Docs or API Reference only when extending internals or writing custom plugins.
 
-The browser app exports the same registry-backed rule metadata as the CLI through `navigator_state_engine_v1`. It is designed for fast path exploration: selections immediately update disabled branches, compatibility messages, and YAML preview output. The CLI resolver remains the authoritative compile check because it can see the local runtime, optional backends, and execution environment.
+The browser app exports the same registry-backed rule metadata as the CLI through `navigator_state_engine_v1`. It is designed for fast path exploration: selections immediately update disabled branches, compatibility messages, resolver-preview status, and YAML preview output. The CLI resolver remains the authoritative compile check because it can see the local runtime, optional backends, and execution environment.
 
 ## Boundary
 

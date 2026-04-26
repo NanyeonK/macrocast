@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -71,6 +74,63 @@ def _axis(view, axis):
 
 def _option(axis_view, value):
     return next(item for item in axis_view["options"] if item["value"] == value)
+
+
+def _write_recipe(path: Path, recipe: dict) -> Path:
+    path.write_text(yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _recipe_with_axis(recipe: dict, layer: str, axis: str, value: str) -> dict:
+    out = yaml.safe_load(yaml.safe_dump(recipe, sort_keys=False))
+    out["path"].setdefault(layer, {}).setdefault("fixed_axes", {})[axis] = value
+    return out
+
+
+def _js_state_snapshot(tmp_path: Path, recipe: dict, actions: list[tuple[str, str]]) -> dict:
+    node = shutil.which("node")
+    if node is None:
+        import pytest
+
+        pytest.skip("node is not installed")
+    recipe_path = _write_recipe(tmp_path / "recipe.yaml", recipe)
+    data_path = tmp_path / "navigator_ui_data.json"
+    write_navigator_ui_data(data_path, sample_paths=(recipe_path,))
+    script = """
+const fs = require("fs");
+const E = require("./docs/_extra/navigator_app/assets/state_engine.js");
+const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+const actions = JSON.parse(process.argv[2]);
+let state = E.createState(data, data.samples[0]);
+for (const [axis, value] of actions) state = E.selectOption(data, state, axis, value);
+const tree = E.buildTree(data, state);
+function option(axisName, value) {
+  const axis = tree.find((item) => item.axis === axisName);
+  return axis.options.find((item) => item.value === value);
+}
+const source = data.samples[0];
+const imported = E.recipeFromYaml(E.recipeYaml(data, source, state));
+console.log(JSON.stringify({
+  options: {
+    model_ridge: option("model_family", "ridge"),
+    model_randomforest: option("model_family", "randomforest"),
+    model_quantile_linear: option("model_family", "quantile_linear"),
+    equal_dm: option("equal_predictive", "dm"),
+    equal_dm_hln: option("equal_predictive", "dm_hln")
+  },
+  selected_disabled: E.selectedDisabledReasons(data, state),
+  recipe_id: imported.recipe_id,
+  edited_recipe: E.recipeWithEdits(data, source, state)
+}));
+"""
+    result = subprocess.run(
+        [node, "-e", script, str(data_path), json.dumps(actions)],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    return json.loads(result.stdout)
 
 
 def test_navigation_tree_exposes_downstream_layer_axes():
@@ -224,6 +284,7 @@ def test_navigator_ui_data_export_roundtrip(tmp_path: Path):
     assert payload["state_engine"]["stat_tests"]["legacy_to_split"]["dm"]["axis"] == "equal_predictive"
     assert payload["state_engine"]["importance"]["legacy_to_axis"]["tree_shap"]["axis"] == "importance_shap"
     assert payload["replications"]
+    assert payload["replications"][0]["recipe"]["path"]
 
     out = write_navigator_ui_data(tmp_path / "navigator_ui_data.json", sample_paths=("examples/recipes/model-benchmark.yaml",))
     assert out.exists()
@@ -237,3 +298,52 @@ def test_navigator_cli_checks_ui_data(tmp_path: Path):
     assert navigator_main(["export-ui-data", "--output", str(out), "--check"]) == 0
     out.write_text("{}\n", encoding="utf-8")
     assert navigator_main(["export-ui-data", "--output", str(out), "--check"]) == 1
+
+
+def test_browser_state_engine_matches_python_tree_shap_model_gate(tmp_path: Path):
+    recipe = _recipe()
+    python_view = build_navigation_view(_recipe_with_axis(recipe, "7_importance", "importance_shap", "tree_shap"))
+    js = _js_state_snapshot(tmp_path, recipe, [("importance_shap", "tree_shap")])
+
+    assert js["options"]["model_ridge"]["enabled"] == _option(_axis(python_view, "model_family"), "ridge")["enabled"]
+    assert js["options"]["model_randomforest"]["enabled"] == _option(
+        _axis(python_view, "model_family"), "randomforest"
+    )["enabled"]
+    assert "tree_shap" in js["options"]["model_ridge"]["disabled_reason"]
+    assert js["edited_recipe"]["path"]["7_importance"]["fixed_axes"]["importance_shap"] == "tree_shap"
+    assert js["recipe_id"] == recipe["recipe_id"]
+
+
+def test_browser_state_engine_matches_python_quantile_model_gate(tmp_path: Path):
+    recipe = _recipe()
+    python_view = build_navigation_view(_recipe_with_axis(recipe, "3_training", "forecast_object", "quantile"))
+    js = _js_state_snapshot(tmp_path, recipe, [("forecast_object", "quantile")])
+
+    assert js["options"]["model_ridge"]["enabled"] == _option(_axis(python_view, "model_family"), "ridge")["enabled"]
+    assert js["options"]["model_quantile_linear"]["enabled"] == _option(
+        _axis(python_view, "model_family"), "quantile_linear"
+    )["enabled"]
+    assert "quantile_linear" in js["options"]["model_ridge"]["disabled_reason"]
+
+
+def test_browser_state_engine_matches_python_hac_gate(tmp_path: Path):
+    recipe = _recipe()
+    hac_recipe = _recipe_with_axis(recipe, "6_stat_tests", "equal_predictive", "dm_hln")
+    hac_recipe = _recipe_with_axis(hac_recipe, "6_stat_tests", "dependence_correction", "nw_hac")
+    hac_recipe = _recipe_with_axis(hac_recipe, "6_stat_tests", "overlap_handling", "evaluate_with_hac")
+    python_view = build_navigation_view(hac_recipe)
+    js = _js_state_snapshot(
+        tmp_path,
+        recipe,
+        [
+            ("equal_predictive", "dm_hln"),
+            ("dependence_correction", "nw_hac"),
+            ("overlap_handling", "evaluate_with_hac"),
+        ],
+    )
+
+    assert js["options"]["equal_dm"]["enabled"] == _option(_axis(python_view, "equal_predictive"), "dm")["enabled"]
+    assert js["options"]["equal_dm_hln"]["enabled"] == _option(
+        _axis(python_view, "equal_predictive"), "dm_hln"
+    )["enabled"]
+    assert "HAC-capable" in js["options"]["equal_dm"]["disabled_reason"]

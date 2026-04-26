@@ -47,6 +47,10 @@ The static Navigator App ships the exported `navigator_state_engine_v1` payload.
 - disabled options remain visible with the reason they are unavailable;
 - compatibility messages are recomputed from the active browser path;
 - YAML preview is regenerated from the selected path and changed axes;
+- generated YAML can be downloaded and existing recipe YAML can be imported;
+- replication entries can load their package-native route into the tree;
+- the resolver preview shows browser-blocked branches plus the CLI commands
+  needed for authoritative `resolve` and `run`;
 - `browser_preview` means the edited path is internally compatible in the browser;
 - `browser_blocked` means the current browser path contains a selected value that violates an active rule.
 

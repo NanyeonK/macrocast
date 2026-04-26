@@ -22,7 +22,9 @@ class ReplicationEntry:
     deviations_from_original_paper: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        payload["recipe"] = yaml.safe_load(self.recipe_yaml)
+        return payload
 
 
 _GOULET_COULOMBE_2021_RECIPE: dict[str, Any] = {

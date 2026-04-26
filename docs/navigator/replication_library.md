@@ -19,6 +19,15 @@ macrocast-navigate replications goulet-coulombe-2021-fred-md-ridge \
   --write-yaml recipes/gc2021-ridge.yaml
 ```
 
+## Navigator App
+
+The static Navigator App receives each replication entry with both runnable
+YAML text and a parsed recipe object. Clicking `Load path` on an entry replaces
+the browser tree state with that replication route, shows the exact path and
+declared deviations, refreshes disabled-branch reasons, and regenerates the
+YAML preview. The downloaded YAML should still be resolved with the CLI before
+execution.
+
 ## Entry Contract
 
 Every entry contains:
@@ -29,6 +38,7 @@ Every entry contains:
 | `short_description` | One-paragraph purpose. |
 | `exact_tree_path` | Canonical path choices that define the route. |
 | `recipe_yaml` | Full runnable YAML text. |
+| `recipe` | Parsed recipe object used by the browser app to load the route without a Python process. |
 | `command` | One-line CLI command. |
 | `notebook_snippet` | Minimal notebook entry point. |
 | `expected_outputs` | Artifact files users should expect. |
