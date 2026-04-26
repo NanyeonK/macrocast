@@ -97,7 +97,7 @@ Compared with FRED-MD / FRED-QD the FRED-SD maintenance history is shorter (firs
 - **Cache**: same mechanism as FRED-MD / FRED-QD (`~/.cache/macrocast/raw/`).
 - **support_tier = "provisional"** on the returned `RawDatasetMetadata` — signals that FRED-SD ingestion is newer than FRED-MD / FRED-QD and has edge cases still being worked out.
 - **No T-code row** — the FRED-SD workbook does not encode stationarity codes per variable the way FRED-MD / FRED-QD do. FRED-SD transformation codes are therefore a research decision, not source metadata.
-- **T-code policy choices** — state panels create a real choice between national-analog t-codes, one empirically selected code per SD variable, or independent state-by-series codes. The default is no FRED-SD t-code. The opt-in macrocast map uses a reviewed national-analog policy, applies one code per SD variable to all states, and records `official=false` in runtime reports.
+- **T-code policy choices** — state panels create a real choice between national-analog t-codes, one empirically selected code per SD variable, or independent state-by-series codes. The default is no FRED-SD t-code. The reviewed national-analog map is opt-in via `Experiment.use_sd_inferred_tcodes()`. The empirical variable-global map is opt-in via `Experiment.use_sd_empirical_tcodes(unit="variable_global")`. State-by-series empirical codes require an explicit column map via `Experiment.use_sd_empirical_tcodes(unit="state_series", code_map={...})`. All three record `official=false` in runtime reports.
 
 ## Known limitations in macrocast v1.0
 

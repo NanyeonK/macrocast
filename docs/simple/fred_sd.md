@@ -7,7 +7,7 @@ The important rule is simple:
 - FRED-MD and FRED-QD publish official transformation codes.
 - FRED-SD does not publish official transformation codes.
 - macrocast therefore leaves FRED-SD source values untransformed by default.
-- Reviewed FRED-SD inferred t-codes are available only when you opt in.
+- Reviewed and empirical FRED-SD t-codes are available only when you opt in.
 
 ## Frequency
 
@@ -52,7 +52,8 @@ result = mc.forecast(
 
 ## Inferred Transforms
 
-Use inferred SD t-codes only when you want the reviewed research layer:
+Use inferred SD t-codes only when you want the reviewed national-analog
+research layer:
 
 ```python
 exp = (
@@ -77,6 +78,37 @@ The manifest records `data_reports.sd_inferred_tcodes` with:
 - columns that received inferred codes
 - skipped columns and their review status
 
+## Empirical Transforms
+
+Use the empirical variable-global policy when you want the 2026-04-26
+stationarity audit choice: one code per FRED-SD variable, shared across states.
+
+```python
+exp = (
+    mc.Experiment(
+        dataset="fred_qd+fred_sd",
+        target="GDPC1",
+        start="1985-01",
+        end="2019-12",
+        horizons=[1, 2, 4],
+    )
+    .use_sd_empirical_tcodes(unit="variable_global")
+)
+```
+
+Use the state-series policy only with an explicit audited column map:
+
+```python
+exp.use_sd_empirical_tcodes(
+    unit="state_series",
+    code_map={"UR_CA": 2, "UR_TX": 5},
+    audit_uri="artifacts/sd_state_series_audit.csv",
+)
+```
+
+Both policies record `official: false` and the map/audit source in
+`data_reports.sd_inferred_tcodes`.
+
 ## BPPRIVSA And STHPI
 
 `BPPRIVSA` is frequency-specific:
@@ -91,4 +123,4 @@ quarterly source-frequency analog.
 ## Defaults
 
 For ordinary use, do nothing. The default profile uses official FRED-MD/QD
-t-codes and leaves FRED-SD inferred t-codes off.
+t-codes and leaves FRED-SD inferred/empirical t-codes off.

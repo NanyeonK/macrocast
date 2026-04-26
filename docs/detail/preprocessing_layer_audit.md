@@ -166,7 +166,7 @@ runtime integration and acceptance tests.
 | `preprocess_fit_scope` | `not_applicable` |
 | extra preprocessing axes | `none` |
 
-This path is executable. It applies FRED-MD/QD dataset t-codes before the forecasting runtime. FRED-SD inferred t-codes remain opt-in and non-official.
+This path is executable. It applies FRED-MD/QD dataset t-codes before the forecasting runtime. FRED-SD inferred/empirical t-codes remain opt-in and non-official.
 
 Layer ownership after the migration pass:
 
@@ -367,7 +367,7 @@ Therefore, the executable MVP is:
 - fixed custom model
 - fixed custom preprocessor
 - fixed target transformer for the autoregressive path
-- optional FRED-SD inferred t-codes
+- optional FRED-SD inferred/empirical t-codes
 
 The blocked MVP surface is:
 

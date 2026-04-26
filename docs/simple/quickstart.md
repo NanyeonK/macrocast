@@ -67,4 +67,4 @@ mc.forecast("fred_md+fred_sd", target="INDPRO", start="1980-01", end="2019-12")
 mc.forecast("fred_qd+fred_sd", target="GDPC1", start="1980-01", end="2019-12")
 ```
 
-FRED-SD inferred transformation codes are off by default because FRED-SD does not publish official t-codes. Use `Experiment.use_sd_inferred_tcodes()` when that research layer is needed.
+FRED-SD inferred/empirical transformation codes are off by default because FRED-SD does not publish official t-codes. Use `Experiment.use_sd_inferred_tcodes()` for the reviewed national-analog layer or `Experiment.use_sd_empirical_tcodes()` for empirical stationarity policies.

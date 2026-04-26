@@ -392,6 +392,107 @@ def test_sd_inferred_tcodes_are_opt_in_for_composite_dataset(monkeypatch, tmp_pa
     assert any("not official FRED-SD" in warning for warning in manifest["data_warnings"])
 
 
+def test_sd_variable_global_empirical_tcodes_are_explicit_opt_in(monkeypatch, tmp_path: Path) -> None:
+    q_dates = pd.date_range("2000-01-01", periods=10, freq="QS")
+    qd_frame = pd.DataFrame(
+        {
+            "GDPC1": [100.0 + i for i in range(len(q_dates))],
+            "QX": [10.0 + i for i in range(len(q_dates))],
+        },
+        index=q_dates,
+    )
+    qd_frame.index.name = "date"
+    m_dates = pd.date_range("2000-01-01", periods=30, freq="MS")
+    sd_frame = pd.DataFrame(
+        {
+            "BPPRIVSA_CA": [100.0 + float(i) for i in range(len(m_dates))],
+            "STHPI_CA": [200.0 + 2.0 * float(i) for i in range(len(m_dates))],
+        },
+        index=m_dates,
+    )
+    sd_frame.index.name = "date"
+
+    monkeypatch.setattr(
+        "macrocast.execution.build.load_fred_qd",
+        lambda **_: _raw_result("fred_qd", "quarterly", qd_frame, {"GDPC1": 1, "QX": 1}),
+    )
+    monkeypatch.setattr(
+        "macrocast.execution.build.load_fred_sd",
+        lambda **_: _raw_result("fred_sd", "state_monthly", sd_frame),
+    )
+
+    result = (
+        Experiment(
+            dataset="fred_sd+fred_qd",
+            target="GDPC1",
+            start="2000-01",
+            end="2002-06",
+            horizons=[1],
+        )
+        .use_sd_empirical_tcodes(unit="variable_global")
+        .run(output_root=tmp_path)
+    )
+
+    manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
+    report = manifest["data_reports"]["sd_inferred_tcodes"]
+    assert report["policy"] == "variable_global_stationarity_v0_1"
+    assert report["map_version"] == "sd-variable-global-stationarity-v0.1"
+    assert report["decision_unit"] == "sd_variable"
+    assert report["applied"]["BPPRIVSA_CA"] == 2
+    assert report["applied"]["STHPI_CA"] == 6
+    assert manifest["data_reports"]["tcode"]["columns"]["BPPRIVSA_CA"] == 2
+    assert manifest["data_reports"]["tcode"]["columns"]["STHPI_CA"] == 6
+
+
+def test_sd_state_series_empirical_tcodes_use_explicit_column_map(monkeypatch, tmp_path: Path) -> None:
+    q_dates = pd.date_range("2000-01-01", periods=10, freq="QS")
+    qd_frame = pd.DataFrame({"GDPC1": [100.0 + i for i in range(len(q_dates))]}, index=q_dates)
+    qd_frame.index.name = "date"
+    m_dates = pd.date_range("2000-01-01", periods=30, freq="MS")
+    sd_frame = pd.DataFrame(
+        {
+            "BPPRIVSA_CA": [100.0 + float(i) for i in range(len(m_dates))],
+            "BPPRIVSA_TX": [120.0 + 2.0 * float(i) for i in range(len(m_dates))],
+        },
+        index=m_dates,
+    )
+    sd_frame.index.name = "date"
+
+    monkeypatch.setattr(
+        "macrocast.execution.build.load_fred_qd",
+        lambda **_: _raw_result("fred_qd", "quarterly", qd_frame, {"GDPC1": 1}),
+    )
+    monkeypatch.setattr(
+        "macrocast.execution.build.load_fred_sd",
+        lambda **_: _raw_result("fred_sd", "state_monthly", sd_frame),
+    )
+
+    result = (
+        Experiment(
+            dataset="fred_sd+fred_qd",
+            target="GDPC1",
+            start="2000-01",
+            end="2002-06",
+            horizons=[1],
+        )
+        .use_sd_empirical_tcodes(
+            unit="state_series",
+            code_map={"BPPRIVSA_CA": 2, "BPPRIVSA_TX": 5},
+            audit_uri="artifacts/state_series_audit.csv",
+        )
+        .run(output_root=tmp_path)
+    )
+
+    manifest = json.loads((Path(result.artifact_dir) / "manifest.json").read_text())
+    report = manifest["data_reports"]["sd_inferred_tcodes"]
+    assert report["policy"] == "state_series_stationarity_override_v0_1"
+    assert report["map_version"] == "sd-state-series-stationarity-override-v0.1"
+    assert report["decision_unit"] == "sd_variable_x_state"
+    assert report["audit_uri"] == "artifacts/state_series_audit.csv"
+    assert report["applied"]["BPPRIVSA_CA"] == 2
+    assert report["applied"]["BPPRIVSA_TX"] == 5
+
+
 def test_sd_inferred_tcodes_are_not_applied_by_default(monkeypatch, tmp_path: Path) -> None:
     q_dates = pd.date_range("2000-01-01", periods=10, freq="QS")
     qd_frame = pd.DataFrame({"GDPC1": [100.0 + i for i in range(len(q_dates))]}, index=q_dates)
@@ -434,6 +535,28 @@ def test_experiment_use_sd_inferred_tcodes_lowers_to_leaf_config() -> None:
     assert leaf["sd_tcode_policy"] == "inferred_v0_1"
     assert leaf["sd_tcode_map_version"] == "sd-analog-v0.1"
     assert leaf["sd_tcode_allowed_statuses"] == ["tentative_accept"]
+
+
+def test_experiment_use_sd_empirical_tcodes_lowers_to_leaf_config() -> None:
+    variable_recipe = (
+        Experiment(dataset="fred_sd+fred_qd", target="GDPC1", start="2000-01", end="2002-06", horizons=[1])
+        .use_sd_empirical_tcodes(unit="variable_global")
+        .to_recipe_dict()
+    )
+    variable_leaf = variable_recipe["path"]["2_preprocessing"]["leaf_config"]
+    assert variable_leaf["sd_tcode_policy"] == "variable_global_stationarity_v0_1"
+    assert variable_leaf["sd_tcode_map_version"] == "sd-variable-global-stationarity-v0.1"
+
+    state_recipe = (
+        Experiment(dataset="fred_sd+fred_qd", target="GDPC1", start="2000-01", end="2002-06", horizons=[1])
+        .use_sd_empirical_tcodes(unit="state_series", code_map={"UR_CA": 2}, audit_uri="audit.csv")
+        .to_recipe_dict()
+    )
+    state_leaf = state_recipe["path"]["2_preprocessing"]["leaf_config"]
+    assert state_leaf["sd_tcode_policy"] == "state_series_stationarity_override_v0_1"
+    assert state_leaf["sd_tcode_map_version"] == "sd-state-series-stationarity-override-v0.1"
+    assert state_leaf["sd_tcode_code_map"] == {"UR_CA": 2}
+    assert state_leaf["sd_tcode_audit_uri"] == "audit.csv"
 
 
 def test_experiment_sweep_alias_maps_to_internal_axis() -> None:

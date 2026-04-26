@@ -136,13 +136,29 @@ This policy is a national-analog reviewed map. It applies one code to every
 state column for a given FRED-SD variable. It does not estimate a separate code
 for each state, and it does not claim to be the stationarity-only optimum.
 
-Future empirical policies must be named separately:
+Empirical policies are named separately:
 
-- `variable_global_stationarity_*`: one empirically selected code per SD
-  variable, shared across states.
-- `state_series_stationarity_*`: one empirically selected code per
-  `SD variable x state` column.
+- `variable_global_stationarity_v0_1`: one empirically selected code per SD
+  variable, shared across states. The current map version is
+  `sd-variable-global-stationarity-v0.1`, based on the 2026-04-26
+  `series-2026-03.xlsx` audit.
+- `state_series_stationarity_override_v0_1`: one empirically selected code per
+  `SD variable x state` column. The current map version is
+  `sd-state-series-stationarity-override-v0.1`; users must provide an explicit
+  `sd_tcode_code_map`.
 
-Both future policies must write the map version, selected code, confidence,
-sample window, vintage, diagnostics, and validation report location into the
-manifest.
+Both empirical policies write the map version, selected code, sample window,
+vintage/audit basis, diagnostics source, and validation report location when
+provided into the manifest.
+
+Python API:
+
+```python
+exp.use_sd_empirical_tcodes(unit="variable_global")
+
+exp.use_sd_empirical_tcodes(
+    unit="state_series",
+    code_map={"UR_CA": 2, "UR_TX": 5},
+    audit_uri="artifacts/sd_state_series_audit.csv",
+)
+```
