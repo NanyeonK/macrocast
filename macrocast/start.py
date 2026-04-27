@@ -98,7 +98,7 @@ def _choice_option_details(axis_name: str, options: list[str]) -> dict[str, dict
 
 def _target_structure_value(recipe: dict[str, Any]) -> str:
     fixed = _recipe_fixed(recipe, "1_data_task")
-    return fixed.get("target_structure") or fixed.get("task", "single_target_point_forecast")
+    return fixed.get("target_structure") or fixed.get("task", "single_target")
 
 
 def _set_target_structure(recipe: dict[str, Any], value: str) -> None:
@@ -180,7 +180,7 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
     training_sweep = _recipe_sweep(recipe, "3_training")
     if key in {"target_structure", "task"}:
         _set_target_structure(recipe, str(value))
-        if value == "multi_target_point_forecast":
+        if value == "multi_target":
             leaf.pop("target", None)
             leaf.setdefault("targets", [])
         else:
@@ -202,7 +202,7 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
             return
         if value in {"benchmark_suite", "ablation_study"}:
             meta["research_design"] = "study_bundle"
-            _set_target_structure(recipe, "single_target_point_forecast")
+            _set_target_structure(recipe, "single_target")
             leaf.pop("targets", None)
             leaf.setdefault("target", "INDPRO")
             output_leaf["wrapper_family"] = value
@@ -210,14 +210,14 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
             return
         if value in {"multi_target_separate_runs", "multi_target_shared_design"}:
             meta["research_design"] = "study_bundle"
-            _set_target_structure(recipe, "multi_target_point_forecast")
+            _set_target_structure(recipe, "multi_target")
             leaf.pop("target", None)
             leaf.setdefault("targets", ["INDPRO", "RPI"])
             output_leaf["wrapper_family"] = value
             output_leaf.setdefault("bundle_label", value.replace("_", "-"))
             return
         meta["research_design"] = "single_forecast_run"
-        _set_target_structure(recipe, "single_target_point_forecast")
+        _set_target_structure(recipe, "single_target")
         leaf.pop("targets", None)
         leaf.setdefault("target", "INDPRO")
         output_leaf.pop("wrapper_family", None)
@@ -319,7 +319,7 @@ def _apply_wizard_value(recipe: dict[str, Any], key: str, value: Any) -> None:
 
 def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
     target_structure = _target_structure_value(recipe)
-    target_key = "targets" if target_structure == "multi_target_point_forecast" else "target"
+    target_key = "targets" if target_structure == "multi_target" else "target"
     benchmark_family = _recipe_fixed(recipe, "3_training").get("benchmark_family", "zero_change")
     stack = [
         {
@@ -334,8 +334,8 @@ def _wizard_choice_stack(recipe: dict[str, Any]) -> list[dict[str, Any]]:
             "key": "target_structure",
             "prompt": "Target structure",
             "options": [
-                "single_target_point_forecast",
-                "multi_target_point_forecast",
+                "single_target",
+                "multi_target",
             ],
         },
         {

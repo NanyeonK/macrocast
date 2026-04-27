@@ -11,7 +11,7 @@ TargetTransformPolicy = Literal[
 
 XTransformPolicy = Literal[
     "raw_level",
-    "dataset_tcode_transformed",
+    "apply_official_tcode_transformed",
     "custom_x_transform",
 ]
 
@@ -37,10 +37,10 @@ PreprocessingAxisRole = Literal[
 ]
 
 TcodeApplicationScope = Literal[
-    "apply_tcode_to_target",
-    "apply_tcode_to_X",
-    "apply_tcode_to_both",
-    "apply_tcode_to_none",
+    "target_only",
+    "predictors_only",
+    "target_and_predictors",
+    "none",
 ]
 
 MissingPolicy = Literal[
@@ -216,7 +216,7 @@ class PreprocessContract:
     evaluation_scale: str
     feature_selection_semantics: str = "select_before_factor"
     representation_policy: str = "raw_only"
-    tcode_application_scope: str = "apply_tcode_to_none"
+    tcode_application_scope: str = "none"
     target_transform: str = "level"
     target_normalization: str = "none"
     target_domain: str = "unconstrained"

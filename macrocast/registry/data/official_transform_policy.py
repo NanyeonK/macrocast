@@ -10,13 +10,13 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy="fixed",
     entries=(
         EnumRegistryEntry(
-            id="dataset_tcode",
+            id="apply_official_tcode",
             description="apply official dataset transformation codes",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="raw_official_frame",
+            id="keep_official_raw_scale",
             description="leave official source columns on their raw reported scale",
             status="operational",
             priority="A",

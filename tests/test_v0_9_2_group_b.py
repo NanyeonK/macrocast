@@ -767,8 +767,8 @@ def test_tcode_preprocessing_preserves_pre_tcode_level_source():
     raw_result = SimpleNamespace(data=frame, transform_codes={"target": 1, "a": 2})
     recipe = SimpleNamespace(
         data_task_spec={
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_X",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "predictors_only",
         }
     )
 

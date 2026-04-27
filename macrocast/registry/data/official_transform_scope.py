@@ -10,25 +10,25 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy="fixed",
     entries=(
         EnumRegistryEntry(
-            id="apply_tcode_to_target",
+            id="target_only",
             description="apply official transformation codes to target only",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="apply_tcode_to_X",
+            id="predictors_only",
             description="apply official transformation codes to predictors only",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="apply_tcode_to_both",
+            id="target_and_predictors",
             description="apply official transformation codes to target and predictors",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="apply_tcode_to_none",
+            id="none",
             description="do not apply official transformation codes",
             status="operational",
             priority="A",

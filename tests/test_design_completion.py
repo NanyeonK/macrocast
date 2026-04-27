@@ -25,7 +25,7 @@ def _base_fixed() -> dict:
         "sample_split": "expanding_window_oos",
         "benchmark": "ar_bic",
         "evaluation_protocol": "point_forecast_core",
-        "forecast_task": "single_target_point_forecast",
+        "forecast_task": "single_target",
     }
 
 

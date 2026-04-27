@@ -173,7 +173,7 @@ _RAW_PANEL_FEATURE_BLOCK_SETS = {
 
 _PHASE3_DEFAULTS = {
     "release_lag_rule": "ignore_release_lag",
-    "missing_availability": "complete_case_only",
+    "missing_availability": "require_complete_rows",
     "raw_missing_policy": "preserve_raw_missing",
     "raw_outlier_policy": "preserve_raw_outliers",
     "variable_universe": "all_variables",
@@ -184,12 +184,12 @@ _TRAINING_AXIS_DEFAULTS = {
     "min_train_size": "fixed_n_obs",
     "training_start_rule": "earliest_possible",
 }
-_OFFICIAL_TRANSFORM_POLICIES = {"raw_official_frame", "dataset_tcode"}
+_OFFICIAL_TRANSFORM_POLICIES = {"keep_official_raw_scale", "apply_official_tcode"}
 _OFFICIAL_TRANSFORM_SCOPES = {
-    "apply_tcode_to_none",
-    "apply_tcode_to_target",
-    "apply_tcode_to_X",
-    "apply_tcode_to_both",
+    "none",
+    "target_only",
+    "predictors_only",
+    "target_and_predictors",
 }
 _RUNTIME_TCODE_CONTRACT_POLICIES = {"tcode_only", "tcode_then_extra_preprocess"}
 
@@ -846,9 +846,9 @@ def _official_transform_runtime_axes(
     policy = data_task_spec.get("official_transform_policy")
     if policy is None:
         policy = (
-            "dataset_tcode"
+            "apply_official_tcode"
             if getattr(contract, "tcode_policy", "raw_only") in _RUNTIME_TCODE_CONTRACT_POLICIES
-            else "raw_official_frame"
+            else "keep_official_raw_scale"
         )
         policy_source = "legacy_preprocess_contract"
     else:
@@ -859,7 +859,7 @@ def _official_transform_runtime_axes(
 
     scope = data_task_spec.get("official_transform_scope")
     if scope is None:
-        scope = getattr(contract, "tcode_application_scope", "apply_tcode_to_both")
+        scope = getattr(contract, "tcode_application_scope", "target_and_predictors")
         scope_source = "legacy_preprocess_contract"
     else:
         scope_source = "data_task_spec"
@@ -887,7 +887,7 @@ def _official_transform_runtime_axes(
 
 def _apply_tcode_preprocessing(raw_result, recipe: RecipeSpec, contract: PreprocessContract, *, target: str | None):
     policy, scope, source_payload = _official_transform_runtime_axes(recipe, contract)
-    if policy == "raw_official_frame":
+    if policy == "keep_official_raw_scale":
         return raw_result
 
     data = getattr(raw_result, "data", None)
@@ -899,7 +899,7 @@ def _apply_tcode_preprocessing(raw_result, recipe: RecipeSpec, contract: Preproc
     frame.attrs.update(getattr(data, "attrs", {}))
     _attach_level_source(frame, level_source)
     if not tcodes:
-        _append_frame_warning(frame, "official_transform_policy='dataset_tcode' requested but no dataset transform codes were available; data left unchanged")
+        _append_frame_warning(frame, "official_transform_policy='apply_official_tcode' requested but no dataset transform codes were available; data left unchanged")
         _append_frame_report(
             frame,
             "tcode",
@@ -916,11 +916,11 @@ def _apply_tcode_preprocessing(raw_result, recipe: RecipeSpec, contract: Preproc
     applied: dict[str, int] = {}
     for col in frame.columns:
         is_target = target is not None and col == target
-        if scope == "apply_tcode_to_target" and not is_target:
+        if scope == "target_only" and not is_target:
             continue
-        if scope == "apply_tcode_to_X" and is_target:
+        if scope == "predictors_only" and is_target:
             continue
-        if scope == "apply_tcode_to_none":
+        if scope == "none":
             continue
         code = int(tcodes.get(col, 1))
         frame[col] = _fred_tcode_transform(frame[col], code)
@@ -1073,8 +1073,8 @@ def _apply_sample_period_and_availability(raw_result, recipe: RecipeSpec, *, tar
     if frame.empty:
         raise ExecutionError(f"sample period start={start!r}, end={end!r} produced no observations")
 
-    rule = str(recipe.data_task_spec.get("missing_availability", "complete_case_only"))
-    if rule != "zero_fill_before_start":
+    rule = str(recipe.data_task_spec.get("missing_availability", "require_complete_rows"))
+    if rule != "zero_fill_leading_predictor_gaps":
         return _replace_raw_data(raw_result, frame)
     if target is None or target not in frame.columns:
         return _replace_raw_data(raw_result, frame)
@@ -1221,22 +1221,22 @@ def _apply_missing_availability(raw_result, rule: str, *, target: str | None = N
     """Apply missing_availability rule to the raw panel.
 
     v1.0 operational rules:
-    - ``complete_case_only`` (default): no-op; downstream code drops NaNs per its own policy.
-    - ``available_case``: keep only rows where every non-date column is non-NaN.
+    - ``require_complete_rows`` (default): no-op; downstream code drops NaNs per its own policy.
+    - ``keep_available_rows``: keep only rows where every non-date column is non-NaN.
       Target rows with NaN outside this filter are kept (they will be skipped
       later by the evaluator); X columns are also required complete per row.
-    - ``x_impute_only``: impute predictor columns (non-target, non-date) using the
+    - ``impute_predictors_only``: impute predictor columns (non-target, non-date) using the
       strategy declared in ``spec['x_imputation']`` (one of 'mean', 'median', 'ffill', 'bfill').
       Target column is left untouched so target NaNs remain visible to the OOS loop.
     """
-    if rule in {'complete_case_only', 'zero_fill_before_start', None} or not rule:
+    if rule in {'require_complete_rows', 'zero_fill_leading_predictor_gaps', None} or not rule:
         return raw_result
     data = getattr(raw_result, 'data', None)
     if data is None:
         return raw_result
     spec = dict(spec or {})
 
-    if rule == 'available_case':
+    if rule == 'keep_available_rows':
         # Complete-case filter across the whole panel; legitimate in short
         # fixture windows, aggressive for long panels.
         before = len(data)
@@ -1260,12 +1260,12 @@ def _apply_missing_availability(raw_result, rule: str, *, target: str | None = N
         )
         return _replace_raw_data(raw_result, new_data)
 
-    if rule == 'x_impute_only':
+    if rule == 'impute_predictors_only':
         strategy = spec.get('x_imputation')
         if strategy is None:
-            raise ExecutionError("missing_availability='x_impute_only' requires leaf_config.x_imputation (one of 'mean' / 'median' / 'ffill' / 'bfill')")
+            raise ExecutionError("missing_availability='impute_predictors_only' requires leaf_config.x_imputation (one of 'mean' / 'median' / 'ffill' / 'bfill')")
         if strategy not in {'mean', 'median', 'ffill', 'bfill'}:
-            raise ExecutionError(f"missing_availability='x_impute_only': unsupported leaf_config.x_imputation={strategy!r}; allowed: mean / median / ffill / bfill")
+            raise ExecutionError(f"missing_availability='impute_predictors_only': unsupported leaf_config.x_imputation={strategy!r}; allowed: mean / median / ffill / bfill")
         x_cols = [c for c in data.columns if c != target and str(c).lower() != 'date']
         new_data = data.copy()
         new_data.attrs.update(getattr(data, "attrs", {}))
@@ -1347,7 +1347,7 @@ def _apply_raw_missing_policy(raw_result, policy: str, *, target: str | None = N
     frame = data.copy()
     frame.attrs.update(getattr(data, "attrs", {}))
 
-    if policy == "drop_rows_with_raw_missing":
+    if policy == "drop_raw_missing_rows":
         before = len(frame)
         frame = frame.dropna(how="any").copy()
         frame.attrs.update(getattr(data, "attrs", {}))
@@ -1363,16 +1363,16 @@ def _apply_raw_missing_policy(raw_result, policy: str, *, target: str | None = N
         return _replace_raw_data(raw_result, frame)
 
     x_cols = _raw_predictor_columns(frame, target)
-    if policy == "x_impute_raw":
+    if policy == "impute_raw_predictors":
         strategy = spec.get("raw_x_imputation")
         if strategy is None:
             raise ExecutionError(
-                "raw_missing_policy='x_impute_raw' requires leaf_config.raw_x_imputation "
+                "raw_missing_policy='impute_raw_predictors' requires leaf_config.raw_x_imputation "
                 "(one of 'mean' / 'median' / 'ffill' / 'bfill')"
             )
         if strategy not in {"mean", "median", "ffill", "bfill"}:
             raise ExecutionError(
-                "raw_missing_policy='x_impute_raw': unsupported "
+                "raw_missing_policy='impute_raw_predictors': unsupported "
                 f"leaf_config.raw_x_imputation={strategy!r}; allowed: mean / median / ffill / bfill"
             )
         missing_before = {str(c): int(frame[c].isna().sum()) for c in x_cols if frame[c].isna().any()}
@@ -1400,7 +1400,7 @@ def _apply_raw_missing_policy(raw_result, policy: str, *, target: str | None = N
         )
         return _replace_raw_data(raw_result, frame)
 
-    if policy == "zero_fill_leading_x_before_tcode":
+    if policy == "zero_fill_leading_predictor_missing_before_tcode":
         window_index = _raw_policy_window_index(frame, spec)
         filled: dict[str, list[str]] = {}
         for col in x_cols:
@@ -1469,7 +1469,7 @@ def _apply_raw_outlier_policy(raw_result, policy: str, *, spec: dict | None = No
         std = values.std(ddof=0).replace(0, 1.0)
         lower = mean - 3.0 * std
         upper = mean + 3.0 * std
-    elif policy == "raw_outlier_to_missing":
+    elif policy == "set_raw_outliers_to_missing":
         lower = values.quantile(0.01)
         upper = values.quantile(0.99)
     else:
@@ -1477,7 +1477,7 @@ def _apply_raw_outlier_policy(raw_result, policy: str, *, spec: dict | None = No
 
     mask = (values < lower) | (values > upper)
     changed = {str(col): int(mask[col].sum()) for col in cols if int(mask[col].sum())}
-    if policy == "raw_outlier_to_missing":
+    if policy == "set_raw_outliers_to_missing":
         frame.loc[:, cols] = values.mask(mask)
     else:
         frame.loc[:, cols] = values.clip(lower=lower, upper=upper, axis=1)
@@ -1495,7 +1495,7 @@ def _apply_raw_outlier_policy(raw_result, policy: str, *, spec: dict | None = No
 
 
 _VARIABLE_UNIVERSE_SUBSET_FIELD: dict[str, str] = {
-    'handpicked_set': 'variable_universe_columns',
+    'explicit_variable_list': 'variable_universe_columns',
 }
 
 
@@ -1513,7 +1513,7 @@ def _apply_variable_universe(raw_result, rule: str, *, spec: dict | None = None,
         return raw_result
     spec = dict(spec or {})
 
-    if rule == 'preselected_core':
+    if rule == 'core_variables':
         keep = [c for c in data.columns if c in _PRESELECTED_CORE or str(c).lower() == 'date']
         if len(keep) >= 2:
             return _replace_raw_data(raw_result, data[keep].copy())
@@ -1527,22 +1527,22 @@ def _apply_variable_universe(raw_result, rule: str, *, spec: dict | None = None,
         rest = [c for c in columns if c in data.columns and c not in head and c not in anchors]
         return anchors + head + rest
 
-    if rule == 'category_subset':
+    if rule == 'category_variables':
         mapping = spec.get('variable_universe_category_columns')
         category = spec.get('variable_universe_category')
         if isinstance(mapping, dict) and category in mapping:
             keep = _keep_with_anchors(list(mapping[category]))
             if keep:
                 return _replace_raw_data(raw_result, data[keep].copy())
-        raise ExecutionError("variable_universe='category_subset' requires leaf_config.variable_universe_category_columns (dict) + leaf_config.variable_universe_category")
+        raise ExecutionError("variable_universe='category_variables' requires leaf_config.variable_universe_category_columns (dict) + leaf_config.variable_universe_category")
 
-    if rule == 'target_specific_subset':
+    if rule == 'target_specific_variables':
         mapping = spec.get('target_specific_columns')
         if isinstance(mapping, dict) and target in mapping:
             keep = _keep_with_anchors(list(mapping[target]))
             if keep:
                 return _replace_raw_data(raw_result, data[keep].copy())
-        raise ExecutionError("variable_universe='target_specific_subset' requires leaf_config.target_specific_columns (dict[target, list])")
+        raise ExecutionError("variable_universe='target_specific_variables' requires leaf_config.target_specific_columns (dict[target, list])")
 
     field = _VARIABLE_UNIVERSE_SUBSET_FIELD.get(rule)
     if field is not None:
@@ -3485,7 +3485,7 @@ def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: st
     - ``target_lags_only``         : empty predictor set — raw panel degrades to target-lag-only; compiler guards already tie this value to the autoregressive feature runtime, so this branch should not normally be reached.
     - ``category_based``           : user supplies a mapping (spec['predictor_category_columns'][spec['predictor_category']]).
     - ``factor_only``              : columns whose name starts with 'F_' (convention for factor outputs of factor_pca / factor_augmented_linear builders).
-    - ``handpicked_set``           : spec['handpicked_columns'] list.
+    - ``explicit_variable_list``           : spec['handpicked_columns'] list.
     """
     spec = dict(spec or {})
     all_except_target = [col for col in frame.columns if col != target]
@@ -3503,10 +3503,10 @@ def _raw_panel_columns(frame: pd.DataFrame, target: str, *, predictor_family: st
             raise ExecutionError("predictor_family='category_based' requires leaf_config.predictor_category_columns (dict) and leaf_config.predictor_category")
     elif predictor_family == "factor_only":
         cols = [c for c in all_except_target if str(c).startswith("F_")]
-    elif predictor_family == "handpicked_set":
+    elif predictor_family == "explicit_variable_list":
         handpicked = spec.get("handpicked_columns")
         if not isinstance(handpicked, (list, tuple)) or not handpicked:
-            raise ExecutionError("predictor_family='handpicked_set' requires leaf_config.handpicked_columns (list[str])")
+            raise ExecutionError("predictor_family='explicit_variable_list' requires leaf_config.handpicked_columns (list[str])")
         cols = [c for c in handpicked if c in frame.columns and c != target]
     else:
         raise ExecutionError(f"unsupported predictor_family={predictor_family!r}")
@@ -5093,13 +5093,13 @@ def _raw_panel_alignment(
     spec: Mapping[str, object] | None,
     fit_state: Sequence[Mapping[str, object]],
 ) -> dict[str, object]:
-    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous"))
+    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_same_period_predictors"))
     alignment: dict[str, object] = {
         "representation_runtime": "raw_feature_panel",
         "contemporaneous_x_rule": contemp_rule,
         "x_observation_timing": (
             "target_date_x"
-            if contemp_rule == "allow_contemporaneous"
+            if contemp_rule == "allow_same_period_predictors"
             else "forecast_origin_x"
         ),
     }
@@ -5132,9 +5132,9 @@ def _raw_panel_alignment(
 
 
 def _raw_panel_leakage_contract(spec: Mapping[str, object] | None) -> str:
-    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous"))
-    if contemp_rule == "allow_contemporaneous":
-        return "allow_contemporaneous_oracle_x"
+    contemp_rule = str((spec or {}).get("contemporaneous_x_rule", "forbid_same_period_predictors"))
+    if contemp_rule == "allow_same_period_predictors":
+        return "allow_same_period_predictors_oracle_x"
     return "forecast_origin_only"
 
 
@@ -5264,23 +5264,23 @@ def _build_raw_panel_training_data(
     # 1.5 contemporaneous_x_rule: default forbid (X at origin + train pairs X_t with y_{t+h});
     # allow uses X aligned to the target date (X_{t+h} with y_{t+h}) — the oracle / data-leak
     # benchmark variant.
-    contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_contemporaneous")
-    if rotation_feature_block in {"moving_average_rotation", "marx_rotation", "maf_rotation"} and contemp_rule != "forbid_contemporaneous":
+    contemp_rule = (spec or {}).get("contemporaneous_x_rule", "forbid_same_period_predictors")
+    if rotation_feature_block in {"moving_average_rotation", "marx_rotation", "maf_rotation"} and contemp_rule != "forbid_same_period_predictors":
         raise ExecutionError(
             f"rotation_feature_block={rotation_feature_block!r} requires "
-            "contemporaneous_x_rule='forbid_contemporaneous'"
+            "contemporaneous_x_rule='forbid_same_period_predictors'"
         )
-    if level_feature_block in {"target_level_addback", "x_level_addback", "selected_level_addbacks", "level_growth_pairs"} and contemp_rule != "forbid_contemporaneous":
+    if level_feature_block in {"target_level_addback", "x_level_addback", "selected_level_addbacks", "level_growth_pairs"} and contemp_rule != "forbid_same_period_predictors":
         raise ExecutionError(
             f"level_feature_block={level_feature_block!r} requires "
-            "contemporaneous_x_rule='forbid_contemporaneous'"
+            "contemporaneous_x_rule='forbid_same_period_predictors'"
         )
-    if contemp_rule == "allow_contemporaneous":
+    if contemp_rule == "allow_same_period_predictors":
         X_train = frame[predictors].iloc[start_idx + horizon : origin_idx + 1].astype(float).copy()
         y_train = _target_values()
         pred_idx = origin_idx + horizon
         if pred_idx >= len(frame):
-            raise ExecutionError("contemporaneous_x_rule='allow_contemporaneous' requires X observed at the target date; target falls beyond the available index")
+            raise ExecutionError("contemporaneous_x_rule='allow_same_period_predictors' requires X observed at the target date; target falls beyond the available index")
         X_pred = frame[predictors].iloc[[pred_idx]].astype(float).copy()
     else:
         X_train = frame[predictors].iloc[start_idx : origin_idx - horizon + 1].astype(float).copy()

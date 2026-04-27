@@ -24,8 +24,8 @@ def _baseline_single_path_recipe() -> dict:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "info_set": "revised",
-                    "task": "single_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },

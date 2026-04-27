@@ -14,8 +14,8 @@ def _recipe() -> dict:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "task": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -88,14 +88,14 @@ def test_fred_sd_composite_rejects_wrong_frequency() -> None:
 @pytest.mark.parametrize(
     ("axis", "value", "message"),
     [
-        ("variable_universe", "handpicked_set", "variable_universe_columns"),
-        ("variable_universe", "category_subset", "variable_universe_category_columns"),
-        ("variable_universe", "target_specific_subset", "target_specific_columns"),
-        ("predictor_family", "handpicked_set", "handpicked_columns"),
+        ("variable_universe", "explicit_variable_list", "variable_universe_columns"),
+        ("variable_universe", "category_variables", "variable_universe_category_columns"),
+        ("variable_universe", "target_specific_variables", "target_specific_columns"),
+        ("predictor_family", "explicit_variable_list", "handpicked_columns"),
         ("predictor_family", "category_based", "predictor_category_columns"),
         ("deterministic_components", "break_dummies", "break_dates"),
-        ("missing_availability", "x_impute_only", "x_imputation"),
-        ("raw_missing_policy", "x_impute_raw", "raw_x_imputation"),
+        ("missing_availability", "impute_predictors_only", "x_imputation"),
+        ("raw_missing_policy", "impute_raw_predictors", "raw_x_imputation"),
         ("release_lag_rule", "series_specific_lag", "release_lag_per_series"),
     ],
 )
@@ -408,19 +408,19 @@ def test_official_transform_defaults_are_derived_from_legacy_raw_preprocess_brid
     compiled = compile_recipe_dict(_recipe())
 
     data_task = compiled.manifest["data_task_spec"]
-    assert data_task["official_transform_policy"] == "raw_official_frame"
-    assert data_task["official_transform_scope"] == "apply_tcode_to_none"
+    assert data_task["official_transform_policy"] == "keep_official_raw_scale"
+    assert data_task["official_transform_scope"] == "none"
     assert data_task["official_transform_source"]["policy_source"] == "legacy_layer2_tcode_bridge"
     assert data_task["official_transform_source"]["scope_source"] == "legacy_layer2_tcode_bridge"
     assert "tcode_policy" in data_task["official_transform_source"]["legacy_bridge_axes"]
 
 
-def test_official_transform_axes_record_layer1_dataset_tcode_path() -> None:
+def test_official_transform_axes_record_layer1_apply_official_tcode_path() -> None:
     recipe = _drop_legacy_tcode_bridge(_recipe())
     recipe["path"]["1_data_task"]["fixed_axes"].update(
         {
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_both",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "target_and_predictors",
         }
     )
 
@@ -429,8 +429,8 @@ def test_official_transform_axes_record_layer1_dataset_tcode_path() -> None:
     data_task = compiled.manifest["data_task_spec"]
     axis_layers = compiled.compiled.tree_context["axis_layers"]
     preprocess = compiled.manifest["preprocess_contract"]
-    assert data_task["official_transform_policy"] == "dataset_tcode"
-    assert data_task["official_transform_scope"] == "apply_tcode_to_both"
+    assert data_task["official_transform_policy"] == "apply_official_tcode"
+    assert data_task["official_transform_scope"] == "target_and_predictors"
     assert data_task["official_transform_source"] == {
         "policy_source": "layer1_axis",
         "scope_source": "layer1_axis",
@@ -438,7 +438,7 @@ def test_official_transform_axes_record_layer1_dataset_tcode_path() -> None:
     }
     assert preprocess["tcode_policy"] == "tcode_only"
     assert preprocess["target_transform_policy"] == "tcode_transformed"
-    assert preprocess["x_transform_policy"] == "dataset_tcode_transformed"
+    assert preprocess["x_transform_policy"] == "apply_official_tcode_transformed"
     assert axis_layers["official_transform_policy"] == "1_data_task"
     assert axis_layers["official_transform_scope"] == "1_data_task"
 
@@ -447,8 +447,8 @@ def test_official_transform_scope_can_target_only_without_layer2_bridge() -> Non
     recipe = _drop_legacy_tcode_bridge(_recipe())
     recipe["path"]["1_data_task"]["fixed_axes"].update(
         {
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_target",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "target_only",
         }
     )
 
@@ -458,15 +458,15 @@ def test_official_transform_scope_can_target_only_without_layer2_bridge() -> Non
     assert preprocess["tcode_policy"] == "tcode_only"
     assert preprocess["target_transform_policy"] == "tcode_transformed"
     assert preprocess["x_transform_policy"] == "raw_level"
-    assert preprocess["tcode_application_scope"] == "apply_tcode_to_target"
+    assert preprocess["tcode_application_scope"] == "target_only"
 
 
 def test_official_transform_policy_rejects_legacy_layer2_conflict() -> None:
     recipe = _recipe()
     recipe["path"]["1_data_task"]["fixed_axes"].update(
         {
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_both",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "target_and_predictors",
         }
     )
 
@@ -476,9 +476,9 @@ def test_official_transform_policy_rejects_legacy_layer2_conflict() -> None:
 
 def test_official_transform_scope_rejects_legacy_layer2_conflict() -> None:
     recipe = _recipe()
-    recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_scope"] = "apply_tcode_to_target"
+    recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_scope"] = "target_only"
 
-    with pytest.raises(CompileValidationError, match="raw_official_frame"):
+    with pytest.raises(CompileValidationError, match="keep_official_raw_scale"):
         compile_recipe_dict(recipe)
 
 
@@ -486,9 +486,9 @@ def test_layer1_raw_missing_policy_records_before_tcode_contract() -> None:
     recipe = _drop_legacy_tcode_bridge(_recipe())
     recipe["path"]["1_data_task"]["fixed_axes"].update(
         {
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_both",
-            "raw_missing_policy": "x_impute_raw",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "target_and_predictors",
+            "raw_missing_policy": "impute_raw_predictors",
         }
     )
     recipe["path"]["1_data_task"]["leaf_config"]["raw_x_imputation"] = "median"
@@ -497,7 +497,7 @@ def test_layer1_raw_missing_policy_records_before_tcode_contract() -> None:
 
     data_task = compiled.manifest["data_task_spec"]
     axis_layers = compiled.compiled.tree_context["axis_layers"]
-    assert data_task["raw_missing_policy"] == "x_impute_raw"
+    assert data_task["raw_missing_policy"] == "impute_raw_predictors"
     assert data_task["raw_x_imputation"] == "median"
     assert axis_layers["raw_missing_policy"] == "1_data_task"
 
@@ -506,8 +506,8 @@ def test_layer1_raw_outlier_policy_records_before_tcode_contract() -> None:
     recipe = _drop_legacy_tcode_bridge(_recipe())
     recipe["path"]["1_data_task"]["fixed_axes"].update(
         {
-            "official_transform_policy": "dataset_tcode",
-            "official_transform_scope": "apply_tcode_to_both",
+            "official_transform_policy": "apply_official_tcode",
+            "official_transform_scope": "target_and_predictors",
             "raw_outlier_policy": "iqr_clip_raw",
         }
     )

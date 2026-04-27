@@ -24,8 +24,8 @@ def _multi_target_recipe() -> dict:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "info_set": "revised",
-                    "target_structure": "multi_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "target_structure": "multi_target",
                 },
                 "leaf_config": {"targets": ["INDPRO", "RPI"], "horizons": [1]},
             },
@@ -54,7 +54,7 @@ def test_build_single_target_recipe_dict_sets_target_structure_and_target() -> N
     src = _multi_target_recipe()
     variant = _build_single_target_recipe_dict(src, "RPI")
 
-    assert variant["path"]["1_data_task"]["fixed_axes"]["target_structure"] == "single_target_point_forecast"
+    assert variant["path"]["1_data_task"]["fixed_axes"]["target_structure"] == "single_target"
     assert "task" not in variant["path"]["1_data_task"]["fixed_axes"]
     assert variant["path"]["1_data_task"]["leaf_config"]["target"] == "RPI"
     assert "targets" not in variant["path"]["1_data_task"]["leaf_config"]

@@ -17,7 +17,7 @@ def _base_recipe(overrides_3=None, overrides_1=None, overrides_4=None, overrides
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "experiment_unit": "single_target_generator_grid"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast", "benchmark_family": "ar_bic", "evaluation_scale": "raw_level"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "final_revised_data", "task": "single_target", "benchmark_family": "ar_bic", "evaluation_scale": "raw_level"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -28,7 +28,7 @@ def _base_recipe(overrides_3=None, overrides_1=None, overrides_4=None, overrides
                 "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
                 "preprocess_order": "none", "preprocess_fit_scope": "not_applicable",
                 "inverse_transform_policy": "none", "representation_policy": "raw_only",
-                "tcode_application_scope": "apply_tcode_to_none",
+                "tcode_application_scope": "none",
                 "target_transform": "level", "target_normalization": "none",
                 "target_domain": "unconstrained", "scaling_scope": "columnwise",
                 "additional_preprocessing": "none", "x_lag_creation": "no_x_lags",

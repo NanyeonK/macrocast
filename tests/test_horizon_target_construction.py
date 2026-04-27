@@ -42,8 +42,8 @@ OPERATIONAL_CONSTRUCTIONS = (
 def _recipe(construction: str, *, horizons: list[int] | None = None) -> dict:
     axes_1 = {
         "dataset": "fred_md",
-        "info_set": "revised",
-        "task": "single_target_point_forecast",
+        "info_set": "final_revised_data",
+        "task": "single_target",
         "horizon_target_construction": construction,
     }
     return {

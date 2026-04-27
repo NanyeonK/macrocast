@@ -149,7 +149,7 @@ def experiment_unit_options_for_wizard(research_design: str, task: str) -> tuple
     research_design = canonical_axis_value("research_design", research_design)
     if research_design == "replication_recipe":
         candidates = ("replication_recipe",)
-    elif task == "multi_target_point_forecast":
+    elif task == "multi_target":
         candidates = (
             "multi_target_shared_design",
             "multi_target_separate_runs",
@@ -178,7 +178,7 @@ def derive_experiment_unit_default(
         return "replication_recipe"
     if wrapper_family in _BY_ID:
         return wrapper_family
-    if task == "multi_target_point_forecast":
+    if task == "multi_target":
         # shared_design is handled by execute_recipe; separate_runs is the
         # supported wrapper-runner fan-out path.
         return "multi_target_shared_design"

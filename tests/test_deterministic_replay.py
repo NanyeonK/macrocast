@@ -16,7 +16,7 @@ def _stage0():
             "sample_split": "rolling_window_oos",
             "benchmark": "zero_change",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",

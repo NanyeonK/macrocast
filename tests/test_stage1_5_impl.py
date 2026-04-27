@@ -1,9 +1,9 @@
 """End-to-end tests for 1.5 implementation (9 values flipped operational).
 
 Covers:
-- contemporaneous_x_rule.allow_contemporaneous vs. forbid_contemporaneous (default).
+- contemporaneous_x_rule.allow_same_period_predictors vs. forbid_same_period_predictors (default).
 - release_lag_rule.series_specific_lag via leaf_config.release_lag_per_series.
-- missing_availability.available_case / x_impute_only (+ guards).
+- missing_availability.keep_available_rows / impute_predictors_only (+ guards).
 - structural_break_segmentation 2 presets (pre_post_crisis / pre_post_covid); user_break_dates was dropped as a duplicate of deterministic_components.break_dummies.
 """
 from __future__ import annotations
@@ -19,8 +19,8 @@ from macrocast.compiler.build import compile_recipe_dict
 def _recipe(**data_task_axes) -> dict:
     axes_1 = {
         "dataset": "fred_md",
-        "info_set": "revised",
-        "task": "single_target_point_forecast",
+        "info_set": "final_revised_data",
+        "task": "single_target",
     }
     leaf_extras = data_task_axes.pop("_leaf", {})
     for k, v in data_task_axes.items():
@@ -72,14 +72,14 @@ def _recipe(**data_task_axes) -> dict:
 def test_contemporaneous_x_forbid_default_compiles() -> None:
     r = compile_recipe_dict(_recipe())
     assert r.compiled.execution_status == "executable"
-    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "forbid_contemporaneous"
+    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "forbid_same_period_predictors"
     assert "contemporaneous_x_rule" not in r.manifest["data_task_spec"]
 
 
 def test_contemporaneous_x_allow_compiles() -> None:
-    r = compile_recipe_dict(_recipe(contemporaneous_x_rule="allow_contemporaneous"))
+    r = compile_recipe_dict(_recipe(contemporaneous_x_rule="allow_same_period_predictors"))
     assert r.compiled.execution_status == "executable"
-    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "allow_contemporaneous"
+    assert r.manifest["layer2_representation_spec"]["input_panel"]["contemporaneous_x_rule"] == "allow_same_period_predictors"
     assert "contemporaneous_x_rule" not in r.manifest["data_task_spec"]
 
 
@@ -103,28 +103,28 @@ def test_release_lag_fixed_lag_all_series_executes() -> None:
 
 def test_missing_availability_zero_fill_default_compiles() -> None:
     r = compile_recipe_dict(_recipe())
-    assert r.manifest["data_task_spec"]["missing_availability"] == "zero_fill_before_start"
+    assert r.manifest["data_task_spec"]["missing_availability"] == "zero_fill_leading_predictor_gaps"
     assert r.manifest["data_task_spec"]["raw_missing_policy"] == "preserve_raw_missing"
     assert r.manifest["data_task_spec"]["raw_outlier_policy"] == "preserve_raw_outliers"
 
 
-def test_missing_availability_available_case_compiles() -> None:
-    r = compile_recipe_dict(_recipe(missing_availability="available_case"))
+def test_missing_availability_keep_available_rows_compiles() -> None:
+    r = compile_recipe_dict(_recipe(missing_availability="keep_available_rows"))
     assert r.compiled.execution_status == "executable"
 
 
-def test_missing_availability_x_impute_only_compiles_with_strategy() -> None:
+def test_missing_availability_impute_predictors_only_compiles_with_strategy() -> None:
     r = compile_recipe_dict(_recipe(
-        missing_availability="x_impute_only",
+        missing_availability="impute_predictors_only",
         _leaf={"x_imputation": "ffill"},
     ))
     assert r.compiled.execution_status == "executable"
     assert r.manifest["data_task_spec"]["x_imputation"] == "ffill"
 
 
-def test_raw_missing_policy_x_impute_raw_compiles_with_strategy() -> None:
+def test_raw_missing_policy_impute_raw_predictors_compiles_with_strategy() -> None:
     r = compile_recipe_dict(_recipe(
-        raw_missing_policy="x_impute_raw",
+        raw_missing_policy="impute_raw_predictors",
         _leaf={"raw_x_imputation": "ffill"},
     ))
     assert r.compiled.execution_status == "executable"

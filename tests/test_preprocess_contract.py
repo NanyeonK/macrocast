@@ -115,7 +115,7 @@ def test_build_preprocess_contract_train_only_raw_panel_robust_is_operational() 
 def test_build_preprocess_contract_tcode_then_extra_is_not_supported() -> None:
     contract = build_preprocess_contract(
         target_transform_policy="tcode_transformed",
-        x_transform_policy="dataset_tcode_transformed",
+        x_transform_policy="apply_official_tcode_transformed",
         tcode_policy="tcode_then_extra_preprocess",
         target_missing_policy="none",
         x_missing_policy="em_impute",
@@ -129,7 +129,7 @@ def test_build_preprocess_contract_tcode_then_extra_is_not_supported() -> None:
         inverse_transform_policy="target_only",
         evaluation_scale="raw_level",
         representation_policy="tcode_only",
-        tcode_application_scope="apply_tcode_to_both",
+        tcode_application_scope="target_and_predictors",
     )
 
     assert contract.preprocess_order == "tcode_then_extra"
@@ -140,7 +140,7 @@ def test_build_preprocess_contract_tcode_then_extra_is_not_supported() -> None:
 def test_build_preprocess_contract_tcode_then_train_only_extra_is_operational() -> None:
     contract = build_preprocess_contract(
         target_transform_policy="tcode_transformed",
-        x_transform_policy="dataset_tcode_transformed",
+        x_transform_policy="apply_official_tcode_transformed",
         tcode_policy="tcode_then_extra_preprocess",
         target_missing_policy="none",
         x_missing_policy="mean_impute",
@@ -154,7 +154,7 @@ def test_build_preprocess_contract_tcode_then_train_only_extra_is_operational() 
         inverse_transform_policy="none",
         evaluation_scale="raw_level",
         representation_policy="tcode_only",
-        tcode_application_scope="apply_tcode_to_both",
+        tcode_application_scope="target_and_predictors",
     )
 
     assert is_operational_preprocess_contract(contract) is True
@@ -330,7 +330,7 @@ def test_build_preprocess_contract_supports_stage2_governance_defaults() -> None
     contract = _raw_only_contract()
     payload = preprocess_to_dict(contract)
     assert payload["representation_policy"] == "raw_only"
-    assert payload["tcode_application_scope"] == "apply_tcode_to_none"
+    assert payload["tcode_application_scope"] == "none"
 
 
 def test_build_preprocess_contract_mean_impute_minmax_is_operational() -> None:

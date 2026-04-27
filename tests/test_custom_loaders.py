@@ -75,8 +75,8 @@ def test_custom_csv_via_execute_recipe_requires_custom_data_path() -> None:
                 "fixed_axes": {
                     "dataset": "fred_md",
                     "source_adapter": "custom_csv",
-                    "info_set": "revised",
-                    "task": "single_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},  # no custom_data_path!
             },
@@ -117,8 +117,8 @@ def test_legacy_dataset_source_alias_compiles_to_source_adapter(tmp_path: Path) 
                 "fixed_axes": {
                     "dataset": "fred_md",
                     "dataset_source": "custom_csv",
-                    "info_set": "revised",
-                    "task": "single_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -164,8 +164,8 @@ def test_dataset_source_alias_conflicts_with_source_adapter() -> None:
                     "dataset": "fred_md",
                     "source_adapter": "custom_csv",
                     "dataset_source": "custom_parquet",
-                    "info_set": "revised",
-                    "task": "single_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",

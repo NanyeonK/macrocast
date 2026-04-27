@@ -2,7 +2,7 @@
 
 Covers:
 - benchmark_family: factor_model, multi_benchmark_suite, paper_specific_benchmark, survey_forecast.
-- predictor_family: all_except_target, category_based, factor_only, handpicked_set.
+- predictor_family: all_except_target, category_based, factor_only, explicit_variable_list.
 - variable_universe: 6 subset rules via leaf_config input channels.
 - deterministic_components: 5 feature-augmentation rules.
 
@@ -23,8 +23,8 @@ from macrocast.compiler.errors import CompileValidationError
 def _recipe(**axes_1_extras) -> dict:
     axes_1 = {
         "dataset": "fred_md",
-        "info_set": "revised",
-        "task": "single_target_point_forecast",
+        "info_set": "final_revised_data",
+        "task": "single_target",
     }
     leaf_extras = axes_1_extras.pop("_leaf", {})
     # Pull 1_data_task axis values out of kwargs into axes_1
@@ -119,7 +119,7 @@ def test_benchmark_family_survey_forecast_compiles() -> None:
 
 # ---------- predictor_family ----------
 
-@pytest.mark.parametrize("value", ["category_based", "factor_only", "handpicked_set"])
+@pytest.mark.parametrize("value", ["category_based", "factor_only", "explicit_variable_list"])
 def test_predictor_family_compiles(value: str) -> None:
     recipe = _recipe(predictor_family=value)
     # These values expect feature_builder != autoreg_lagged_target
@@ -128,7 +128,7 @@ def test_predictor_family_compiles(value: str) -> None:
     if value == "category_based":
         recipe["path"]["1_data_task"]["leaf_config"]["predictor_category"] = "output"
         recipe["path"]["1_data_task"]["leaf_config"]["predictor_category_columns"] = {"output": ["RPI", "UNRATE"]}
-    if value == "handpicked_set":
+    if value == "explicit_variable_list":
         recipe["path"]["1_data_task"]["leaf_config"]["handpicked_columns"] = ["RPI", "UNRATE"]
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable", f"{value}: blocked={r.manifest.get('blocked_reasons')}"
@@ -140,15 +140,15 @@ def test_predictor_family_compiles(value: str) -> None:
 
 
 
-def test_variable_universe_handpicked_set_compiles() -> None:
-    recipe = _recipe(variable_universe="handpicked_set")
+def test_variable_universe_explicit_variable_list_compiles() -> None:
+    recipe = _recipe(variable_universe="explicit_variable_list")
     recipe["path"]["1_data_task"]["leaf_config"]["variable_universe_columns"] = ["RPI", "UNRATE"]
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable"
 
 
-def test_variable_universe_category_subset_compiles() -> None:
-    recipe = _recipe(variable_universe="category_subset")
+def test_variable_universe_category_variables_compiles() -> None:
+    recipe = _recipe(variable_universe="category_variables")
     recipe["path"]["1_data_task"]["leaf_config"]["variable_universe_category"] = "output"
     recipe["path"]["1_data_task"]["leaf_config"]["variable_universe_category_columns"] = {"output": ["RPI"]}
     r = compile_recipe_dict(recipe)
@@ -156,7 +156,7 @@ def test_variable_universe_category_subset_compiles() -> None:
 
 
 def test_variable_universe_target_specific_compiles() -> None:
-    recipe = _recipe(variable_universe="target_specific_subset")
+    recipe = _recipe(variable_universe="target_specific_variables")
     recipe["path"]["1_data_task"]["leaf_config"]["target_specific_columns"] = {"INDPRO": ["RPI"]}
     r = compile_recipe_dict(recipe)
     assert r.compiled.execution_status == "executable"

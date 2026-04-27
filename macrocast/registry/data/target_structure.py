@@ -10,14 +10,14 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy='fixed',
     entries=(
         EnumRegistryEntry(
-            id='single_target_point_forecast',
-            description='single target point forecast',
+            id='single_target',
+            description='one target series per compiled run',
             status='operational',
             priority="A",
         ),
         EnumRegistryEntry(
-            id='multi_target_point_forecast',
-            description='multi target point forecast',
+            id='multi_target',
+            description='multiple target series in the study design',
             status='operational',
             priority="A",
         ),

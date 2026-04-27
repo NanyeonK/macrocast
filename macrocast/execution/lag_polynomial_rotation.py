@@ -115,7 +115,7 @@ def build_marx_rotation_contract(
             "do_not_append_source_lag_columns when the rotated MARX basis is active; "
             "the p=1 rotated coordinate is retained as the first rotated-basis coordinate"
         ),
-        "initial_lag_fill_policy": "zero_fill_before_start",
+        "initial_lag_fill_policy": "zero_fill_leading_predictor_gaps",
         "formula": "Z_{i,p,t} = p^{-1} * sum_{j=1}^{p} X_{i,t-j}",
         "alignment": {
             "train_row_t_uses": "X_{t-1}, ..., X_{t-p} for each rotated order p",

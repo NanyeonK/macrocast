@@ -138,14 +138,14 @@ def test_release_lag_series_specific_records_report():
 
 
 def test_missing_availability_complete_case_is_noop():
-    # complete_case_only is the default no-op; available_case and x_impute_only
+    # require_complete_rows is the default no-op; keep_available_rows and impute_predictors_only
     # now do real work (1.5 impl) — see tests/test_stage1_5_impl.py for their coverage.
     r = _make_raw()
-    out = _apply_missing_availability(r, 'complete_case_only')
+    out = _apply_missing_availability(r, 'require_complete_rows')
     assert out is r
 
 
-def test_missing_availability_available_case_records_report():
+def test_missing_availability_keep_available_rows_records_report():
     import pandas as pd
     df = pd.DataFrame({
         'date': pd.date_range('2000-01-01', periods=3, freq='MS'),
@@ -154,11 +154,11 @@ def test_missing_availability_available_case_records_report():
     })
     raw = _StubRaw(df)
 
-    out = _apply_missing_availability(raw, 'available_case', target='INDPRO')
+    out = _apply_missing_availability(raw, 'keep_available_rows', target='INDPRO')
 
     assert len(out.data) == 2
     assert out.data.attrs['macrocast_reports']['missing_availability'] == {
-        'rule': 'available_case',
+        'rule': 'keep_available_rows',
         'required_columns': ['INDPRO', 'RPI'],
         'before_rows': 3,
         'after_rows': 2,
@@ -166,7 +166,7 @@ def test_missing_availability_available_case_records_report():
     }
 
 
-def test_missing_availability_x_impute_only_records_report():
+def test_missing_availability_impute_predictors_only_records_report():
     import pandas as pd
     df = pd.DataFrame({
         'date': pd.date_range('2000-01-01', periods=3, freq='MS'),
@@ -177,14 +177,14 @@ def test_missing_availability_x_impute_only_records_report():
 
     out = _apply_missing_availability(
         raw,
-        'x_impute_only',
+        'impute_predictors_only',
         target='INDPRO',
         spec={'x_imputation': 'mean'},
     )
 
     assert out.data['RPI'].iloc[1] == 2.0
     assert out.data.attrs['macrocast_reports']['missing_availability'] == {
-        'rule': 'x_impute_only',
+        'rule': 'impute_predictors_only',
         'strategy': 'mean',
         'target': 'INDPRO',
         'predictor_columns': ['RPI'],
@@ -194,7 +194,7 @@ def test_missing_availability_x_impute_only_records_report():
     }
 
 
-def test_raw_missing_policy_x_impute_raw_fills_predictors_only():
+def test_raw_missing_policy_impute_raw_predictors_fills_predictors_only():
     import pandas as pd
     df = pd.DataFrame({
         'date': pd.date_range('2000-01-01', periods=3, freq='MS'),
@@ -205,7 +205,7 @@ def test_raw_missing_policy_x_impute_raw_fills_predictors_only():
 
     out = _apply_raw_missing_policy(
         raw,
-        'x_impute_raw',
+        'impute_raw_predictors',
         target='INDPRO',
         spec={'raw_x_imputation': 'mean'},
     )
@@ -215,7 +215,7 @@ def test_raw_missing_policy_x_impute_raw_fills_predictors_only():
     assert out.data.attrs['macrocast_reports']['raw_missing']['before_official_transform'] is True
 
 
-def test_raw_missing_policy_zero_fill_leading_x_before_tcode():
+def test_raw_missing_policy_zero_fill_leading_predictor_missing_before_tcode():
     import pandas as pd
     df = pd.DataFrame({
         'date': pd.date_range('2000-01-01', periods=4, freq='MS'),
@@ -224,7 +224,7 @@ def test_raw_missing_policy_zero_fill_leading_x_before_tcode():
     }).set_index('date')
     raw = _StubRaw(df)
 
-    out = _apply_raw_missing_policy(raw, 'zero_fill_leading_x_before_tcode', target='INDPRO', spec={})
+    out = _apply_raw_missing_policy(raw, 'zero_fill_leading_predictor_missing_before_tcode', target='INDPRO', spec={})
 
     assert out.data['RPI'].iloc[0] == 0.0
     assert out.data['RPI'].iloc[1] == 0.0
@@ -258,15 +258,15 @@ def test_tcode_preprocessing_prefers_data_task_axes_over_contract_bridge():
     }).set_index('date')
     raw = _StubRaw(df, transform_codes={'INDPRO': 2, 'RPI': 2})
     recipe = _recipe_with(
-        official_transform_policy='dataset_tcode',
-        official_transform_scope='apply_tcode_to_target',
+        official_transform_policy='apply_official_tcode',
+        official_transform_scope='target_only',
         official_transform_source={
             'policy_source': 'layer1_axis',
             'scope_source': 'layer1_axis',
             'legacy_bridge_axes': [],
         },
     )
-    contract = SimpleNamespace(tcode_policy='raw_only', tcode_application_scope='apply_tcode_to_X')
+    contract = SimpleNamespace(tcode_policy='raw_only', tcode_application_scope='predictors_only')
 
     out = _apply_tcode_preprocessing(raw, recipe, contract, target='INDPRO')
 
@@ -274,7 +274,7 @@ def test_tcode_preprocessing_prefers_data_task_axes_over_contract_bridge():
     assert out.data['INDPRO'].iloc[1:].tolist() == [1.0, 2.0, 3.0]
     assert out.data['RPI'].tolist() == [10.0, 20.0, 40.0, 80.0]
     report = out.data.attrs['macrocast_reports']['tcode']
-    assert report['scope'] == 'apply_tcode_to_target'
+    assert report['scope'] == 'target_only'
     assert report['source']['runtime_policy_source'] == 'data_task_spec'
     assert report['source']['runtime_scope_source'] == 'data_task_spec'
     assert report['source']['legacy_contract_fallback'] is False
@@ -289,7 +289,7 @@ def test_tcode_preprocessing_marks_legacy_contract_fallback_source():
         'RPI': [10.0, 20.0, 40.0],
     }).set_index('date')
     raw = _StubRaw(df, transform_codes={'INDPRO': 2, 'RPI': 2})
-    contract = SimpleNamespace(tcode_policy='tcode_only', tcode_application_scope='apply_tcode_to_X')
+    contract = SimpleNamespace(tcode_policy='tcode_only', tcode_application_scope='predictors_only')
 
     out = _apply_tcode_preprocessing(raw, _recipe_with(), contract, target='INDPRO')
 
@@ -297,8 +297,8 @@ def test_tcode_preprocessing_marks_legacy_contract_fallback_source():
     assert pd.isna(out.data['RPI'].iloc[0])
     assert out.data['RPI'].iloc[1:].tolist() == [10.0, 20.0]
     report = out.data.attrs['macrocast_reports']['tcode']
-    assert report['policy'] == 'dataset_tcode'
-    assert report['scope'] == 'apply_tcode_to_X'
+    assert report['policy'] == 'apply_official_tcode'
+    assert report['scope'] == 'predictors_only'
     assert report['source']['runtime_policy_source'] == 'legacy_preprocess_contract'
     assert report['source']['runtime_scope_source'] == 'legacy_preprocess_contract'
     assert report['source']['legacy_contract_fallback'] is True
@@ -310,7 +310,7 @@ def test_variable_universe_all_is_noop():
     assert out is r
 
 
-def test_variable_universe_preselected_core_filters_when_core_present():
+def test_variable_universe_core_variables_filters_when_core_present():
     import pandas as pd
     df = pd.DataFrame({
         'date': pd.date_range('2000-01-01', periods=3, freq='MS'),
@@ -319,7 +319,7 @@ def test_variable_universe_preselected_core_filters_when_core_present():
         'IRRELEVANT_X': [99, 98, 97],
     })
     raw = _StubRaw(df)
-    out = _apply_variable_universe(raw, 'preselected_core')
+    out = _apply_variable_universe(raw, 'core_variables')
     cols = set(out.data.columns)
     assert 'IRRELEVANT_X' not in cols
     assert 'INDPRO' in cols

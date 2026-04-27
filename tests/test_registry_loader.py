@@ -232,15 +232,15 @@ def test_registry_loader_tracks_migrated_axis_layers() -> None:
 def test_registry_loader_discovers_information_set_type_axis() -> None:
     entry = get_axis_registry_entry("information_set_type")
     assert entry.allowed_values == (
-        "revised",
-        "pseudo_oos_revised",
+        "final_revised_data",
+        "pseudo_oos_on_revised_data",
     )
 
 
 def test_registry_loader_preserves_stage1_operational_values() -> None:
     variable_universe = get_axis_registry_entry("variable_universe")
     assert variable_universe.current_status["all_variables"] == "operational"
-    assert variable_universe.current_status["handpicked_set"] == "operational"
+    assert variable_universe.current_status["explicit_variable_list"] == "operational"
 
     state_selection = get_axis_registry_entry("state_selection")
     assert state_selection.layer == "1_data_task"

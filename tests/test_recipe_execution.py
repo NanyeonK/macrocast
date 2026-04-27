@@ -8,7 +8,7 @@ from macrocast import (
 )
 
 
-def _stage0(task: str = "single_target_point_forecast"):
+def _stage0(task: str = "single_target"):
     return build_design_frame(
         research_design="single_forecast_run",
         fixed_design={
@@ -90,7 +90,7 @@ def test_recipe_summary_mentions_target_and_route() -> None:
 def test_build_multi_target_recipe_spec_and_run_id() -> None:
     recipe = build_recipe_spec(
         recipe_id="fred_md_multi",
-        stage0=_stage0(task="multi_target_point_forecast"),
+        stage0=_stage0(task="multi_target"),
         target="",
         targets=("INDPRO", "RPI"),
         horizons=(1, 3),

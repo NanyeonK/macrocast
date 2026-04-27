@@ -57,11 +57,11 @@ def build_design_frame(
         raise DesignValidationError("experiment_unit could not be derived")
 
     unit_entry = get_experiment_unit_entry(resolved_experiment_unit)
-    if unit_entry.requires_multi_target and normalized_fixed_design.forecast_task != "multi_target_point_forecast":
+    if unit_entry.requires_multi_target and normalized_fixed_design.forecast_task != "multi_target":
         raise DesignValidationError(
-            f"experiment_unit={resolved_experiment_unit!r} requires forecast_task='multi_target_point_forecast'"
+            f"experiment_unit={resolved_experiment_unit!r} requires forecast_task='multi_target'"
         )
-    if not unit_entry.requires_multi_target and normalized_fixed_design.forecast_task == "multi_target_point_forecast" and resolved_experiment_unit not in {"single_target_generator_grid", "single_target_single_generator", "single_target_full_sweep", "replication_recipe"}:
+    if not unit_entry.requires_multi_target and normalized_fixed_design.forecast_task == "multi_target" and resolved_experiment_unit not in {"single_target_generator_grid", "single_target_single_generator", "single_target_full_sweep", "replication_recipe"}:
         pass
 
     design_shape = derive_design_shape(

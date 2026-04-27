@@ -29,7 +29,7 @@ def test_marx_rotation_contract_builds_predictor_major_names() -> None:
     assert contract["rotation_orders"] == [1, 2, 3]
     assert contract["feature_order"] == "predictor_major_then_rotation_order"
     assert contract["basis_policy"] == "replace_lag_polynomial_basis"
-    assert contract["initial_lag_fill_policy"] == "zero_fill_before_start"
+    assert contract["initial_lag_fill_policy"] == "zero_fill_leading_predictor_gaps"
     assert contract["feature_names"] == [
         "a_marx_ma_lag1_to_lag1",
         "a_marx_ma_lag1_to_lag2",

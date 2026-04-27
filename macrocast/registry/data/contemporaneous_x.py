@@ -10,14 +10,14 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy='fixed',
     entries=(
         EnumRegistryEntry(
-            id='allow_contemporaneous',
-            description='allow contemporaneous',
+            id='allow_same_period_predictors',
+            description='allow same-period predictors at forecast origin',
             status='operational',
             priority='B',
         ),
         EnumRegistryEntry(
-            id='forbid_contemporaneous',
-            description='forbid contemporaneous',
+            id='forbid_same_period_predictors',
+            description='forbid same-period predictors at forecast origin',
             status='operational',
             priority='A',
         ),

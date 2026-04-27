@@ -10,14 +10,14 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy='fixed',
     entries=(
         EnumRegistryEntry(
-            id='revised',
-            description='revised',
+            id='final_revised_data',
+            description='use final revised data',
             status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
-            id='pseudo_oos_revised',
-            description='pseudo oos revised',
+            id='pseudo_oos_on_revised_data',
+            description='simulate pseudo out-of-sample splits on final revised data',
             status="operational",
             priority='A',
         ),
