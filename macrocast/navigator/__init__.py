@@ -15,6 +15,11 @@ from .replications import (
     replication_recipe_yaml,
     write_replication_recipe,
 )
+from .presentation import (
+    AXIS_PRESENTATION_MAP,
+    AXIS_PRESENTATION_SCHEMA_VERSION,
+    axis_presentation_map,
+)
 from .ui_data import (
     NAVIGATOR_UI_DATA_SCHEMA_VERSION,
     axis_catalog,
@@ -25,9 +30,12 @@ from .ui_data import (
 __all__ = [
     "NAVIGATOR_SCHEMA_VERSION",
     "NAVIGATOR_UI_DATA_SCHEMA_VERSION",
+    "AXIS_PRESENTATION_MAP",
+    "AXIS_PRESENTATION_SCHEMA_VERSION",
     "OPERATIONAL_NARROW_CONTRACTS",
     "REPLICATION_LIBRARY_VERSION",
     "axis_catalog",
+    "axis_presentation_map",
     "build_navigation_view",
     "canonical_path",
     "compatibility_view",
