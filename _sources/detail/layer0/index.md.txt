@@ -1,5 +1,9 @@
 # 4.1 Layer 0: Study Setup
 
+- Parent: [4. Detail (code): Full](../index.md)
+- Current: Layer 0
+- Next: [4.2 Layer 1: Data Task](../layer1/index.md)
+
 Layer 0 decides the shape of the study before data or models are chosen. It answers: what kind of run is this, which runner owns it, how failures behave, how deterministic it should be, and how work may be parallelized.
 
 ## How many steps?

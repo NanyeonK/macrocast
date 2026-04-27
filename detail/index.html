@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>4. Detail (code) &mdash; macrocast</title>
+  <title>4. Detail (code): Full &mdash; macrocast</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -22,7 +22,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="API Reference" href="../api/index.html" />
+    <link rel="next" title="4.1 Layer 0: Study Setup" href="layer0/index.html" />
     <link rel="prev" title="Read Results" href="../simple/read_results.html" /> 
 </head>
 
@@ -46,49 +46,22 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../getting_started/index.html">0. Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/quickstart.html">Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/first_study.html">Your First Study: Ridge vs Lasso on FRED-MD</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/understanding_output.html">Understanding Output</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../getting_started/stages_reference.html">Stages Reference (0 and 1)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../install.html">Installation</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/index.html">0. Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../philosophy.html">1. Philosophy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../navigator/index.html">Navigator Docs</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../navigator/tree_navigator.html">Tree Navigator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../navigator/path_resolver.html">Path Resolver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../navigator/compatibility_engine.html">Compatibility Engine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../navigator/replication_library.html">Replication Library</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../navigator/yaml_execution.html">YAML And Execution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../navigator/index.html">Navigator Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simple/index.html">Simple Docs</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Detail (code): Full</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="layer0/index.html">4.1 Layer 0: Study Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer1/index.html">4.2 Layer 1: Data Task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer2/index.html">4.3 Layer 2: Representation / Research Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer3/index.html">4.4 Layer 3: Forecast Generator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer4/index.html">4.5 Layer 4: Evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer5/index.html">4.6 Layer 5: Output / Provenance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer6/index.html">4.7 Layer 6: Statistical Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layer7/index.html">4.8 Layer 7: Interpretation / Importance</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../simple/index.html">Simple Docs</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../simple/quickstart.html">Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/run_experiment.html">Run An Experiment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/compare_models.html">Compare Models</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/sweep_only_what_you_care.html">Sweep Only What You Care About</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/fred_sd.html">FRED-SD</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/add_custom_model.html">Add A Custom Model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/add_custom_preprocessor.html">Add A Custom Preprocessor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../simple/read_results.html">Read Results</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Detail (code)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../api/design.html"><code class="docutils literal notranslate"><span class="pre">macrocast.design</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/raw.html"><code class="docutils literal notranslate"><span class="pre">macrocast.raw</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/recipes.html"><code class="docutils literal notranslate"><span class="pre">macrocast.recipes</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/preprocessing.html"><code class="docutils literal notranslate"><span class="pre">macrocast.preprocessing</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/registry.html"><code class="docutils literal notranslate"><span class="pre">macrocast.registry</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/compiler.html"><code class="docutils literal notranslate"><span class="pre">macrocast.compiler</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/execution.html"><code class="docutils literal notranslate"><span class="pre">macrocast.execution</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/start.html"><code class="docutils literal notranslate"><span class="pre">macrocast.start</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/sweep_runner.html">Sweep Runner API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/models/deep.html"><code class="docutils literal notranslate"><span class="pre">macrocast.execution.models.deep</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/decomposition.html"><code class="docutils literal notranslate"><span class="pre">macrocast.decomposition</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../CONVENTIONS.html">Docs Conventions</a></li>
 </ul>
 
@@ -106,7 +79,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">4. Detail (code)</li>
+      <li class="breadcrumb-item active">4. Detail (code): Full</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/NanyeonK/macrocast/blob/main/docs/detail/index.md" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -116,102 +89,44 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="detail-code">
-<h1>4. Detail (code)<a class="headerlink" href="#detail-code" title="Link to this heading"></a></h1>
-<p>Detail docs are the full macrocast layer grammar. Read them when you need exact YAML, runtime artifacts, custom method hooks, or compatibility rules.</p>
-<p>Use the layers in order. Earlier layers define the data and representation contract that later layers consume.</p>
-<section id="layer-0-study-design-execution-grammar">
-<h2>4.1 Layer 0: Study Design / Execution Grammar<a class="headerlink" href="#layer-0-study-design-execution-grammar" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer0/index.html"><span class="std std-doc">Open Layer 0</span></a></p>
-<p>Layer 0 decides the shape of the study before data or models are chosen.</p>
+  <section id="detail-code-full">
+<h1>4. Detail (code): Full<a class="headerlink" href="#detail-code-full" title="Link to this heading"></a></h1>
+<p>Detail (code) is the <strong>Full</strong> interface for macrocast. Use it when Simple code is not enough and you need exact control over the layer path, YAML, runtime contracts, artifacts, or custom researcher methods.</p>
+<p>Full means:</p>
 <ul class="simple">
-<li><p>research design;</p></li>
-<li><p>experiment unit;</p></li>
-<li><p>failure policy;</p></li>
-<li><p>reproducibility mode;</p></li>
-<li><p>compute mode.</p></li>
+<li><p>every layer decision is explicit or compiler-derived from an explicit rule;</p></li>
+<li><p>disabled choices and forced choices are part of the contract;</p></li>
+<li><p>YAML paths, Python builders, runtime artifacts, and manifests must agree;</p></li>
+<li><p>custom methods enter through documented Layer 2 or Layer 3 contracts.</p></li>
 </ul>
+<p>Read the layers in order. Earlier layers define the data and representation contract that later layers consume.</p>
+<section id="full-layer-documents">
+<h2>Full Layer Documents<a class="headerlink" href="#full-layer-documents" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Full Layers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="layer0/index.html">4.1 Layer 0: Study Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer1/index.html">4.2 Layer 1: Data Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer2/index.html">4.3 Layer 2: Representation / Research Preprocessing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer3/index.html">4.4 Layer 3: Forecast Generator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer4/index.html">4.5 Layer 4: Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer5/index.html">4.6 Layer 5: Output / Provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer6/index.html">4.7 Layer 6: Statistical Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="layer7/index.html">4.8 Layer 7: Interpretation / Importance</a></li>
+</ul>
+</div>
 </section>
-<section id="layer-1-data-task-official-frame">
-<h2>4.2 Layer 1: Data Task / Official Frame<a class="headerlink" href="#layer-1-data-task-official-frame" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer1/index.html"><span class="std std-doc">Open Layer 1</span></a></p>
-<p>Layer 1 decides the official data task and produces the data frame that later layers are allowed to use.</p>
+<section id="navigation-rule">
+<h2>Navigation Rule<a class="headerlink" href="#navigation-rule" title="Link to this heading"></a></h2>
+<p>Each layer page shows only local context:</p>
 <ul class="simple">
-<li><p>dataset and source adapter;</p></li>
-<li><p>target structure and variable universe;</p></li>
-<li><p>information set, vintage, release lag, and contemporaneous-X rules;</p></li>
-<li><p>raw source missing/outlier handling;</p></li>
-<li><p>official transform policy.</p></li>
+<li><p>parent: Detail (code);</p></li>
+<li><p>current layer;</p></li>
+<li><p>previous layer when one exists;</p></li>
+<li><p>next layer when one exists;</p></li>
+<li><p>lower-level axis pages only for the current layer.</p></li>
 </ul>
-</section>
-<section id="layer-2-representation-research-preprocessing">
-<h2>4.3 Layer 2: Representation / Research Preprocessing<a class="headerlink" href="#layer-2-representation-research-preprocessing" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer2/index.html"><span class="std std-doc">Open Layer 2</span></a></p>
-<p>Layer 2 turns the Layer 1 official frame into the representation used by forecast generators.</p>
-<ul class="simple">
-<li><p>target construction and target scaling;</p></li>
-<li><p>post-official-frame missing/outlier handling;</p></li>
-<li><p>lag, factor, rotation, and feature-block construction;</p></li>
-<li><p>feature selection and representation sweep choices;</p></li>
-<li><p>custom representation hooks.</p></li>
-</ul>
-</section>
-<section id="layer-3-forecast-generator">
-<h2>4.4 Layer 3: Forecast Generator<a class="headerlink" href="#layer-3-forecast-generator" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer3/index.html"><span class="std std-doc">Open Layer 3</span></a></p>
-<p>Layer 3 consumes the Layer 2 representation and generates forecasts.</p>
-<ul class="simple">
-<li><p>model family and benchmark choices;</p></li>
-<li><p>forecast type and forecast object;</p></li>
-<li><p>training window and tuning policy;</p></li>
-<li><p>future-X and iterated-forecast paths;</p></li>
-<li><p>payload and model-extension contracts.</p></li>
-</ul>
-</section>
-<section id="layer-4-evaluation">
-<h2>4.5 Layer 4: Evaluation<a class="headerlink" href="#layer-4-evaluation" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer4/index.html"><span class="std std-doc">Open Layer 4</span></a></p>
-<p>Layer 4 evaluates forecast artifacts without changing the forecast-generation path.</p>
-<ul class="simple">
-<li><p>metric family;</p></li>
-<li><p>comparison scope;</p></li>
-<li><p>aggregation and ranking;</p></li>
-<li><p>regime and OOS-period choices.</p></li>
-</ul>
-</section>
-<section id="layer-5-output-provenance">
-<h2>4.6 Layer 5: Output / Provenance<a class="headerlink" href="#layer-5-output-provenance" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer5/index.html"><span class="std std-doc">Open Layer 5</span></a></p>
-<p>Layer 5 decides how artifacts, manifests, and saved objects are written.</p>
-<ul class="simple">
-<li><p>export format;</p></li>
-<li><p>artifact granularity;</p></li>
-<li><p>saved-object policy;</p></li>
-<li><p>manifest and sidecar contracts.</p></li>
-</ul>
-</section>
-<section id="layer-6-statistical-tests">
-<h2>4.7 Layer 6: Statistical Tests<a class="headerlink" href="#layer-6-statistical-tests" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer6/index.html"><span class="std std-doc">Open Layer 6</span></a></p>
-<p>Layer 6 applies statistical tests to already generated forecast and evaluation artifacts.</p>
-<ul class="simple">
-<li><p>equal predictive ability tests;</p></li>
-<li><p>nested-model tests;</p></li>
-<li><p>multiple-model tests;</p></li>
-<li><p>density and direction tests;</p></li>
-<li><p>multiple-testing correction.</p></li>
-</ul>
-</section>
-<section id="layer-7-interpretation-importance">
-<h2>4.8 Layer 7: Interpretation / Importance<a class="headerlink" href="#layer-7-interpretation-importance" title="Link to this heading"></a></h2>
-<p><a class="reference internal" href="layer7/index.html"><span class="std std-doc">Open Layer 7</span></a></p>
-<p>Layer 7 explains fitted models and forecast paths without changing the forecast itself.</p>
-<ul class="simple">
-<li><p>importance family;</p></li>
-<li><p>SHAP and surrogate methods;</p></li>
-<li><p>partial dependence;</p></li>
-<li><p>grouping, stability, and temporal output.</p></li>
-</ul>
+<p>Legacy audit and compatibility pages remain linkable from relevant layer pages, but they are not part of the main Full navigation spine.</p>
 </section>
 </section>
 
@@ -220,7 +135,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../simple/read_results.html" class="btn btn-neutral float-left" title="Read Results" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../api/index.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="layer0/index.html" class="btn btn-neutral float-right" title="4.1 Layer 0: Study Setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

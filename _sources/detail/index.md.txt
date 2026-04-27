@@ -1,98 +1,40 @@
-# 4. Detail (code)
+# 4. Detail (code): Full
 
-Detail docs are the full macrocast layer grammar. Read them when you need exact YAML, runtime artifacts, custom method hooks, or compatibility rules.
+Detail (code) is the **Full** interface for macrocast. Use it when Simple code is not enough and you need exact control over the layer path, YAML, runtime contracts, artifacts, or custom researcher methods.
 
-Use the layers in order. Earlier layers define the data and representation contract that later layers consume.
+Full means:
 
-## 4.1 Layer 0: Study Design / Execution Grammar
+- every layer decision is explicit or compiler-derived from an explicit rule;
+- disabled choices and forced choices are part of the contract;
+- YAML paths, Python builders, runtime artifacts, and manifests must agree;
+- custom methods enter through documented Layer 2 or Layer 3 contracts.
 
-[Open Layer 0](layer0/index.md)
+Read the layers in order. Earlier layers define the data and representation contract that later layers consume.
 
-Layer 0 decides the shape of the study before data or models are chosen.
+## Full Layer Documents
 
-- research design;
-- experiment unit;
-- failure policy;
-- reproducibility mode;
-- compute mode.
+```{toctree}
+:maxdepth: 1
+:caption: Full Layers
 
-## 4.2 Layer 1: Data Task / Official Frame
+layer0/index
+layer1/index
+layer2/index
+layer3/index
+layer4/index
+layer5/index
+layer6/index
+layer7/index
+```
 
-[Open Layer 1](layer1/index.md)
+## Navigation Rule
 
-Layer 1 decides the official data task and produces the data frame that later layers are allowed to use.
+Each layer page shows only local context:
 
-- dataset and source adapter;
-- target structure and variable universe;
-- information set, vintage, release lag, and contemporaneous-X rules;
-- raw source missing/outlier handling;
-- official transform policy.
+- parent: Detail (code);
+- current layer;
+- previous layer when one exists;
+- next layer when one exists;
+- lower-level axis pages only for the current layer.
 
-## 4.3 Layer 2: Representation / Research Preprocessing
-
-[Open Layer 2](layer2/index.md)
-
-Layer 2 turns the Layer 1 official frame into the representation used by forecast generators.
-
-- target construction and target scaling;
-- post-official-frame missing/outlier handling;
-- lag, factor, rotation, and feature-block construction;
-- feature selection and representation sweep choices;
-- custom representation hooks.
-
-## 4.4 Layer 3: Forecast Generator
-
-[Open Layer 3](layer3/index.md)
-
-Layer 3 consumes the Layer 2 representation and generates forecasts.
-
-- model family and benchmark choices;
-- forecast type and forecast object;
-- training window and tuning policy;
-- future-X and iterated-forecast paths;
-- payload and model-extension contracts.
-
-## 4.5 Layer 4: Evaluation
-
-[Open Layer 4](layer4/index.md)
-
-Layer 4 evaluates forecast artifacts without changing the forecast-generation path.
-
-- metric family;
-- comparison scope;
-- aggregation and ranking;
-- regime and OOS-period choices.
-
-## 4.6 Layer 5: Output / Provenance
-
-[Open Layer 5](layer5/index.md)
-
-Layer 5 decides how artifacts, manifests, and saved objects are written.
-
-- export format;
-- artifact granularity;
-- saved-object policy;
-- manifest and sidecar contracts.
-
-## 4.7 Layer 6: Statistical Tests
-
-[Open Layer 6](layer6/index.md)
-
-Layer 6 applies statistical tests to already generated forecast and evaluation artifacts.
-
-- equal predictive ability tests;
-- nested-model tests;
-- multiple-model tests;
-- density and direction tests;
-- multiple-testing correction.
-
-## 4.8 Layer 7: Interpretation / Importance
-
-[Open Layer 7](layer7/index.md)
-
-Layer 7 explains fitted models and forecast paths without changing the forecast itself.
-
-- importance family;
-- SHAP and surrogate methods;
-- partial dependence;
-- grouping, stability, and temporal output.
+Legacy audit and compatibility pages remain linkable from relevant layer pages, but they are not part of the main Full navigation spine.
