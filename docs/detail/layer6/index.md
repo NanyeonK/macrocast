@@ -1,5 +1,10 @@
 # 4.7 Layer 6: Statistical Tests
 
+- Parent: [4. Detail (code): Full](../index.md)
+- Previous: [4.6 Layer 5: Output / Provenance](../layer5/index.md)
+- Current: Layer 6
+- Next: [4.8 Layer 7: Interpretation / Importance](../layer7/index.md)
+
 Layer 6 owns statistical testing over forecast errors, loss differences, density or interval outputs, directional outcomes, and residual diagnostics.
 
 ## Decision order

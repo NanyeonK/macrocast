@@ -64,8 +64,8 @@ html_static_path: list[str] = []
 html_extra_path = ["_extra"]
 
 html_theme_options = {
-    "navigation_depth": 3,
-    "collapse_navigation": False,
+    "navigation_depth": 4,
+    "collapse_navigation": True,
     "sticky_navigation": True,
     "titles_only": True,
     "prev_next_buttons_location": "bottom",
