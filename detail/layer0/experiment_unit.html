@@ -101,9 +101,213 @@
              
   <section id="experiment-unit">
 <h1>4.1.2 experiment_unit<a class="headerlink" href="#experiment-unit" title="Link to this heading"></a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> is the runner unit. It is usually derived from <code class="docutils literal notranslate"><span class="pre">research_design</span></code>, <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>, and sweep shape rather than chosen directly.</p>
-<p>This page will be filled in the Layer 0 + Navigator Tree HTML pass.</p>
-<p>Current detailed source: <a class="reference internal" href="../../user_guide/design.html#experiment-unit"><span class="std std-ref">Design Stage 0: experiment_unit</span></a>.</p>
+<ul class="simple">
+<li><p>Parent: <a class="reference internal" href="index.html"><span class="std std-doc">4.1 Layer 0: Study Setup</span></a></p></li>
+<li><p>Previous: <a class="reference internal" href="research_design.html"><span class="std std-doc">4.1.1 research_design</span></a></p></li>
+<li><p>Current: <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code></p></li>
+<li><p>Next: <a class="reference internal" href="failure_policy.html"><span class="std std-doc">4.1.3 failure_policy</span></a></p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> is the runner unit. It says which execution unit owns the recipe after <code class="docutils literal notranslate"><span class="pre">research_design</span></code>, target structure, and sweep shape are known.</p>
+<p>In most recipes, users should let the compiler derive it. Pin it only when writing a Full recipe and you want the compiler to reject any shape mismatch.</p>
+<section id="where-it-lives-in-code">
+<h2>Where It Lives In Code<a class="headerlink" href="#where-it-lives-in-code" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Purpose</p></th>
+<th class="head"><p>Function or object</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Registry entries and metadata</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.experiment_unit.EXPERIMENT_UNIT_ENTRIES</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Lookup one unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.experiment_unit.get_experiment_unit_entry</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Wizard-visible options</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.experiment_unit.experiment_unit_options_for_wizard</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Default derivation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.experiment_unit.derive_experiment_unit_default</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Design-frame derivation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.design.derive.derive_experiment_unit</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Design-frame build</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.design.build.build_design_frame</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Compiler default rule</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._rule_experiment_unit_default</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Compiler validation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._build_stage0_and_recipe</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Runtime status routing</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._execution_status</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Wrapper metadata</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._build_wrapper_handoff</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Wizard read/write</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.start._read_wizard_value</span></code>, <code class="docutils literal notranslate"><span class="pre">macrocast.start._apply_wizard_value</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="choices">
+<h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Choice</p></th>
+<th class="head text-right"><p>Status</p></th>
+<th class="head"><p>Route Owner</p></th>
+<th class="head"><p>What It Means</p></th>
+<th class="head"><p>Runtime Contract</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
+<td><p>One target, one model path, one representation path.</p></td>
+<td><p>Normal direct recipe execution through <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
+<td><p>One target with a controlled model or feature comparison.</p></td>
+<td><p>Can be a single-run internal comparison or a sweep-runner route depending on axis placement.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code></p></td>
+<td class="text-right"><p>registry_only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wrapper</span></code></p></td>
+<td><p>Reserved grammar for a wider single-target sweep managed by a wrapper.</p></td>
+<td><p>Compiler can name the unit, but current runtime does not expose a general executable wrapper contract for it.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">multi_target_separate_runs</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wrapper</span></code></p></td>
+<td><p>Multi-target fan-out: each target runs as a separate single-target run with its own output directory.</p></td>
+<td><p>Runner is <code class="docutils literal notranslate"><span class="pre">macrocast.studies.multi_target:execute_separate_runs</span></code>; direct <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> is not the owner.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">multi_target_shared_design</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
+<td><p>Multi-target shared-design run: one compiled recipe evaluates all targets under the same design.</p></td>
+<td><p>Handled by the multi-target path inside <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code>; outputs are aggregated.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hierarchical_forecasting_run</span></code></p></td>
+<td class="text-right"><p>future</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">orchestrator</span></code></p></td>
+<td><p>Reserved for hierarchy-aware forecasting.</p></td>
+<td><p>No current executable runtime contract.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">panel_forecasting_run</span></code></p></td>
+<td class="text-right"><p>future</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">orchestrator</span></code></p></td>
+<td><p>Reserved for panel-oriented forecasting.</p></td>
+<td><p>No current executable runtime contract.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">state_space_run</span></code></p></td>
+<td class="text-right"><p>future</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
+<td><p>Reserved for state-space forecasting.</p></td>
+<td><p>Registry placeholder; not opened as a runnable route.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">replication</span></code></p></td>
+<td><p>Replication-locked unit.</p></td>
+<td><p>Runner is <code class="docutils literal notranslate"><span class="pre">macrocast.studies.replication:execute_replication</span></code>; compiler reports replication ownership rather than ordinary direct run ownership.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code></p></td>
+<td class="text-right"><p>registry_only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wrapper</span></code></p></td>
+<td><p>Reserved wrapper-managed benchmark suite grammar.</p></td>
+<td><p>No executable compiled-recipe wrapper contract in current runtime.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ablation_study</span></code></p></td>
+<td class="text-right"><p>registry_only</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wrapper</span></code></p></td>
+<td><p>Reserved ablation route.</p></td>
+<td><p>Standalone ablation runner exists as <code class="docutils literal notranslate"><span class="pre">macrocast.studies.ablation:execute_ablation</span></code>, but this is not yet a compiled-recipe wrapper contract.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="derivation-rules">
+<h2>Derivation Rules<a class="headerlink" href="#derivation-rules" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">derive_experiment_unit_default()</span></code> is the core rule.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Recipe Shape</p></th>
+<th class="head"><p>Derived Unit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=replication_override</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.wrapper_family</span></code> names a known unit</p></td>
+<td><p>that wrapper family</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">target_structure=multi_target_point_forecast</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">multi_target_shared_design</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=orchestrated_bundle</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code> unless a wrapper family overrides it</p></td>
+</tr>
+<tr class="row-even"><td><p>both <code class="docutils literal notranslate"><span class="pre">model_family</span></code> and <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code> are swept</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>either <code class="docutils literal notranslate"><span class="pre">model_family</span></code> or <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code> is swept</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>none of the above</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>If <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> is explicit in YAML, <code class="docutils literal notranslate"><span class="pre">_build_stage0_and_recipe()</span></code> checks that it matches the unit implied by the recipe shape. A mismatch is a compile error.</p>
+</section>
+<section id="yaml">
+<h2>YAML<a class="headerlink" href="#yaml" title="Link to this heading"></a></h2>
+<p>Usually derived:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">    </span><span class="nt">derived_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">experiment_unit_default</span>
+</pre></div>
+</div>
+<p>Explicit Full recipe:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_single_model</span>
+</pre></div>
+</div>
+<p>Multi-target shared design:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target_shared_design</span>
+<span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target_point_forecast</span>
+<span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">INDPRO</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">RPI</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="runtime-notes">
+<h2>Runtime Notes<a class="headerlink" href="#runtime-notes" title="Link to this heading"></a></h2>
+<p>Do not use <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> as a cosmetic label. It is a contract between the compiler and the runner.</p>
+<p>The compiler records route ownership in the tree context and wrapper handoff metadata. Direct <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> owns <code class="docutils literal notranslate"><span class="pre">single_run</span></code> units. Wrapper and replication units require their own runner surface.</p>
+</section>
 </section>
 
 

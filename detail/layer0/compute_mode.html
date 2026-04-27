@@ -101,9 +101,171 @@
              
   <section id="compute-mode">
 <h1>4.1.5 compute_mode<a class="headerlink" href="#compute-mode" title="Link to this heading"></a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> controls whether the runtime should run serially or attempt parallel execution over a specific work unit.</p>
-<p>This page will be filled in the Layer 0 + Navigator Tree HTML pass.</p>
-<p>Current detailed source: <a class="reference internal" href="../../user_guide/design.html#compute-mode"><span class="std std-ref">Design Stage 0: compute_mode</span></a>.</p>
+<ul class="simple">
+<li><p>Parent: <a class="reference internal" href="index.html"><span class="std std-doc">4.1 Layer 0: Study Setup</span></a></p></li>
+<li><p>Previous: <a class="reference internal" href="reproducibility_mode.html"><span class="std std-doc">4.1.4 reproducibility_mode</span></a></p></li>
+<li><p>Current: <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code></p></li>
+<li><p>Next: none inside Layer 0</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> requests where parallel work should happen.</p>
+<p>It is an execution-layout contract, not a modeling choice. It does not change target construction, features, models, metrics, or statistical tests. It only changes whether a supported runner uses serial loops or thread pools over a specific work unit.</p>
+<section id="where-it-lives-in-code">
+<h2>Where It Lives In Code<a class="headerlink" href="#where-it-lives-in-code" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Purpose</p></th>
+<th class="head"><p>Function or object</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Registry entries</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.compute_mode.COMPUTE_MODE_ENTRIES</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Compiler runtime support gate</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._execution_status</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Manifest payload</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build.compiled_spec_to_dict</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Execution payload reader</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.build._compute_mode_spec</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Direct recipe runtime</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.build.execute_recipe</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Horizon / OOS-date parallelism</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.build._build_predictions</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Sweep parent policy reader</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.sweep_runner._extract_parent_compute_mode</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Sweep model-variant parallelism</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.sweep_runner.execute_sweep</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="choices">
+<h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Choice</p></th>
+<th class="head text-right"><p>Status</p></th>
+<th class="head"><p>Work Unit</p></th>
+<th class="head"><p>Current Runtime Behavior</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">serial</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p>none</p></td>
+<td><p>Default. Runs one unit at a time.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p>sweep variants whose swept axis includes <code class="docutils literal notranslate"><span class="pre">model_family</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">execute_sweep()</span></code> uses <code class="docutils literal notranslate"><span class="pre">ThreadPoolExecutor</span></code>, capped at 4 workers, when the parent recipe selected <code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> and there is more than one model-family variant.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p>forecast horizons</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code> parallelizes horizon rows in <code class="docutils literal notranslate"><span class="pre">_build_predictions()</span></code> when there is more than one horizon. Capped at 4 workers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p>targets</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code> parallelizes target jobs when the recipe has more than one target. Capped at 4 workers.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code></p></td>
+<td class="text-right"><p>operational</p></td>
+<td><p>OOS origin dates</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_build_predictions()</span></code> parallelizes origin-date model/benchmark fits after refit-policy state is computed serially. Capped at 4 workers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_trial</span></code></p></td>
+<td class="text-right"><p>registry_only</p></td>
+<td><p>tuning or trial units</p></td>
+<td><p>Reserved. Not supported by the current runtime slice.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">distributed_cluster</span></code></p></td>
+<td class="text-right"><p>registry_only</p></td>
+<td><p>external cluster tasks</p></td>
+<td><p>Reserved. Not supported by the current runtime slice.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="compiler-contract">
+<h2>Compiler Contract<a class="headerlink" href="#compiler-contract" title="Link to this heading"></a></h2>
+<p>The compiler currently accepts only these runtime-supported values:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">serial</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code>.</p></li>
+</ul>
+<p>Selecting <code class="docutils literal notranslate"><span class="pre">parallel_by_trial</span></code> or <code class="docutils literal notranslate"><span class="pre">distributed_cluster</span></code> produces a not-supported compiler status.</p>
+<p>The compiler writes:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;compute_mode_spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;compute_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;serial&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The runtime reads this with <code class="docutils literal notranslate"><span class="pre">_compute_mode_spec()</span></code>.</p>
+</section>
+<section id="yaml-examples">
+<h2>YAML Examples<a class="headerlink" href="#yaml-examples" title="Link to this heading"></a></h2>
+<p>Serial default:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serial</span>
+</pre></div>
+</div>
+<p>Model sweep parallelism:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
+<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_by_model</span>
+<span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sweep_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ridge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lasso</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">random_forest</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>Multi-horizon parallelism:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_by_horizon</span>
+</pre></div>
+</div>
+<p>Multi-target parallelism:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_by_target</span>
+</pre></div>
+</div>
+</section>
+<section id="no-op-cases">
+<h2>No-Op Cases<a class="headerlink" href="#no-op-cases" title="Link to this heading"></a></h2>
+<p>Parallel modes are requests, not guarantees. They become no-ops when the selected work unit has only one item.</p>
+<p>Examples:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code> with one horizon behaves like serial execution.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> with one target behaves like serial execution.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> without a model-family sweep behaves like serial sweep execution.</p></li>
+</ul>
+</section>
+<section id="guidance">
+<h2>Guidance<a class="headerlink" href="#guidance" title="Link to this heading"></a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">serial</span></code> for debugging and replication.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> for model comparison sweeps.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code> when horizons are independent and numerous.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> for multi-target recipes.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code> for long pseudo-OOS loops where origin-date fits dominate runtime.</p>
+</section>
 </section>
 
 
