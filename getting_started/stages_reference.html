@@ -132,16 +132,16 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code> (default)</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code> (default)</p></td>
 <td><p>Single recipe → <code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code> → one predictions file + one metrics file</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code></p></td>
 <td><p>Sweep plan → one run per variant, shared baseline contract → <code class="docutils literal notranslate"><span class="pre">study_manifest.json</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">study_bundle</span></code></p></td>
 <td><p>Compile-only in v1.0 (Phase 8 <code class="docutils literal notranslate"><span class="pre">PaperReadyBundle</span></code> will consume) — manifest carries <code class="docutils literal notranslate"><span class="pre">wrapper_handoff</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_override</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code> runner → byte-identical re-run vs. source manifest</p></td>
 </tr>
 </tbody>
@@ -158,10 +158,10 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
 <td><p>one target + one model → default derivation</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 <td><p>one target + <code class="docutils literal notranslate"><span class="pre">model_family</span></code> sweep</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code></p></td>

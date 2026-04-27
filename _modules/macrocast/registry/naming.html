@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>macrocast.registry.naming &mdash; macrocast</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=19216117"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            macrocast
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started/index.html">0. Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../philosophy.html">1. Philosophy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../navigator/index.html">Navigator Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../simple/index.html">Simple Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../detail/index.html">4. Detail (code): Full</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../CONVENTIONS.html">Docs Conventions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">macrocast</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">macrocast.registry.naming</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for macrocast.registry.naming</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="n">NAMING_LEDGER_VERSION</span> <span class="o">=</span> <span class="s2">&quot;registry_naming_v1&quot;</span>
+
+<span class="n">AXIS_NAME_ALIASES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;info_set&quot;</span><span class="p">:</span> <span class="s2">&quot;information_set_type&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_source&quot;</span><span class="p">:</span> <span class="s2">&quot;source_adapter&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;target_structure&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">AXIS_VALUE_ALIASES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="s2">&quot;research_design&quot;</span><span class="p">,</span> <span class="s2">&quot;single_path_benchmark&quot;</span><span class="p">):</span> <span class="s2">&quot;single_forecast_run&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;research_design&quot;</span><span class="p">,</span> <span class="s2">&quot;orchestrated_bundle&quot;</span><span class="p">):</span> <span class="s2">&quot;study_bundle&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;research_design&quot;</span><span class="p">,</span> <span class="s2">&quot;replication_override&quot;</span><span class="p">):</span> <span class="s2">&quot;replication_recipe&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;experiment_unit&quot;</span><span class="p">,</span> <span class="s2">&quot;single_target_single_model&quot;</span><span class="p">):</span> <span class="s2">&quot;single_target_single_generator&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;experiment_unit&quot;</span><span class="p">,</span> <span class="s2">&quot;single_target_model_grid&quot;</span><span class="p">):</span> <span class="s2">&quot;single_target_generator_grid&quot;</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;horizon_target_construction&quot;</span><span class="p">,</span> <span class="s2">&quot;future_level_y_t_plus_h&quot;</span><span class="p">):</span> <span class="s2">&quot;future_target_level_t_plus_h&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">RENAMED_AXES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">&quot;legacy_id&quot;</span><span class="p">:</span> <span class="n">legacy</span><span class="p">,</span> <span class="s2">&quot;canonical_id&quot;</span><span class="p">:</span> <span class="n">canonical</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">legacy</span><span class="p">,</span> <span class="n">canonical</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">AXIS_NAME_ALIASES</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+<span class="p">)</span>
+
+<span class="n">RENAMED_VALUES</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+    <span class="p">{</span><span class="s2">&quot;axis&quot;</span><span class="p">:</span> <span class="n">axis</span><span class="p">,</span> <span class="s2">&quot;legacy_id&quot;</span><span class="p">:</span> <span class="n">legacy</span><span class="p">,</span> <span class="s2">&quot;canonical_id&quot;</span><span class="p">:</span> <span class="n">canonical</span><span class="p">}</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">legacy</span><span class="p">),</span> <span class="n">canonical</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">AXIS_VALUE_ALIASES</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="canonical_axis_name">
+<a class="viewcode-back" href="../../../api/registry.html#macrocast.registry.canonical_axis_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_axis_name</span><span class="p">(</span><span class="n">axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">AXIS_NAME_ALIASES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">axis_name</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">axis_name</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="canonical_axis_value">
+<a class="viewcode-back" href="../../../api/registry.html#macrocast.registry.canonical_axis_value">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonical_axis_value</span><span class="p">(</span><span class="n">axis_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">canonical_axis</span> <span class="o">=</span> <span class="n">canonical_axis_name</span><span class="p">(</span><span class="n">axis_name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">AXIS_VALUE_ALIASES</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">canonical_axis</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)),</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="canonicalize_recipe_path">
+<a class="viewcode-back" href="../../../api/registry.html#macrocast.registry.canonicalize_recipe_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">canonicalize_recipe_path</span><span class="p">(</span><span class="n">recipe_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a copy of a recipe with canonical axis/value IDs in path blocks.&quot;&quot;&quot;</span>
+
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">recipe_dict</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">payload</span>
+
+    <span class="k">for</span> <span class="n">layer_spec</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer_spec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">block_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;fixed_axes&quot;</span><span class="p">,</span> <span class="s2">&quot;sweep_axes&quot;</span><span class="p">,</span> <span class="s2">&quot;conditional_axes&quot;</span><span class="p">):</span>
+            <span class="n">block</span> <span class="o">=</span> <span class="n">layer_spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">canonical_block</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">raw_axis</span><span class="p">,</span> <span class="n">raw_value</span> <span class="ow">in</span> <span class="n">block</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">axis</span> <span class="o">=</span> <span class="n">canonical_axis_name</span><span class="p">(</span><span class="n">raw_axis</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="p">[</span><span class="n">canonical_axis_value</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">))</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_value</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">canonical_axis_value</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_value</span><span class="p">))</span>
+                <span class="n">canonical_block</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">layer_spec</span><span class="p">[</span><span class="n">block_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">canonical_block</span>
+        <span class="n">derived</span> <span class="o">=</span> <span class="n">layer_spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;derived_axes&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">derived</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">layer_spec</span><span class="p">[</span><span class="s2">&quot;derived_axes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">canonical_axis_name</span><span class="p">(</span><span class="n">raw_axis</span><span class="p">):</span> <span class="n">rule_name</span> <span class="k">for</span> <span class="n">raw_axis</span><span class="p">,</span> <span class="n">rule_name</span> <span class="ow">in</span> <span class="n">derived</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+    <span class="k">return</span> <span class="n">payload</span></div>
+
+
+
+<div class="viewcode-block" id="rename_ledger">
+<a class="viewcode-back" href="../../../api/registry.html#macrocast.registry.rename_ledger">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rename_ledger</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">NAMING_LEDGER_VERSION</span><span class="p">,</span>
+        <span class="s2">&quot;axis_name_aliases&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">RENAMED_AXES</span><span class="p">],</span>
+        <span class="s2">&quot;axis_value_aliases&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">RENAMED_VALUES</span><span class="p">],</span>
+    <span class="p">}</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NanyeonK.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

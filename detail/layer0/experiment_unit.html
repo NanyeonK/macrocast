@@ -167,11 +167,11 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
 <td><p>runnable</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
 <td><p>runnable / sweep-aware</p></td>
 </tr>
@@ -216,14 +216,14 @@
 </section>
 <section id="runnable-direct-units">
 <h3>Runnable Direct Units<a class="headerlink" href="#runnable-direct-units" title="Link to this heading"></a></h3>
-<section id="single-target-single-model">
-<h4><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code><a class="headerlink" href="#single-target-single-model" title="Link to this heading"></a></h4>
+<section id="single-target-single-generator">
+<h4><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code><a class="headerlink" href="#single-target-single-generator" title="Link to this heading"></a></h4>
 <p>This is the smallest ordinary execution unit.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
-<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_single_model</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_forecast_run</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_single_generator</span>
 </pre></div>
 </div>
 <p>The direct runner owns it:</p>
@@ -232,14 +232,14 @@ runner      = execute_recipe
 </pre></div>
 </div>
 </section>
-<section id="single-target-model-grid">
-<h4><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code><a class="headerlink" href="#single-target-model-grid" title="Link to this heading"></a></h4>
+<section id="single-target-generator-grid">
+<h4><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code><a class="headerlink" href="#single-target-generator-grid" title="Link to this heading"></a></h4>
 <p>Use this when one target is evaluated across a controlled model or feature comparison.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
-<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_model_grid</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_generator_grid</span>
 <span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">sweep_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ridge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lasso</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">random_forest</span><span class="p p-Indicator">]</span>
@@ -257,7 +257,7 @@ parent sweep        = compile_sweep_plan / execute_sweep
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_forecast_run</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target_shared_design</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
@@ -282,7 +282,7 @@ target mode = shared design
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orchestrated_bundle</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_bundle</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target_separate_runs</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
@@ -304,7 +304,7 @@ runner      = macrocast.studies.multi_target:execute_separate_runs
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replication_override</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replication_recipe</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replication_recipe</span>
 </pre></div>
 </div>
@@ -339,7 +339,7 @@ runtime = no general executable wrapper contract yet
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orchestrated_bundle</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_bundle</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">benchmark_suite</span>
 </pre></div>
 </div>
@@ -355,7 +355,7 @@ runtime = no compiled-recipe benchmark-suite wrapper yet
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orchestrated_bundle</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_bundle</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ablation_study</span>
 </pre></div>
 </div>
@@ -402,7 +402,7 @@ runtime = registry placeholder; not opened as runnable route
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=replication_override</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=replication_recipe</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.wrapper_family</span></code> names a known unit</p></td>
@@ -411,17 +411,17 @@ runtime = registry placeholder; not opened as runnable route
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">target_structure=multi_target_point_forecast</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">multi_target_shared_design</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=orchestrated_bundle</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">research_design=study_bundle</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code> unless a wrapper family overrides it</p></td>
 </tr>
 <tr class="row-even"><td><p>both <code class="docutils literal notranslate"><span class="pre">model_family</span></code> and <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code> are swept</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>either <code class="docutils literal notranslate"><span class="pre">model_family</span></code> or <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code> is swept</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>none of the above</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -433,7 +433,7 @@ runtime = registry placeholder; not opened as runnable route
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_forecast_run</span>
 <span class="w">    </span><span class="nt">derived_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">experiment_unit_default</span>
 </pre></div>
@@ -442,15 +442,15 @@ runtime = registry placeholder; not opened as runnable route
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
-<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_single_model</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_forecast_run</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_single_generator</span>
 </pre></div>
 </div>
 <p>Multi-target shared design:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_forecast_run</span>
 <span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target_shared_design</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>

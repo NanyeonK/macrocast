@@ -123,7 +123,7 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">research_design</span></code></p></td>
 <td><p>public concept, mostly derived by <code class="docutils literal notranslate"><span class="pre">Experiment</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code></p></td>
 <td><p>internal/advanced route selector</p></td>
@@ -178,7 +178,7 @@ current source files do not define active axes for them.</p>
 <td><p>Keep hidden from the primary Navigator tree; document it as registry grammar.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Runner handoffs</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code>, <code class="docutils literal notranslate"><span class="pre">replication_override</span></code>, <code class="docutils literal notranslate"><span class="pre">multi_target_separate_runs</span></code>, and <code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code> are routing contracts, not direct <code class="docutils literal notranslate"><span class="pre">run_compiled_recipe</span></code> paths.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">study_bundle</span></code>, <code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code>, <code class="docutils literal notranslate"><span class="pre">multi_target_separate_runs</span></code>, and <code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code> are routing contracts, not direct <code class="docutils literal notranslate"><span class="pre">run_compiled_recipe</span></code> paths.</p></td>
 <td><p>Keep direct-run guard. Dedicated runners own these routes.</p></td>
 </tr>
 <tr class="row-even"><td><p>Main open Layer 0 question</p></td>
@@ -238,7 +238,7 @@ Only <code class="docutils literal notranslate"><span class="pre">route_owner=&q
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code></p></td>
 <td><p>one fixed recipe path</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">forecast(...)</span></code> / <code class="docutils literal notranslate"><span class="pre">Experiment(...).run()</span></code></p></td>
 </tr>
@@ -246,11 +246,11 @@ Only <code class="docutils literal notranslate"><span class="pre">route_owner=&q
 <td><p>one controlled comparison surface</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">.compare_models(...)</span></code>, <code class="docutils literal notranslate"><span class="pre">.sweep({&quot;models&quot;:</span> <span class="pre">...})</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">study_bundle</span></code></p></td>
 <td><p>wrapper-managed bundle</p></td>
 <td><p>advanced/detail only</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_override</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 <td><p>replication-locked route</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">execute_replication</span></code> / Replication Library route</p></td>
 </tr>
@@ -270,12 +270,12 @@ Only <code class="docutils literal notranslate"><span class="pre">route_owner=&q
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
 <td><p>executable</p></td>
 <td><p>simple default</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_run</span></code></p></td>
 <td><p>executable through sweep runner</p></td>
 <td><p>one controlled single-run axis, usually model comparison</p></td>
@@ -330,7 +330,7 @@ Only <code class="docutils literal notranslate"><span class="pre">route_owner=&q
 <p>The simple API should not expose <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> directly. It should expose clearer methods like <code class="docutils literal notranslate"><span class="pre">compare_models</span></code>, future <code class="docutils literal notranslate"><span class="pre">grid</span></code>, future <code class="docutils literal notranslate"><span class="pre">replicate</span></code>, and future <code class="docutils literal notranslate"><span class="pre">ablate</span></code>.</p>
 <p>Full contract notes:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code> is historical naming. In the current full contract it means one controlled single-run axis, usually <code class="docutils literal notranslate"><span class="pre">model_family</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code> is historical naming. In the current full contract it means one controlled single-run axis, usually <code class="docutils literal notranslate"><span class="pre">model_family</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">multi_target_separate_runs</span></code> is a wrapper handoff with a concrete <code class="docutils literal notranslate"><span class="pre">execute_separate_runs</span></code> runner; it is not a direct executable compiled recipe.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code>, <code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code>, and <code class="docutils literal notranslate"><span class="pre">ablation_study</span></code> are wrapper handoffs without compiled-recipe runner contracts and compile as <code class="docutils literal notranslate"><span class="pre">not_supported</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code> is a replication handoff. It is consumed by <code class="docutils literal notranslate"><span class="pre">execute_replication</span></code>, not by <code class="docutils literal notranslate"><span class="pre">run_compiled_recipe</span></code>.</p></li>
@@ -397,13 +397,13 @@ Only <code class="docutils literal notranslate"><span class="pre">route_owner=&q
 <p>Correct behavior:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>one model + one feature recipe -&gt; one_fixed_env_one_tool_surface
 one model + multiple feature recipes -&gt; one_fixed_env_controlled_axis_variation
-multiple models + single_path_benchmark -&gt; one_fixed_env_multi_tool_surface
+multiple models + single_forecast_run -&gt; one_fixed_env_multi_tool_surface
 controlled_variation -&gt; one_fixed_env_controlled_axis_variation
 </pre></div>
 </div>
 <p>The derivation now counts feature/preprocess/tuning axes only when they contain more than one value.
 When that produces a single-run controlled axis, Layer 0 keeps the route in
-<code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code> until a finer-grained experiment unit is introduced.
+<code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code> until a finer-grained experiment unit is introduced.
 The name is historical; the current contract is “one controlled single-run
 axis”, not strictly “model axis only”.</p>
 </section>
@@ -417,13 +417,13 @@ axis”, not strictly “model axis only”.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mc.forecast(...)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code>, <code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code>, <code class="docutils literal notranslate"><span class="pre">single_run_recipe</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code>, <code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code>, <code class="docutils literal notranslate"><span class="pre">single_run_recipe</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Experiment(...).run()</span></code></p></td>
 <td><p>same as <code class="docutils literal notranslate"><span class="pre">forecast</span></code> when no sweep axes exist</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.compare_models([...])</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code>, <code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">single_run_with_internal_sweep</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code>, <code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code>, <code class="docutils literal notranslate"><span class="pre">single_run_with_internal_sweep</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.sweep({&quot;models&quot;:</span> <span class="pre">[...]})</span></code></p></td>
 <td><p>same as <code class="docutils literal notranslate"><span class="pre">compare_models</span></code></p></td>

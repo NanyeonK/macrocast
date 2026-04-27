@@ -82,7 +82,7 @@
 <p>Stage 0 decides <strong>the shape of the study</strong>: which runner fires, how axes sweep, how failures are handled, how deterministic the run is, and how work is parallelised. Six axes cover 38 allowed values; the simple default path uses only the small operational subset needed for a single run or model comparison. Every axis ships a default that matches the most common research flow — most researchers leave all six alone and never read this page.</p>
 <p><strong>At a glance (defaults):</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">research_design</span> <span class="pre">=</span> <span class="pre">single_path_benchmark</span></code> — one recipe, one forecast.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">research_design</span> <span class="pre">=</span> <span class="pre">single_forecast_run</span></code> — one recipe, one forecast.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> is derived from <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> + sweep shape (auto-picked; never needs to be set).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">axis_type</span> <span class="pre">=</span> <span class="pre">fixed</span></code> per axis — set to <code class="docutils literal notranslate"><span class="pre">sweep</span></code> only on the axis you are varying.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span> <span class="pre">=</span> <span class="pre">fail_fast</span></code> — stop on the first error.</p></li>
@@ -94,7 +94,7 @@
 <section id="research-design">
 <h2>0.1 <code class="docutils literal notranslate"><span class="pre">research_design</span></code><a class="headerlink" href="#research-design" title="Link to this heading"></a></h2>
 <p><strong>Selection question</strong>: Is this a single forecast, a horse race across variants, a Phase 8 paper bundle, or a replication of a prior recipe?</p>
-<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code> — one recipe produces one forecast and one metrics file. Most empirical work starts here.</p>
+<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code> — one recipe produces one forecast and one metrics file. Most empirical work starts here.</p>
 <section id="value-catalog">
 <h3>Value catalog<a class="headerlink" href="#value-catalog" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -106,22 +106,22 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code></p></td>
 <td><p>operational (default)</p></td>
 <td><p>Default. Any study that compares the chosen model against a benchmark on one dataset/target combination.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;research_design&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_path_benchmark&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;research_design&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_forecast_run&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code></p></td>
 <td><p>operational</p></td>
 <td><p>Horse-race studies — one axis sweeps across values, everything else held fixed.</p></td>
 <td><p>One <code class="docutils literal notranslate"><span class="pre">study_manifest.json</span></code> per sweep plan; one <code class="docutils literal notranslate"><span class="pre">run/</span></code> directory per variant.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">study_bundle</span></code></p></td>
 <td><p>operational as a routing shape</p></td>
 <td><p>Use only with an experiment unit that has a concrete runner contract. Unsupported wrapper families compile as <code class="docutils literal notranslate"><span class="pre">not_supported</span></code>.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">execution_status</span></code> is <code class="docutils literal notranslate"><span class="pre">ready_for_wrapper_runner</span></code> for supported wrappers, otherwise <code class="docutils literal notranslate"><span class="pre">not_supported</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_override</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 <td><p>operational</p></td>
 <td><p>Re-running an existing recipe and asserting byte-identical output.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code> returns <code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code>; identical forecast + manifest hashes.</p></td>
@@ -133,7 +133,7 @@
 <h3>Functions &amp; features<a class="headerlink" href="#functions-features" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Runner dispatch: <code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build</span></code> resolves <code class="docutils literal notranslate"><span class="pre">research_design</span></code> + <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> → <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> via <code class="docutils literal notranslate"><span class="pre">derive_experiment_unit_default</span></code>.</p></li>
-<li><p>Artifacts: <code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code>; <code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_sweep()</span></code>; <code class="docutils literal notranslate"><span class="pre">replication_override</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code>.</p></li>
+<li><p>Artifacts: <code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code>; <code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_sweep()</span></code>; <code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code>.</p></li>
 </ul>
 </section>
 <section id="recipe-usage">
@@ -167,12 +167,12 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_model</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
 <td><p>operational (default for single-target, no sweeps)</p></td>
 <td><p>Default auto-derivation.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;experiment_unit&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_target_single_model&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;experiment_unit&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_target_single_generator&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 <td><p>operational</p></td>
 <td><p>Auto-picked when <code class="docutils literal notranslate"><span class="pre">model_family</span></code> sweeps.</p></td>
 <td><p>manifest records the derived value.</p></td>
@@ -194,7 +194,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 <td><p>operational</p></td>
-<td><p>Auto-derived when <code class="docutils literal notranslate"><span class="pre">research_design=replication_override</span></code>.</p></td>
+<td><p>Auto-derived when <code class="docutils literal notranslate"><span class="pre">research_design=replication_recipe</span></code>.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code> artefact.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code></p></td>
