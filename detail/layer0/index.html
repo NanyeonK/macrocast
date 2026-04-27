@@ -218,6 +218,18 @@
   <section id="layer-0-study-setup">
 <h1>4.1 Layer 0: Study Setup<a class="headerlink" href="#layer-0-study-setup" title="Link to this heading"></a></h1>
 <p>Layer 0 decides the shape of the study before data or models are chosen. It answers: what kind of run is this, which runner owns it, how failures behave, how deterministic it should be, and how work may be parallelized.</p>
+<section id="how-many-steps">
+<h2>How many steps?<a class="headerlink" href="#how-many-steps" title="Link to this heading"></a></h2>
+<p>Layer 0 has <strong>five user-facing steps</strong>. Select them in this order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">research_design</span></code> — choose the study route.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> — confirm the runner unit, usually derived by the compiler.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> — decide how failed variants or cells are handled.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> — decide how strictly stochastic components are pinned.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> — decide whether execution is serial or parallelized over a work unit.</p></li>
+</ol>
+<p>There is also an internal <code class="docutils literal notranslate"><span class="pre">axis_type</span></code> grammar, but it is not a sixth user step. Users express it by placing choices under <code class="docutils literal notranslate"><span class="pre">fixed_axes</span></code>, <code class="docutils literal notranslate"><span class="pre">sweep_axes</span></code>, or <code class="docutils literal notranslate"><span class="pre">conditional_axes</span></code>.</p>
+</section>
 <section id="decision-order">
 <h2>Decision order<a class="headerlink" href="#decision-order" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -250,7 +262,22 @@
 </tr>
 </tbody>
 </table>
-<p><code class="docutils literal notranslate"><span class="pre">axis_type</span></code> is internal path grammar for fixed/sweep/conditional/derived choices. It is documented as an appendix because users normally express it by placing values under <code class="docutils literal notranslate"><span class="pre">fixed_axes</span></code>, <code class="docutils literal notranslate"><span class="pre">sweep_axes</span></code>, or <code class="docutils literal notranslate"><span class="pre">conditional_axes</span></code>.</p>
+</section>
+<section id="selection-logic">
+<h2>Selection logic<a class="headerlink" href="#selection-logic" title="Link to this heading"></a></h2>
+<p>Start with <code class="docutils literal notranslate"><span class="pre">research_design</span></code>. That decision constrains or derives the runner shape:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code> normally derives <code class="docutils literal notranslate"><span class="pre">experiment_unit=single_target_single_model</span></code> unless the target/sweep shape requires another supported unit.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code> is used when one or more axes are swept while the rest of the path is held fixed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code> is a wrapper route and only opens when a concrete wrapper runner contract exists.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">replication_override</span></code> routes to a replication-style runner and should preserve recipe provenance.</p></li>
+</ul>
+<p>Then set policies:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> matters most when a sweep or bundle can produce invalid cells.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> should be stricter for replication and looser for exploratory work.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> is an execution request. It only has an effect when the selected run has multiple units of the chosen type.</p></li>
+</ul>
 </section>
 <section id="layer-contract">
 <h2>Layer contract<a class="headerlink" href="#layer-contract" title="Link to this heading"></a></h2>

@@ -324,16 +324,14 @@
 <ul class="simple">
 <li><p>clicking an enabled option changes the current axis selection;</p></li>
 <li><p>disabled options remain visible with the reason they are unavailable;</p></li>
-<li><p>compatibility messages are recomputed from the active browser path;</p></li>
+<li><p>the full Tree Path shows Layers 0-7 as vertical blocks, with the active
+layer expanded and other layers summarized;</p></li>
 <li><p>YAML preview is regenerated from the selected path and changed axes;</p></li>
 <li><p>generated YAML can be downloaded and existing recipe YAML can be imported;</p></li>
-<li><p>replication entries can load their package-native route into the tree;</p></li>
-<li><p>the resolver preview shows browser-blocked branches plus the CLI commands
-needed for authoritative <code class="docutils literal notranslate"><span class="pre">resolve</span></code> and <code class="docutils literal notranslate"><span class="pre">run</span></code>;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">browser_preview</span></code> means the edited path is internally compatible in the browser;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">browser_blocked</span></code> means the current browser path contains a selected value that violates an active rule.</p></li>
 </ul>
-<p>The browser state engine is an exploration surface. <code class="docutils literal notranslate"><span class="pre">compile_preview</span></code> is still the snapshot from the exported sample recipe, and <code class="docutils literal notranslate"><span class="pre">macrocast-navigate</span> <span class="pre">resolve</span></code> remains the authoritative compiler check before running a recipe.</p>
+<p>The browser state engine is an exploration surface. <code class="docutils literal notranslate"><span class="pre">compile_preview</span></code> is still the snapshot from the exported sample recipe, and <code class="docutils literal notranslate"><span class="pre">macrocast-navigate</span> <span class="pre">resolve</span></code> remains the authoritative compiler check before running a recipe. The static app keeps the resolver, compatibility, and replication explanations in the docs pages rather than as separate in-app panels.</p>
 </section>
 <section id="output-shape">
 <h2>Output Shape<a class="headerlink" href="#output-shape" title="Link to this heading"></a></h2>
