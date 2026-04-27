@@ -40,7 +40,7 @@ AXIS_DEFINITION = AxisDefinition(
             priority="A",
         ),
         EnumRegistryEntry(
-            id="raw_outlier_to_missing",
+            id="set_raw_outliers_to_missing",
             description="convert raw numeric outliers to missing before official transforms",
             status="operational",
             priority="A",

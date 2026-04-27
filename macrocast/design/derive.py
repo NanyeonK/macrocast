@@ -71,7 +71,7 @@ def derive_execution_posture(
 def derive_experiment_unit(
     research_design: str,
     execution_posture: str,
-    forecast_task: str = "single_target_point_forecast",
+    forecast_task: str = "single_target",
 ) -> str | None:
     research_design = canonical_axis_value("research_design", research_design)
     if execution_posture == "wrapper_bundle_plan":
@@ -84,13 +84,13 @@ def derive_experiment_unit(
                 # it so the wrapper path is explicit at design time; execution
                 # via the wrapper runtime is still pending.
                 "multi_target_separate_runs"
-                if forecast_task == "multi_target_point_forecast"
+                if forecast_task == "multi_target"
                 else "benchmark_suite"
             ),
         )
     if execution_posture == "replication_locked_plan":
         return "replication_recipe"
-    if forecast_task == "multi_target_point_forecast":
+    if forecast_task == "multi_target":
         # Default operational multi-target unit — shared_design is handled by
         # execute_recipe's multi-target path (single aggregated output). See
         # docs/user_guide/design.md 0.3.

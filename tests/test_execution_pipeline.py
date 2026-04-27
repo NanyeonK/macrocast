@@ -48,7 +48,7 @@ def _stage0(
             "sample_split": sample_split,
             "benchmark": benchmark,
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -227,10 +227,10 @@ def test_execute_recipe_records_layer1_official_frame_contract(tmp_path: Path) -
     assert "INDPRO" not in contract["predictor_columns"]
     assert contract["frame_shape"][0] > 0
     assert contract["frame_shape"][1] == contract["column_count"] == len(contract["columns"])
-    assert contract["official_transform_policy"] == "raw_official_frame"
+    assert contract["official_transform_policy"] == "keep_official_raw_scale"
     assert contract["raw_missing_policy"] == "preserve_raw_missing"
     assert contract["raw_outlier_policy"] == "preserve_raw_outliers"
-    assert contract["missing_availability"] == "complete_case_only"
+    assert contract["missing_availability"] == "require_complete_rows"
     assert contract["release_lag_rule"] == "ignore_release_lag"
     assert contract["variable_universe"] == "all_variables"
     assert contract["dataset_metadata"]["dataset"] == "fred_md"
@@ -296,7 +296,7 @@ def test_layer1_official_frame_contract_records_local_vintage_evidence(tmp_path:
         "data_through": contract["data_through"],
         "information_set": "revised_monthly",
         "release_lag_rule": "ignore_release_lag",
-        "missing_availability": "complete_case_only",
+        "missing_availability": "require_complete_rows",
         "data_vintage_requested": "2020-01",
         "uses_vintage_source": True,
         "raw_artifact_sha256": contract["raw_artifact"]["file_sha256"],
@@ -1432,7 +1432,7 @@ def test_execute_recipe_runs_multi_target_slice(tmp_path: Path) -> None:
             "sample_split": "expanding_window_oos",
             "benchmark": "zero_change",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "multi_target_point_forecast",
+            "forecast_task": "multi_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -1478,7 +1478,7 @@ def test_execute_recipe_manifest_preserves_tree_context_payload(tmp_path: Path) 
             "sample_split": "expanding_window_oos",
             "benchmark": "zero_change",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -1509,7 +1509,7 @@ def test_execute_recipe_manifest_preserves_tree_context_payload(tmp_path: Path) 
                 "sample_split": "expanding_window_oos",
                 "benchmark": "zero_change",
                 "evaluation_protocol": "point_forecast_core",
-                "forecast_task": "single_target_point_forecast",
+                "forecast_task": "single_target",
             },
             "varying_design": {
                 "model_families": ["ar"],
@@ -1560,7 +1560,7 @@ def test_execute_recipe_skip_failed_model_records_partial_manifest(tmp_path: Pat
             "sample_split": "expanding_window_oos",
             "benchmark": "zero_change",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "multi_target_point_forecast",
+            "forecast_task": "multi_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -1648,7 +1648,7 @@ def test_execute_recipe_parallel_by_target_runs_multi_target_slice(tmp_path: Pat
             "sample_split": "expanding_window_oos",
             "benchmark": "zero_change",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "multi_target_point_forecast",
+            "forecast_task": "multi_target",
         },
         comparison_contract={
             "information_set_policy": "identical",

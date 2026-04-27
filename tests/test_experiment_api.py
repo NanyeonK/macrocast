@@ -95,8 +95,8 @@ def test_experiment_mvp_public_contract_single_run(tmp_path: Path) -> None:
     assert recipe["path"]["0_meta"]["leaf_config"]["default_profile"] == DEFAULT_PROFILE_NAME
     assert recipe["path"]["1_data_task"]["fixed_axes"]["dataset"] == "fred_md"
     assert recipe["path"]["1_data_task"]["fixed_axes"]["frequency"] == "monthly"
-    assert recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_policy"] == "dataset_tcode"
-    assert recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_scope"] == "apply_tcode_to_both"
+    assert recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_policy"] == "apply_official_tcode"
+    assert recipe["path"]["1_data_task"]["fixed_axes"]["official_transform_scope"] == "target_and_predictors"
     assert recipe["path"]["1_data_task"]["leaf_config"]["sample_start_date"] == FIXTURE_START
     assert recipe["path"]["1_data_task"]["leaf_config"]["sample_end_date"] == FIXTURE_END
     assert "tcode_policy" not in recipe["path"]["2_preprocessing"]["fixed_axes"]
@@ -180,11 +180,11 @@ def test_forecast_default_runs_and_records_default_profile(tmp_path: Path) -> No
     assert manifest["evaluation_spec"]["primary_metric"] == "msfe"
     assert manifest["data_task_spec"]["sample_start_date"] == FIXTURE_START
     assert manifest["data_task_spec"]["sample_end_date"] == FIXTURE_END
-    assert manifest["data_task_spec"]["official_transform_policy"] == "dataset_tcode"
-    assert manifest["data_task_spec"]["official_transform_scope"] == "apply_tcode_to_both"
+    assert manifest["data_task_spec"]["official_transform_policy"] == "apply_official_tcode"
+    assert manifest["data_task_spec"]["official_transform_scope"] == "target_and_predictors"
     assert manifest["preprocess_contract"]["tcode_policy"] == "tcode_only"
     assert manifest["preprocess_contract"]["target_transform_policy"] == "tcode_transformed"
-    assert manifest["preprocess_contract"]["x_transform_policy"] == "dataset_tcode_transformed"
+    assert manifest["preprocess_contract"]["x_transform_policy"] == "apply_official_tcode_transformed"
     layer2_spec = manifest["layer2_representation_spec"]
     assert layer2_spec["runtime_effect"] == "provenance_plus_runtime_block_dispatch"
     assert layer2_spec["source_bridge"]["feature_builder"] == "autoreg_lagged_target"

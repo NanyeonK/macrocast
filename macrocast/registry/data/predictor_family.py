@@ -34,7 +34,7 @@ AXIS_DEFINITION = AxisDefinition(
             priority='A',
         ),
         EnumRegistryEntry(
-            id='handpicked_set',
+            id='explicit_variable_list',
             description='handpicked set',
             status='operational',
             priority='B',

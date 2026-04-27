@@ -16,19 +16,19 @@ AXIS_DEFINITION = AxisDefinition(
             priority="A",
         ),
         EnumRegistryEntry(
-            id="zero_fill_leading_x_before_tcode",
+            id="zero_fill_leading_predictor_missing_before_tcode",
             description="zero-fill predictor leading missing values in the raw source panel before official transforms",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="x_impute_raw",
+            id="impute_raw_predictors",
             description="impute raw predictor missing values before official transforms",
             status="operational",
             priority="A",
         ),
         EnumRegistryEntry(
-            id="drop_rows_with_raw_missing",
+            id="drop_raw_missing_rows",
             description="drop rows with any raw-source missing values before official transforms",
             status="operational",
             priority="A",

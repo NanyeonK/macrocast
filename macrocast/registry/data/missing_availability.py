@@ -10,25 +10,25 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy='fixed',
     entries=(
         EnumRegistryEntry(
-            id='complete_case_only',
+            id='require_complete_rows',
             description='drop rows with any missing values',
             status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
-            id='available_case',
+            id='keep_available_rows',
             description='keep rows with available cases only (per-series)',
             status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
-            id='x_impute_only',
-            description='impute X only, drop rows where target missing',
+            id='impute_predictors_only',
+            description='impute predictors only and keep target missingness strict',
             status='operational',
             priority='A',
         ),
         EnumRegistryEntry(
-            id='zero_fill_before_start',
+            id='zero_fill_leading_predictor_gaps',
             description='fill predictor leading missing values with zero and report availability gaps',
             status='operational',
             priority='A',

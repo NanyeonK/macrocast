@@ -15,29 +15,29 @@ _NEW_AXES = {
     'missing_availability': {
         'layer': '1_data_task',
         'expected': {
-            'complete_case_only', 'available_case', 'x_impute_only',
-            'zero_fill_before_start',
+            'require_complete_rows', 'keep_available_rows', 'impute_predictors_only',
+            'zero_fill_leading_predictor_gaps',
         },
     },
     'raw_missing_policy': {
         'layer': '1_data_task',
         'expected': {
-            'preserve_raw_missing', 'zero_fill_leading_x_before_tcode',
-            'x_impute_raw', 'drop_rows_with_raw_missing',
+            'preserve_raw_missing', 'zero_fill_leading_predictor_missing_before_tcode',
+            'impute_raw_predictors', 'drop_raw_missing_rows',
         },
     },
     'raw_outlier_policy': {
         'layer': '1_data_task',
         'expected': {
             'preserve_raw_outliers', 'winsorize_raw', 'iqr_clip_raw',
-            'mad_clip_raw', 'zscore_clip_raw', 'raw_outlier_to_missing',
+            'mad_clip_raw', 'zscore_clip_raw', 'set_raw_outliers_to_missing',
         },
     },
     'variable_universe': {
         'layer': '1_data_task',
         'expected': {
-            'all_variables', 'preselected_core', 'category_subset',
-            'target_specific_subset', 'handpicked_set',
+            'all_variables', 'core_variables', 'category_variables',
+            'target_specific_variables', 'explicit_variable_list',
         },
     },
     'separation_rule': {

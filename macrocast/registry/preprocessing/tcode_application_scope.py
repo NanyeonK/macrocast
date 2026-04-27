@@ -10,25 +10,25 @@ AXIS_DEFINITION = AxisDefinition(
     default_policy='fixed',
     entries=(
         EnumRegistryEntry(
-            id='apply_tcode_to_target',
+            id='target_only',
             description='t-code on target only',
             status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
-            id='apply_tcode_to_X',
+            id='predictors_only',
             description='t-code on predictors only',
             status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
-            id='apply_tcode_to_both',
+            id='target_and_predictors',
             description='t-code on target and X',
             status="operational",
             priority='A',
         ),
         EnumRegistryEntry(
-            id='apply_tcode_to_none',
+            id='none',
             description='no t-code application',
             status='operational',
             priority='A',

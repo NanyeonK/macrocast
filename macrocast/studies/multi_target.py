@@ -13,7 +13,7 @@ Typical use:
     from macrocast.studies.multi_target import execute_separate_runs
 
     result = execute_separate_runs(
-        source_recipe_dict=recipe_dict,    # target_structure=multi_target_point_forecast
+        source_recipe_dict=recipe_dict,    # target_structure=multi_target
         output_root="out/",
         local_raw_source="tests/fixtures/fred_md_ar_sample.csv",
     )
@@ -64,7 +64,7 @@ def _build_single_target_recipe_dict(
     """Clone the source recipe into a single-target variant for ``target_name``.
 
     Changes applied to the clone:
-    - ``1_data_task.fixed_axes.target_structure`` → ``single_target_point_forecast``
+    - ``1_data_task.fixed_axes.target_structure`` → ``single_target``
     - ``1_data_task.leaf_config.target`` → ``target_name``; ``targets`` removed
     - ``0_meta.fixed_axes.experiment_unit`` cleared if it was set to
       ``multi_target_separate_runs`` (the child runs derive their own unit)
@@ -77,7 +77,7 @@ def _build_single_target_recipe_dict(
     path = variant.setdefault("path", {})
     data_task = path.setdefault("1_data_task", {})
     data_task_fixed = data_task.setdefault("fixed_axes", {})
-    data_task_fixed["target_structure"] = "single_target_point_forecast"
+    data_task_fixed["target_structure"] = "single_target"
     data_task_fixed.pop("task", None)
     data_task_leaf = data_task.setdefault("leaf_config", {})
     data_task_leaf["target"] = target_name
@@ -114,7 +114,7 @@ def execute_separate_runs(
 
     Args:
         source_recipe_dict: The multi-target source recipe (must set
-            ``target_structure=multi_target_point_forecast`` and list two or more
+            ``target_structure=multi_target`` and list two or more
             targets in ``leaf_config.targets``).
         output_root: Directory that will hold
             ``targets/<target_name>/`` per sub-run plus the top-level

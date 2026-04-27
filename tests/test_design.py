@@ -23,7 +23,7 @@ def test_build_stage0_frame_single_forecast_run() -> None:
             sample_split="expanding_window_oos",
             benchmark="ar_bic",
             evaluation_protocol="point_forecast_core",
-            forecast_task="single_target_point_forecast",
+            forecast_task="single_target",
         ),
         comparison_contract=ComparisonContract(
             information_set_policy="identical",
@@ -50,7 +50,7 @@ def test_build_stage0_frame_single_fixed_model_and_feature_is_one_tool_surface()
             sample_split="expanding_window_oos",
             benchmark="ar_bic",
             evaluation_protocol="point_forecast_core",
-            forecast_task="single_target_point_forecast",
+            forecast_task="single_target",
         ),
         comparison_contract=ComparisonContract(
             information_set_policy="identical",
@@ -75,7 +75,7 @@ def test_build_stage0_frame_multiple_feature_recipes_is_controlled_variation() -
             sample_split="expanding_window_oos",
             benchmark="ar_bic",
             evaluation_protocol="point_forecast_core",
-            forecast_task="single_target_point_forecast",
+            forecast_task="single_target",
         ),
         comparison_contract=ComparisonContract(
             information_set_policy="identical",
@@ -103,7 +103,7 @@ def test_build_stage0_frame_bundle_route() -> None:
             "sample_split": "expanding_window_oos",
             "benchmark": "ar_bic",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -128,7 +128,7 @@ def test_check_stage0_completeness_rejects_empty_model_surface() -> None:
             "sample_split": "expanding_window_oos",
             "benchmark": "ar_bic",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -151,7 +151,7 @@ def test_stage0_summary_contains_core_fields() -> None:
             "sample_split": "expanding_window_oos",
             "benchmark": "ar_bic",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",
@@ -180,7 +180,7 @@ def test_build_stage0_frame_explicit_experiment_unit_controls_wrapper_route() ->
             "sample_split": "expanding_window_oos",
             "benchmark": "ar_bic",
             "evaluation_protocol": "point_forecast_core",
-            "forecast_task": "single_target_point_forecast",
+            "forecast_task": "single_target",
         },
         comparison_contract={
             "information_set_policy": "identical",

@@ -29,8 +29,8 @@ def _layer2_level_block_recipe(
 ) -> dict:
     data_axes = {
         "dataset": "fred_md",
-        "information_set_type": "revised",
-        "target_structure": "single_target_point_forecast",
+        "information_set_type": "final_revised_data",
+        "target_structure": "single_target",
     }
     if contemporaneous_x_rule is not None:
         data_axes["contemporaneous_x_rule"] = contemporaneous_x_rule
@@ -131,8 +131,8 @@ def _layer2_temporal_block_recipe(
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": leaf_config,
             },
@@ -159,7 +159,7 @@ def test_compile_minimal_importance_recipe_is_executable_for_ridge(tmp_path: Pat
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -198,7 +198,7 @@ def test_compile_minimal_importance_recipe_is_executable_for_randomforest(tmp_pa
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -236,7 +236,7 @@ def test_compile_stage7_split_importance_axis_is_manifested() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -267,7 +267,7 @@ def test_compile_stage7_blocks_incompatible_split_importance_axis() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -307,7 +307,7 @@ def test_compile_recipe_rejects_incompatible_preprocessing_without_silent_fallba
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -361,7 +361,7 @@ def test_compile_cw_recipe_is_executable_and_writes_artifact(tmp_path: Path) -> 
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -410,7 +410,7 @@ def test_compile_custom_benchmark_recipe_is_executable(tmp_path: Path) -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -446,7 +446,7 @@ def test_compile_custom_benchmark_recipe_requires_plugin_contract() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -493,7 +493,7 @@ def test_compile_robust_scaling_recipe_is_executable(tmp_path: Path) -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -522,7 +522,7 @@ def test_compile_robust_scaling_recipe_is_executable(tmp_path: Path) -> None:
     assert manifest["preprocess_contract"]["scaling_policy"] == "robust"
 
 
-def test_compile_dataset_tcode_then_train_only_extra_is_executable(tmp_path: Path) -> None:
+def test_compile_apply_official_tcode_then_train_only_extra_is_executable(tmp_path: Path) -> None:
     recipe = {
         "recipe_id": "dataset-tcode-then-extra-ridge",
         "path": {
@@ -530,10 +530,10 @@ def test_compile_dataset_tcode_then_train_only_extra_is_executable(tmp_path: Pat
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
-                    "official_transform_policy": "dataset_tcode",
-                    "official_transform_scope": "apply_tcode_to_both",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
+                    "official_transform_policy": "apply_official_tcode",
+                    "official_transform_scope": "target_and_predictors",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
@@ -554,7 +554,7 @@ def test_compile_dataset_tcode_then_train_only_extra_is_executable(tmp_path: Pat
     }
     compile_result = compile_recipe_dict(recipe)
     assert compile_result.compiled.execution_status == "executable"
-    assert compile_result.manifest["data_task_spec"]["official_transform_policy"] == "dataset_tcode"
+    assert compile_result.manifest["data_task_spec"]["official_transform_policy"] == "apply_official_tcode"
     contract = compile_result.manifest["preprocess_contract"]
     assert contract["tcode_policy"] == "tcode_then_extra_preprocess"
     assert contract["preprocess_order"] == "tcode_then_extra"
@@ -576,7 +576,7 @@ def test_compile_lasso_minimal_importance_recipe_is_executable(tmp_path: Path) -
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -614,7 +614,7 @@ def test_compile_wrapper_bundle_requires_wrapper_metadata() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "study_bundle"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -642,7 +642,7 @@ def test_compile_wrapper_bundle_emits_handoff_contract() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "study_bundle"}, "leaf_config": {"wrapper_family": "benchmark_suite", "bundle_label": "fred-md-baselines"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -679,7 +679,7 @@ def test_compile_multi_target_recipe_requires_targets() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "multi_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "multi_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -707,7 +707,7 @@ def test_compile_multi_target_recipe_is_executable(tmp_path: Path) -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "multi_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "multi_target"},
                 "leaf_config": {"targets": ["INDPRO", "RPI"], "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -734,7 +734,7 @@ def test_compile_multi_target_recipe_is_executable(tmp_path: Path) -> None:
     )
     manifest = json.loads((Path(execution.artifact_dir) / "manifest.json").read_text())
     assert manifest["targets"] == ["INDPRO", "RPI"]
-    assert manifest["tree_context"]["fixed_design"]["forecast_task"] == "multi_target_point_forecast"
+    assert manifest["tree_context"]["fixed_design"]["forecast_task"] == "multi_target"
     assert manifest["tree_context"]["leaf_config"]["targets"] == ["INDPRO", "RPI"]
 
 def test_compile_tree_context_groups_fixed_and_sweep_axes() -> None:
@@ -743,7 +743,7 @@ def test_compile_tree_context_groups_fixed_and_sweep_axes() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "controlled_variation"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -792,7 +792,7 @@ def test_compile_recipe_preserves_explicit_experiment_unit() -> None:
                 "experiment_unit": "single_target_single_generator",
             }},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -829,7 +829,7 @@ def test_compile_warns_when_fixed_policy_axis_is_placed_in_sweep_axes() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -871,7 +871,7 @@ def test_compile_seeded_reproducible_requires_random_seed() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "reproducibility_mode": "seeded_reproducible"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -899,7 +899,7 @@ def test_compile_reproducibility_spec_preserved_in_manifest() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "reproducibility_mode": "seeded_reproducible"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3], "random_seed": 42},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -937,7 +937,7 @@ def test_compile_failure_policy_spec_preserved_in_manifest() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "failure_policy": "fail_fast"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -967,7 +967,7 @@ def test_compile_warn_only_is_now_executable() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "failure_policy": "warn_only"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1004,7 +1004,7 @@ def test_compile_skip_failed_model_recipe_is_executable() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "failure_policy": "skip_failed_model"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1041,7 +1041,7 @@ def test_compile_compute_mode_spec_defaults_to_serial() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1070,7 +1070,7 @@ def test_compile_parallel_by_model_is_executable() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "compute_mode": "parallel_by_model"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1108,7 +1108,7 @@ def test_compile_parallel_by_model_recipe_is_executable() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run", "compute_mode": "parallel_by_model"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1138,7 +1138,7 @@ def test_compile_recipe_accepts_legacy_info_set_alias() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1156,7 +1156,7 @@ def test_compile_recipe_accepts_legacy_info_set_alias() -> None:
     }
     compile_result = compile_recipe_dict(recipe)
     assert compile_result.compiled.execution_status == "executable"
-    assert compile_result.manifest["data_task_spec"]["information_set_type"] == "revised"
+    assert compile_result.manifest["data_task_spec"]["information_set_type"] == "final_revised_data"
 
 
 
@@ -1168,8 +1168,8 @@ def test_compile_recipe_rejects_conflicting_predictor_family_and_feature_builder
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "task": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "task": "single_target",
                     "predictor_family": "target_lags_only",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
@@ -1197,9 +1197,9 @@ def test_compiled_manifest_records_stage1_data_task_defaults() -> None:
     spec = compile_result.manifest["data_task_spec"]
     assert spec["source_adapter"] == "fred_md"
     assert "dataset_source" not in spec
-    assert spec["target_structure"] == "single_target_point_forecast"
+    assert spec["target_structure"] == "single_target"
     assert "task" not in spec
-    assert spec["information_set_type"] == "revised"
+    assert spec["information_set_type"] == "final_revised_data"
     assert "forecast_type" not in spec
     assert "horizon_target_construction" not in spec
     assert "predictor_family" not in spec
@@ -1217,7 +1217,7 @@ def test_compile_recipe_records_stage2_preprocess_governance_defaults() -> None:
     compile_result = compile_recipe_yaml("examples/recipes/model-benchmark.yaml")
     contract = compile_result.manifest["preprocess_contract"]
     assert contract["representation_policy"] == "raw_only"
-    assert contract["tcode_application_scope"] == "apply_tcode_to_none"
+    assert contract["tcode_application_scope"] == "none"
 
 
 def test_compile_recipe_accepts_stage2_preprocess_axes() -> None:
@@ -1226,7 +1226,7 @@ def test_compile_recipe_accepts_stage2_preprocess_axes() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -1234,7 +1234,7 @@ def test_compile_recipe_accepts_stage2_preprocess_axes() -> None:
                 "target_missing_policy": "none", "x_missing_policy": "mean_impute", "target_outlier_policy": "none", "x_outlier_policy": "winsorize",
                 "scaling_policy": "minmax", "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
                 "preprocess_order": "extra_only", "preprocess_fit_scope": "train_only", "inverse_transform_policy": "none", "evaluation_scale": "raw_level",
-                "representation_policy": "raw_only", "tcode_application_scope": "apply_tcode_to_none",
+                "representation_policy": "raw_only", "tcode_application_scope": "none",
                 "target_transform": "level", "target_normalization": "none", "target_domain": "unconstrained", "scaling_scope": "columnwise",
                 "additional_preprocessing": "none", "x_lag_creation": "no_x_lags", "feature_grouping": "none",
             }},
@@ -1294,8 +1294,8 @@ def test_layer2_path_average_protocol_records_layer3_runtime() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                     "horizon_target_construction": "path_average_log_growth_1_to_h",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
@@ -1356,8 +1356,8 @@ def test_layer2_path_average_gates_non_raw_target_scale() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                     "horizon_target_construction": "path_average_difference_1_to_h",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [2]},
@@ -1436,8 +1436,8 @@ def test_layer2_representation_provenance_maps_feature_builder_bridge_values() -
                 "1_data_task": {
                     "fixed_axes": {
                         "dataset": "fred_md",
-                        "information_set_type": "revised",
-                        "target_structure": "single_target_point_forecast",
+                        "information_set_type": "final_revised_data",
+                        "target_structure": "single_target",
                     },
                     "leaf_config": {"target": "INDPRO", "horizons": [1]},
                 },
@@ -1491,7 +1491,7 @@ def _explicit_feature_block_set_recipe(
         "inverse_transform_policy": "none",
         "evaluation_scale": "raw_level",
         "representation_policy": "raw_only",
-        "tcode_application_scope": "apply_tcode_to_none",
+        "tcode_application_scope": "none",
         "target_transform": "level",
         "target_normalization": "none",
         "target_domain": "unconstrained",
@@ -1509,8 +1509,8 @@ def _explicit_feature_block_set_recipe(
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -1585,8 +1585,8 @@ def test_layer2_target_lag_selection_axis_records_target_language_provenance() -
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -1650,8 +1650,8 @@ def test_layer2_explicit_target_lag_block_lowers_to_ar_bridge() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -1718,8 +1718,8 @@ def test_layer2_explicit_target_lag_block_can_omit_feature_builder_bridge() -> N
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -1775,8 +1775,8 @@ def test_layer2_explicit_raw_block_can_omit_feature_builder_bridge() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -1828,8 +1828,8 @@ def test_layer2_explicit_x_lag_block_lowers_to_raw_panel_bridge() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -1971,10 +1971,10 @@ def test_layer2_explicit_level_block_requires_raw_panel_bridge() -> None:
 
 def test_layer2_explicit_level_block_rejects_contemporaneous_oracle_alignment() -> None:
     result = compile_recipe_dict(
-        _layer2_level_block_recipe(contemporaneous_x_rule="allow_contemporaneous")
+        _layer2_level_block_recipe(contemporaneous_x_rule="allow_same_period_predictors")
     )
     assert result.compiled.execution_status == "not_supported"
-    assert any("requires contemporaneous_x_rule='forbid_contemporaneous'" in warning for warning in result.compiled.warnings)
+    assert any("requires contemporaneous_x_rule='forbid_same_period_predictors'" in warning for warning in result.compiled.warnings)
 
 
 def test_layer2_explicit_temporal_block_lowers_to_raw_panel_bridge() -> None:
@@ -2171,7 +2171,7 @@ def test_layer2_explicit_marx_rotation_lowers_to_raw_panel_bridge() -> None:
     assert block["runtime_feature_name_pattern"] == "{predictor}__marx_ma_lag1_to_lag{p}"
     assert block["runtime_bridge"] == {"raw_panel_rotation_features": "marx_rotation"}
     assert block["basis_policy"] == "replace_lag_polynomial_basis"
-    assert block["initial_lag_fill_policy"] == "zero_fill_before_start"
+    assert block["initial_lag_fill_policy"] == "zero_fill_leading_predictor_gaps"
     assert block["composition_modes"]["operational"] == [
         "replace_lag_polynomial_basis",
         "marx_append_to_x",
@@ -2656,8 +2656,8 @@ def test_layer2_explicit_target_and_x_lag_blocks_execute_with_raw_panel_composer
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -2721,8 +2721,8 @@ def test_layer2_explicit_target_lag_and_static_factor_blocks_execute(tmp_path) -
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -2785,8 +2785,8 @@ def test_layer2_explicit_x_lag_block_rejects_conflicting_legacy_bridge() -> None
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -2836,8 +2836,8 @@ def test_layer2_explicit_target_lag_block_rejects_conflicting_selection() -> Non
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -2887,8 +2887,8 @@ def test_layer2_explicit_factor_block_lowers_to_dimred_bridge() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {
                     "target": "INDPRO",
@@ -2963,8 +2963,8 @@ def test_layer2_factor_block_lowers_without_dimred_bridge() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -3021,8 +3021,8 @@ def test_layer2_factor_block_accepts_select_before_factor_mix() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -3076,8 +3076,8 @@ def test_layer2_factor_block_accepts_select_after_factor_mix() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -3209,7 +3209,7 @@ def test_compile_recipe_accepts_stage3_training_axes() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -3257,7 +3257,7 @@ def test_compile_quantile_linear_point_median_recipe_is_executable(tmp_path: Pat
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast", "forecast_object": "point_median"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target", "forecast_object": "point_median"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -3314,7 +3314,7 @@ def test_compile_primary_metric_rmse_recipe_is_executable() -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -3374,8 +3374,8 @@ def test_compile_stage6_split_stat_test_manifest() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "information_set_type": "revised",
-                    "target_structure": "single_target_point_forecast",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
@@ -3434,8 +3434,8 @@ def test_multi_target_derives_shared_design_experiment_unit() -> None:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "info_set": "revised",
-                    "task": "multi_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "multi_target",
                 },
                 "leaf_config": {"targets": ["INDPRO", "RPI"], "horizons": [1]},
             },
@@ -3471,7 +3471,7 @@ def test_wizard_options_filter_registry_only_entries() -> None:
     # any registry_only future additions.
     options = experiment_unit_options_for_wizard(
         research_design="single_forecast_run",
-        task="multi_target_point_forecast",
+        task="multi_target",
     )
     assert set(options) == {"multi_target_shared_design", "multi_target_separate_runs"}
 
@@ -3480,7 +3480,7 @@ def test_wizard_options_single_target_returns_operational_only() -> None:
     from macrocast.registry.stage0.experiment_unit import experiment_unit_options_for_wizard
     options = experiment_unit_options_for_wizard(
         research_design="single_forecast_run",
-        task="single_target_point_forecast",
+        task="single_target",
     )
     # unsupported full-sweep wrapper routes are not offered by the wizard.
     assert set(options) == {
@@ -3498,7 +3498,7 @@ def _study_mode_recipe_base() -> dict:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "PLACEHOLDER"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {

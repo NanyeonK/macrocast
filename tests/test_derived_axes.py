@@ -25,8 +25,8 @@ def _base_recipe() -> dict:
             "1_data_task": {
                 "fixed_axes": {
                     "dataset": "fred_md",
-                    "info_set": "revised",
-                    "task": "single_target_point_forecast",
+                    "info_set": "final_revised_data",
+                    "task": "single_target",
                 },
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
@@ -119,7 +119,7 @@ def test_derived_experiment_unit_rule_returns_model_grid_when_sweep() -> None:
             selected_status={"autoreg_lagged_target": "operational"},
         ),
     }
-    leaf_config = {"task": "single_target_point_forecast"}
+    leaf_config = {"task": "single_target"}
     result = _rule_experiment_unit_default(selection_map=selection_map, leaf_config=leaf_config)
     assert result == "single_target_generator_grid"
 
@@ -142,6 +142,6 @@ def test_derived_experiment_unit_rule_returns_model_grid_when_feature_sweep() ->
             selected_status={"autoreg_lagged_target": "operational", "raw_feature_panel": "operational"},
         ),
     }
-    leaf_config = {"task": "single_target_point_forecast"}
+    leaf_config = {"task": "single_target"}
     result = _rule_experiment_unit_default(selection_map=selection_map, leaf_config=leaf_config)
     assert result == "single_target_generator_grid"

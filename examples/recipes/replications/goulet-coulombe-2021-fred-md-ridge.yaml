@@ -13,15 +13,15 @@ path:
       dataset: fred_md
       source_adapter: fred_md
       frequency: monthly
-      information_set_type: revised
-      target_structure: single_target_point_forecast
+      information_set_type: final_revised_data
+      target_structure: single_target
       variable_universe: all_variables
-      missing_availability: zero_fill_before_start
+      missing_availability: zero_fill_leading_predictor_gaps
       release_lag_rule: ignore_release_lag
-      contemporaneous_x_rule: forbid_contemporaneous
-      official_transform_policy: dataset_tcode
-      official_transform_scope: apply_tcode_to_both
-      raw_missing_policy: zero_fill_leading_x_before_tcode
+      contemporaneous_x_rule: forbid_same_period_predictors
+      official_transform_policy: apply_official_tcode
+      official_transform_scope: target_and_predictors
+      raw_missing_policy: zero_fill_leading_predictor_missing_before_tcode
       raw_outlier_policy: preserve_raw_outliers
     leaf_config:
       target: INDPRO
@@ -30,7 +30,7 @@ path:
     fixed_axes:
       horizon_target_construction: future_target_level_t_plus_h
       target_transform_policy: tcode_transformed
-      x_transform_policy: dataset_tcode_transformed
+      x_transform_policy: apply_official_tcode_transformed
       tcode_policy: tcode_then_extra_preprocess
       target_missing_policy: none
       x_missing_policy: none

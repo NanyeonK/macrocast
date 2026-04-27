@@ -85,7 +85,7 @@ def test_compile_hook_runs_migration_via_compile_recipe_dict(tmp_path) -> None:
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "single_forecast_run"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "info_set": "revised", "task": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "info_set": "final_revised_data", "task": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1]},
             },
             "2_preprocessing": {"fixed_axes": {

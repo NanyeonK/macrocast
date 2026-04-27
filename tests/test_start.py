@@ -32,7 +32,7 @@ def test_macrocast_single_run_wrapper_route_blocks_run_manifest(tmp_path: Path) 
         "path": {
             "0_meta": {"fixed_axes": {"research_design": "study_bundle"}, "leaf_config": {"wrapper_family": "benchmark_suite", "bundle_label": "fred-md-baselines"}},
             "1_data_task": {
-                "fixed_axes": {"dataset": "fred_md", "information_set_type": "revised", "target_structure": "single_target_point_forecast"},
+                "fixed_axes": {"dataset": "fred_md", "information_set_type": "final_revised_data", "target_structure": "single_target"},
                 "leaf_config": {"target": "INDPRO", "horizons": [1, 3]},
             },
             "2_preprocessing": {"fixed_axes": {
@@ -89,7 +89,7 @@ def test_macrocast_single_run_interactive_task_switches_next_choice(monkeypatch,
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
     out = macrocast_single_run(max_steps=2)
     assert [item["key"] for item in out["completed_choices"]] == ["research_design", "target_structure"]
-    assert out["completed_choices"][1]["value"] == "multi_target_point_forecast"
+    assert out["completed_choices"][1]["value"] == "multi_target"
     assert out["current_choice"]["key"] == "experiment_unit"
 
 

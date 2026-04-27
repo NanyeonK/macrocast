@@ -288,7 +288,7 @@ def _rule_experiment_unit_default(
         _sv("target_structure")
         or leaf_config.get("target_structure")
         or leaf_config.get("task")
-        or "single_target_point_forecast"
+        or "single_target"
     )
     model_sel = selection_map.get("model_family")
     feature_sel = selection_map.get("feature_builder")
@@ -527,7 +527,7 @@ def _custom_feature_combiner_axis_is_registered(selection: AxisSelection, leaf_c
     return bool(combiner_name and is_custom_feature_combiner(combiner_name))
 
 
-def _target_structure(selection_map: dict[str, AxisSelection], default: str = "single_target_point_forecast") -> str:
+def _target_structure(selection_map: dict[str, AxisSelection], default: str = "single_target") -> str:
     return _selection_value(selection_map, "target_structure", default=default)
 
 
@@ -550,16 +550,16 @@ def _legacy_official_transform_scope(selection_map: dict[str, AxisSelection]) ->
     if "tcode_application_scope" in selection_map:
         return _selection_value(selection_map, "tcode_application_scope")
     target_tcode = _selection_value(selection_map, "target_transform_policy", default="raw_level") == "tcode_transformed"
-    x_tcode = _selection_value(selection_map, "x_transform_policy", default="raw_level") == "dataset_tcode_transformed"
+    x_tcode = _selection_value(selection_map, "x_transform_policy", default="raw_level") == "apply_official_tcode_transformed"
     if target_tcode and x_tcode:
-        return "apply_tcode_to_both"
+        return "target_and_predictors"
     if target_tcode:
-        return "apply_tcode_to_target"
+        return "target_only"
     if x_tcode:
-        return "apply_tcode_to_X"
+        return "predictors_only"
     if _selection_value(selection_map, "tcode_policy", default="raw_only") in _OFFICIAL_TCODE_POLICIES:
-        return "apply_tcode_to_both"
-    return "apply_tcode_to_none"
+        return "target_and_predictors"
+    return "none"
 
 
 def _legacy_official_transform_policy(selection_map: dict[str, AxisSelection]) -> str:
@@ -570,11 +570,11 @@ def _legacy_official_transform_policy(selection_map: dict[str, AxisSelection]) -
     if (
         tcode_policy in _OFFICIAL_TCODE_POLICIES
         or target_policy == "tcode_transformed"
-        or x_policy == "dataset_tcode_transformed"
-        or scope != "apply_tcode_to_none"
+        or x_policy == "apply_official_tcode_transformed"
+        or scope != "none"
     ):
-        return "dataset_tcode"
-    return "raw_official_frame"
+        return "apply_official_tcode"
+    return "keep_official_raw_scale"
 
 
 def _official_transform_policy(selection_map: dict[str, AxisSelection]) -> str:
@@ -617,13 +617,13 @@ def _validate_official_transform_contract(selection_map: dict[str, AxisSelection
 
     policy = _official_transform_policy(selection_map)
     scope = _official_transform_scope(selection_map)
-    if policy == "raw_official_frame" and scope != "apply_tcode_to_none":
+    if policy == "keep_official_raw_scale" and scope != "none":
         raise CompileValidationError(
-            "official_transform_policy='raw_official_frame' requires official_transform_scope='apply_tcode_to_none'"
+            "official_transform_policy='keep_official_raw_scale' requires official_transform_scope='none'"
         )
-    if policy == "dataset_tcode" and scope == "apply_tcode_to_none":
+    if policy == "apply_official_tcode" and scope == "none":
         raise CompileValidationError(
-            "official_transform_policy='dataset_tcode' requires an official_transform_scope other than 'apply_tcode_to_none'"
+            "official_transform_policy='apply_official_tcode' requires an official_transform_scope other than 'none'"
         )
 
     has_legacy_bridge = _has_legacy_official_transform_bridge(selection_map)
@@ -687,18 +687,18 @@ def _official_preprocess_bridge_defaults(selection_map: dict[str, AxisSelection]
     policy = _official_transform_policy(selection_map)
     scope = _official_transform_scope(selection_map)
     extra_requested = _extra_preprocessing_requested(selection_map)
-    if policy == "raw_official_frame":
+    if policy == "keep_official_raw_scale":
         return {
             "target_transform_policy": "raw_level",
             "x_transform_policy": "raw_level",
             "tcode_policy": "extra_preprocess_without_tcode" if extra_requested else "raw_only",
             "preprocess_order": "extra_only" if extra_requested else "none",
             "representation_policy": "raw_only",
-            "tcode_application_scope": "apply_tcode_to_none",
+            "tcode_application_scope": "none",
         }
 
-    target_policy = "tcode_transformed" if scope in {"apply_tcode_to_target", "apply_tcode_to_both"} else "raw_level"
-    x_policy = "dataset_tcode_transformed" if scope in {"apply_tcode_to_X", "apply_tcode_to_both"} else "raw_level"
+    target_policy = "tcode_transformed" if scope in {"target_only", "target_and_predictors"} else "raw_level"
+    x_policy = "apply_official_tcode_transformed" if scope in {"predictors_only", "target_and_predictors"} else "raw_level"
     return {
         "target_transform_policy": target_policy,
         "x_transform_policy": x_policy,
@@ -954,7 +954,7 @@ def _require_non_empty_mapping(leaf_config: dict[str, Any], key: str, context: s
 
 def _targets_for_layer1_contract(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> tuple[str, ...]:
     target_structure = _target_structure(selection_map)
-    if target_structure == "multi_target_point_forecast":
+    if target_structure == "multi_target":
         targets = leaf_config.get("targets")
         if not _is_non_empty_sequence(targets):
             return ()
@@ -1101,36 +1101,36 @@ def _validate_layer1_data_task_contract(
             )
 
     variable_universe = _selection_value(selection_map, "variable_universe", default="all_variables")
-    if variable_universe == "handpicked_set":
+    if variable_universe == "explicit_variable_list":
         _require_non_empty_sequence(
             leaf_config,
             "variable_universe_columns",
-            "variable_universe='handpicked_set'",
+            "variable_universe='explicit_variable_list'",
         )
-    elif variable_universe == "category_subset":
+    elif variable_universe == "category_variables":
         _require_non_empty_mapping(
             leaf_config,
             "variable_universe_category_columns",
-            "variable_universe='category_subset'",
+            "variable_universe='category_variables'",
         )
         if not leaf_config.get("variable_universe_category"):
             raise CompileValidationError(
-                "variable_universe='category_subset' requires leaf_config.variable_universe_category"
+                "variable_universe='category_variables' requires leaf_config.variable_universe_category"
             )
-    elif variable_universe == "target_specific_subset":
+    elif variable_universe == "target_specific_variables":
         _require_mapping_entries_for_targets(
             leaf_config,
             "target_specific_columns",
-            "variable_universe='target_specific_subset'",
+            "variable_universe='target_specific_variables'",
             targets,
         )
 
     predictor_family = _selection_value(selection_map, "predictor_family", default="target_lags_only")
-    if predictor_family == "handpicked_set":
+    if predictor_family == "explicit_variable_list":
         _require_non_empty_sequence(
             leaf_config,
             "handpicked_columns",
-            "predictor_family='handpicked_set'",
+            "predictor_family='explicit_variable_list'",
         )
     elif predictor_family == "category_based":
         _require_non_empty_mapping(
@@ -1183,21 +1183,21 @@ def _validate_layer1_data_task_contract(
                 "benchmark_family='expert_benchmark' requires leaf_config.benchmark_config.expert_callable"
             )
 
-    missing_availability = _selection_value(selection_map, "missing_availability", default="zero_fill_before_start")
-    if missing_availability == "x_impute_only":
+    missing_availability = _selection_value(selection_map, "missing_availability", default="zero_fill_leading_predictor_gaps")
+    if missing_availability == "impute_predictors_only":
         method = leaf_config.get("x_imputation")
         if method not in _X_IMPUTATION_METHODS:
             raise CompileValidationError(
-                "missing_availability='x_impute_only' requires leaf_config.x_imputation "
+                "missing_availability='impute_predictors_only' requires leaf_config.x_imputation "
                 f"in {sorted(_X_IMPUTATION_METHODS)}"
             )
 
     raw_missing_policy = _selection_value(selection_map, "raw_missing_policy", default="preserve_raw_missing")
-    if raw_missing_policy == "x_impute_raw":
+    if raw_missing_policy == "impute_raw_predictors":
         method = leaf_config.get("raw_x_imputation")
         if method not in _X_IMPUTATION_METHODS:
             raise CompileValidationError(
-                "raw_missing_policy='x_impute_raw' requires leaf_config.raw_x_imputation "
+                "raw_missing_policy='impute_raw_predictors' requires leaf_config.raw_x_imputation "
                 f"in {sorted(_X_IMPUTATION_METHODS)}"
             )
 
@@ -1269,9 +1269,9 @@ def _validate_layer2_feature_block_contract(
 def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     dataset = _first_selected_value(selection_map, "dataset", "fred_md")
     source_adapter = _selection_value(selection_map, "source_adapter", default=dataset)
-    target_structure = _first_selected_value(selection_map, "target_structure", "single_target_point_forecast")
+    target_structure = _first_selected_value(selection_map, "target_structure", "single_target")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "autoreg_lagged_target")
-    information_set_type = _first_selected_value(selection_map, "information_set_type", "revised")
+    information_set_type = _first_selected_value(selection_map, "information_set_type", "final_revised_data")
     fred_sd_selectors = _resolve_fred_sd_selector_spec(selection_map, leaf_config)
     custom_blocks = leaf_config.get("custom_feature_blocks") or {}
     if not isinstance(custom_blocks, dict):
@@ -1350,7 +1350,7 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
         # Keep it in data_task_spec for older runtime/readers until the
         # migration window closes, but treat evaluation_spec as canonical.
         "oos_period": _selection_value(selection_map, "oos_period", default="all_oos_data"),
-        "missing_availability": _selection_value(selection_map, "missing_availability", default="zero_fill_before_start"),
+        "missing_availability": _selection_value(selection_map, "missing_availability", default="zero_fill_leading_predictor_gaps"),
         "raw_missing_policy": _selection_value(selection_map, "raw_missing_policy", default="preserve_raw_missing"),
         "raw_outlier_policy": _selection_value(selection_map, "raw_outlier_policy", default="preserve_raw_outliers"),
         "release_lag_rule": _selection_value(selection_map, "release_lag_rule", default="ignore_release_lag"),
@@ -2780,7 +2780,7 @@ def _layer2_representation_spec(
     feature_runtime = _feature_runtime_for_validation(selection_map, fallback_feature_builder=str(feature_builder))
     predictor_family_default = "target_lags_only" if feature_runtime == "autoreg_lagged_target" else "all_macro_vars"
     predictor_family = _selection_value(selection_map, "predictor_family", default=predictor_family_default)
-    contemporaneous_x_rule = _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
+    contemporaneous_x_rule = _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_same_period_predictors")
     deterministic_components = _selection_value(selection_map, "deterministic_components", default="none")
     structural_break_segmentation = _selection_value(selection_map, "structural_break_segmentation", default="none")
     y_lag_count = training_spec.get("y_lag_count", "fixed")
@@ -3001,9 +3001,9 @@ def _build_stage0_and_recipe(
     feature_builders = feature_axis.selected_values
     wrapper_family = leaf_config.get("wrapper_family")
 
-    if target_structure == "multi_target_point_forecast":
+    if target_structure == "multi_target":
         if len(targets) < 2:
-            raise CompileValidationError("target_structure='multi_target_point_forecast' requires leaf_config.targets with at least two entries")
+            raise CompileValidationError("target_structure='multi_target' requires leaf_config.targets with at least two entries")
     else:
         if not target:
             raise CompileValidationError("single-target recipes require leaf_config.target")
@@ -3023,13 +3023,13 @@ def _build_stage0_and_recipe(
             raise CompileValidationError(
                 f"experiment_unit={experiment_unit!r} conflicts with current recipe shape; implied unit is {derived_experiment_unit!r}"
             )
-        if unit_entry.requires_multi_target and target_structure != "multi_target_point_forecast":
+        if unit_entry.requires_multi_target and target_structure != "multi_target":
             raise CompileValidationError(
-                f"experiment_unit={experiment_unit!r} requires target_structure='multi_target_point_forecast'"
+                f"experiment_unit={experiment_unit!r} requires target_structure='multi_target'"
             )
-        if not unit_entry.requires_multi_target and target_structure == "multi_target_point_forecast":
+        if not unit_entry.requires_multi_target and target_structure == "multi_target":
             raise CompileValidationError(
-                f"experiment_unit={experiment_unit!r} is incompatible with target_structure='multi_target_point_forecast'"
+                f"experiment_unit={experiment_unit!r} is incompatible with target_structure='multi_target'"
             )
 
     sample_split = {
@@ -3037,8 +3037,8 @@ def _build_stage0_and_recipe(
         "rolling": "rolling_window_oos",
     }[framework]
     info_set_token = {
-        "revised": "revised_monthly",
-        "pseudo_oos_revised": "pseudo_oos_revised",
+        "final_revised_data": "revised_monthly",
+        "pseudo_oos_on_revised_data": "pseudo_oos_on_revised_data",
     }.get(information_set_type, information_set_type)
 
     stage0 = build_design_frame(
@@ -3380,12 +3380,12 @@ def _execution_status(
             )
         if (
             level_block_active
-            and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
-            != "forbid_contemporaneous"
+            and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_same_period_predictors")
+            != "forbid_same_period_predictors"
         ):
             not_supported.append(
                 f"level_feature_block={level_feature_block!r} requires "
-                "contemporaneous_x_rule='forbid_contemporaneous' so level features are observed at the forecast origin"
+                "contemporaneous_x_rule='forbid_same_period_predictors' so level features are observed at the forecast origin"
             )
         temporal_feature_block = _selection_value(selection_map, "temporal_feature_block", default="none")
         temporal_block_active = temporal_feature_block in {
@@ -3436,12 +3436,12 @@ def _execution_status(
             )
         if (
             rotation_block_active
-            and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_contemporaneous")
-            != "forbid_contemporaneous"
+            and _selection_value(selection_map, "contemporaneous_x_rule", default="forbid_same_period_predictors")
+            != "forbid_same_period_predictors"
         ):
             not_supported.append(
                 f"rotation_feature_block={rotation_feature_block!r} requires "
-                "contemporaneous_x_rule='forbid_contemporaneous' so rotation features use forecast-origin history"
+                "contemporaneous_x_rule='forbid_same_period_predictors' so rotation features use forecast-origin history"
             )
         if rotation_feature_block == "marx_rotation" and temporal_block_active and not marx_append_mode:
             not_supported.append(
@@ -3797,7 +3797,7 @@ def compile_recipe_dict(recipe_dict: dict[str, Any]) -> CompileResult:
         selection_map = _selection_map(selections)
     target_structure_value = _target_structure(selection_map)
     experiment_unit_explicit = "experiment_unit" in selection_map
-    if target_structure_value == "multi_target_point_forecast":
+    if target_structure_value == "multi_target":
         if "targets" not in leaf_config:
             raise CompileValidationError("recipe leaf_config missing 'targets'")
     else:
