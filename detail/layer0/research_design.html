@@ -151,37 +151,110 @@
 </section>
 <section id="choices">
 <h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
+<p>Read this axis as a route decision. Pick the block that matches the study you want, copy the YAML shape, then let <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> derive unless you need to pin it.</p>
+<section id="quick-map">
+<h3>Quick Map<a class="headerlink" href="#quick-map" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Choice</p></th>
-<th class="head"><p>Status</p></th>
-<th class="head"><p>What It Means</p></th>
-<th class="head"><p>Main Effect</p></th>
+<th class="head"><p>Route Type</p></th>
+<th class="head"><p>Default Owner</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>One resolved study path. This is the normal default for a single target, fixed representation, fixed model route.</p></td>
-<td><p>Usually derives <code class="docutils literal notranslate"><span class="pre">experiment_unit=single_target_single_model</span></code>; if model or feature axes are swept, the compiler may derive <code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code> or <code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code>.</p></td>
+<td><p>one resolved path</p></td>
+<td><p>direct recipe</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>A comparison where one or more axes vary while the rest of the path is fixed.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">derive_design_shape()</span></code> returns a controlled-axis variation shape; <code class="docutils literal notranslate"><span class="pre">derive_experiment_unit_default()</span></code> usually derives <code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code>. Runner-managed sweep routes should be executed with <code class="docutils literal notranslate"><span class="pre">compile_sweep_plan</span></code> / <code class="docutils literal notranslate"><span class="pre">execute_sweep</span></code> when the compiler reports <code class="docutils literal notranslate"><span class="pre">ready_for_sweep_runner</span></code>.</p></td>
+<td><p>controlled comparison</p></td>
+<td><p>direct recipe or sweep runner</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code></p></td>
-<td><p>operational route grammar</p></td>
-<td><p>A higher-level wrapper route, such as a benchmark suite, ablation study, or multi-target fan-out.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">derive_execution_posture()</span></code> routes to <code class="docutils literal notranslate"><span class="pre">wrapper_bundle_plan</span></code>; direct <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> is not the owner. The compiler records wrapper handoff metadata when a concrete wrapper family is supplied.</p></td>
+<td><p>wrapper bundle grammar</p></td>
+<td><p>wrapper runner</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_override</span></code></p></td>
-<td><p>operational route grammar</p></td>
-<td><p>A replication-locked route. Use when a known recipe path should preserve paper-style provenance and deviations.</p></td>
-<td><p>Derives <code class="docutils literal notranslate"><span class="pre">experiment_unit=replication_recipe</span></code>; route owner becomes <code class="docutils literal notranslate"><span class="pre">replication</span></code>; direct single-run execution is not the owner.</p></td>
+<td><p>replication route</p></td>
+<td><p>replication runner</p></td>
 </tr>
 </tbody>
 </table>
+</section>
+<section id="single-path-benchmark">
+<h3><code class="docutils literal notranslate"><span class="pre">single_path_benchmark</span></code><a class="headerlink" href="#single-path-benchmark" title="Link to this heading"></a></h3>
+<p>Use this for the ordinary one-path case: one target design, one representation, one model family, one evaluation route.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_path_benchmark</span>
+</pre></div>
+</div>
+<p>Typical compiler result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>research_design = single_path_benchmark
+experiment_unit = single_target_single_model
+route_owner     = single_run
+</pre></div>
+</div>
+<p>If downstream model or feature axes are swept, the compiler may derive <code class="docutils literal notranslate"><span class="pre">single_target_model_grid</span></code> or <code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code> instead.</p>
+</section>
+<section id="controlled-variation">
+<h3><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code><a class="headerlink" href="#controlled-variation" title="Link to this heading"></a></h3>
+<p>Use this when the point of the study is a controlled comparison. One axis, or a small set of axes, varies while the rest of the recipe stays fixed.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
+<span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sweep_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ridge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lasso</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">random_forest</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>Typical compiler result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>research_design = controlled_variation
+design_shape    = one_fixed_env_controlled_axis_variation
+experiment_unit = single_target_model_grid
+</pre></div>
+</div>
+<p>If the variation is represented as a parent sweep, the compiler reports <code class="docutils literal notranslate"><span class="pre">ready_for_sweep_runner</span></code>. In that case, run through <code class="docutils literal notranslate"><span class="pre">compile_sweep_plan</span></code> / <code class="docutils literal notranslate"><span class="pre">execute_sweep</span></code>, not as one ordinary leaf recipe.</p>
+</section>
+<section id="orchestrated-bundle">
+<h3><code class="docutils literal notranslate"><span class="pre">orchestrated_bundle</span></code><a class="headerlink" href="#orchestrated-bundle" title="Link to this heading"></a></h3>
+<p>Use this when a higher-level wrapper owns the run. Examples are benchmark suites, ablation studies, or multi-target fan-out recipes.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orchestrated_bundle</span>
+<span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">wrapper_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">benchmark_suite</span>
+</pre></div>
+</div>
+<p>Typical compiler result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>research_design   = orchestrated_bundle
+execution_posture = wrapper_bundle_plan
+route_owner       = wrapper
+</pre></div>
+</div>
+<p>Direct <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> is not the owner. The compiler records wrapper handoff metadata when a concrete wrapper family is supplied.</p>
+</section>
+<section id="replication-override">
+<h3><code class="docutils literal notranslate"><span class="pre">replication_override</span></code><a class="headerlink" href="#replication-override" title="Link to this heading"></a></h3>
+<p>Use this when the recipe is anchored to a paper or known replication path and deviations must be explicit.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">recipe_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">goulet-coulombe-2021-fred-md-ridge</span>
+<span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replication_override</span>
+</pre></div>
+</div>
+<p>Typical compiler result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>research_design = replication_override
+experiment_unit = replication_recipe
+route_owner     = replication
+</pre></div>
+</div>
+<p>Direct single-run execution is not the owner. The replication runner preserves replication provenance and records deviations from the original recipe.</p>
+</section>
 </section>
 <section id="selection-order">
 <h2>Selection Order<a class="headerlink" href="#selection-order" title="Link to this heading"></a></h2>

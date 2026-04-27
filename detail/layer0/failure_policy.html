@@ -147,52 +147,155 @@
 </section>
 <section id="choices">
 <h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
+<p>Read this axis as the run’s error-handling policy. It does not change the model; it changes whether the runtime stops or records failed units and continues.</p>
+<section id="quick-map">
+<h3>Quick Map<a class="headerlink" href="#quick-map" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Choice</p></th>
-<th class="head text-right"><p>Status</p></th>
-<th class="head"><p>What It Does</p></th>
-<th class="head"><p>Current Runtime Behavior</p></th>
+<th class="head"><p>Current State</p></th>
+<th class="head"><p>Best Use</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fail_fast</span></code></p></td>
-<td class="text-right"><p>operational</p></td>
-<td><p>Stop at the first failure.</p></td>
-<td><p>Default. Direct recipe and sweep execution re-raise the first error.</p></td>
+<td><p>runnable</p></td>
+<td><p>debugging, replication</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">skip_failed_cell</span></code></p></td>
-<td class="text-right"><p>operational</p></td>
-<td><p>Continue after a failed sweep cell or variant.</p></td>
-<td><p>Sweep runner records failed variants in <code class="docutils literal notranslate"><span class="pre">study_manifest.json</span></code> and continues. Best for large controlled variation sweeps.</p></td>
+<td><p>runnable</p></td>
+<td><p>large sweeps</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">skip_failed_model</span></code></p></td>
-<td class="text-right"><p>operational</p></td>
-<td><p>Continue after a model-branch failure.</p></td>
-<td><p>Direct recipe runtime can continue past target/model prediction-build failures and record failed components.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">retry_then_skip</span></code></p></td>
-<td class="text-right"><p>registry_only</p></td>
-<td><p>Reserved policy: retry a failed unit, then skip if it still fails.</p></td>
-<td><p>Not supported by the current runtime slice. Compiler reports not-supported if selected.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fallback_to_default_hp</span></code></p></td>
-<td class="text-right"><p>registry_only</p></td>
-<td><p>Reserved policy: if tuning fails, fall back to default hyperparameters.</p></td>
-<td><p>Not supported by the current runtime slice.</p></td>
+<td><p>runnable</p></td>
+<td><p>multi-model direct runs</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">save_partial_results</span></code></p></td>
-<td class="text-right"><p>operational</p></td>
-<td><p>Preserve completed artifacts even when later components fail.</p></td>
-<td><p>Direct recipe and sweep paths treat it as a continue-on-failure policy where supported and record failure metadata.</p></td>
+<td><p>runnable</p></td>
+<td><p>long runs where partial artifacts matter</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">warn_only</span></code></p></td>
-<td class="text-right"><p>operational</p></td>
-<td><p>Continue and emit warnings for recoverable failures.</p></td>
-<td><p>Direct recipe and sweep paths emit <code class="docutils literal notranslate"><span class="pre">RuntimeWarning</span></code> while recording failed units.</p></td>
+<td><p>runnable</p></td>
+<td><p>exploratory runs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">retry_then_skip</span></code></p></td>
+<td><p>reserved</p></td>
+<td><p>planned retry policy</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fallback_to_default_hp</span></code></p></td>
+<td><p>reserved</p></td>
+<td><p>planned tuning fallback</p></td>
 </tr>
 </tbody>
 </table>
+</section>
+<section id="fail-fast">
+<h3><code class="docutils literal notranslate"><span class="pre">fail_fast</span></code><a class="headerlink" href="#fail-fast" title="Link to this heading"></a></h3>
+<p>Use this when a failure should stop the run immediately.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail_fast</span>
+</pre></div>
+</div>
+<p>Runtime behavior:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>direct recipe = re-raise first error
+sweep runner  = stop at first failed variant
+</pre></div>
+</div>
+</section>
+<section id="skip-failed-cell">
+<h3><code class="docutils literal notranslate"><span class="pre">skip_failed_cell</span></code><a class="headerlink" href="#skip-failed-cell" title="Link to this heading"></a></h3>
+<p>Use this for large controlled sweeps where some cells may be invalid.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">skip_failed_cell</span>
+</pre></div>
+</div>
+<p>Runtime behavior:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>sweep runner = record failed variant in study_manifest.json
+next step    = continue with remaining variants
+</pre></div>
+</div>
+</section>
+<section id="skip-failed-model">
+<h3><code class="docutils literal notranslate"><span class="pre">skip_failed_model</span></code><a class="headerlink" href="#skip-failed-model" title="Link to this heading"></a></h3>
+<p>Use this when one model branch may fail but other target/model branches should still run.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">skip_failed_model</span>
+</pre></div>
+</div>
+<p>Runtime behavior:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>direct recipe = continue past recoverable model/prediction failures
+artifact      = record failed components
+</pre></div>
+</div>
+</section>
+<section id="save-partial-results">
+<h3><code class="docutils literal notranslate"><span class="pre">save_partial_results</span></code><a class="headerlink" href="#save-partial-results" title="Link to this heading"></a></h3>
+<p>Use this when completed artifacts are valuable even if a later component fails.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">save_partial_results</span>
+</pre></div>
+</div>
+<p>Runtime behavior:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>direct recipe = preserve completed outputs where supported
+sweep runner  = preserve completed variants and failure metadata
+</pre></div>
+</div>
+</section>
+<section id="warn-only">
+<h3><code class="docutils literal notranslate"><span class="pre">warn_only</span></code><a class="headerlink" href="#warn-only" title="Link to this heading"></a></h3>
+<p>Use this for exploratory runs where recoverable failures should be visible but not fatal.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn_only</span>
+</pre></div>
+</div>
+<p>Runtime behavior:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>warning type = RuntimeWarning
+artifact     = failed units recorded
+run status   = continues where recoverable
+</pre></div>
+</div>
+</section>
+<section id="retry-then-skip">
+<h3><code class="docutils literal notranslate"><span class="pre">retry_then_skip</span></code><a class="headerlink" href="#retry-then-skip" title="Link to this heading"></a></h3>
+<p>This is reserved policy grammar. It describes retrying a failed unit and skipping it if retry also fails.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retry_then_skip</span>
+</pre></div>
+</div>
+<p>Current status:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
+compiler = reports not-supported for runnable recipes
+</pre></div>
+</div>
+</section>
+<section id="fallback-to-default-hp">
+<h3><code class="docutils literal notranslate"><span class="pre">fallback_to_default_hp</span></code><a class="headerlink" href="#fallback-to-default-hp" title="Link to this heading"></a></h3>
+<p>This is reserved policy grammar for tuning failures.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fallback_to_default_hp</span>
+</pre></div>
+</div>
+<p>Current status:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
+runtime = no current fallback executor
+</pre></div>
+</div>
+</section>
 </section>
 <section id="failure-scope">
 <h2>Failure Scope<a class="headerlink" href="#failure-scope" title="Link to this heading"></a></h2>
