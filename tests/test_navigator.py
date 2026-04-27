@@ -17,6 +17,7 @@ from macrocast.navigator import (
     write_replication_recipe,
 )
 from macrocast.navigator.cli import main as navigator_main
+from macrocast.navigator.presentation import AXIS_PRESENTATION_SCHEMA_VERSION, AXIS_PRESENTATION_MAP
 
 
 def _recipe(**training_overrides):
@@ -207,10 +208,13 @@ def test_navigator_ui_data_exports_layer0_presentation_contract():
     payload = navigator_ui_data(("examples/recipes/model-benchmark.yaml",))
     presentation = payload["axis_presentation"]
 
-    assert presentation["research_design"]["label"] == "Study route"
+    assert payload["axis_presentation_schema_version"] == AXIS_PRESENTATION_SCHEMA_VERSION
+    assert presentation["research_design"]["label"] == "Research Design"
+    assert presentation["research_design"]["values"]["single_path_benchmark"]["label"] == "Single Forecasting Run"
     assert presentation["research_design"]["docs_url"].endswith("/detail/layer0/research_design.html")
     assert presentation["experiment_unit"]["selection_kind"] == "usually_derived"
-    assert presentation["compute_mode"]["values"]["parallel_by_model"]["label"] == "Parallel by model"
+    assert presentation["compute_mode"]["values"]["parallel_by_model"]["label"] == "Parallelize Models"
+    assert AXIS_PRESENTATION_MAP["failure_policy"]["values"]["fail_fast"]["label"] == "Stop on First Failure"
 
 
 def test_navigation_disables_tree_shap_for_non_tree_model():
