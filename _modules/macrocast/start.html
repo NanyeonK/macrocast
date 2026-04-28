@@ -725,13 +725,13 @@
     <span class="k">return</span> <span class="n">out</span>
 
 
-<div class="viewcode-block" id="macrocast_single_run">
-<a class="viewcode-back" href="../../api/start.html#macrocast.start.macrocast_single_run">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">macrocast_single_run</span><span class="p">(</span>
+<div class="viewcode-block" id="macrocast_preview">
+<a class="viewcode-back" href="../../api/start.html#macrocast.start.macrocast_preview">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">macrocast_preview</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">yaml_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">stages</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">output_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/tmp/macrocast_single_run_preview&quot;</span><span class="p">,</span>
+    <span class="n">output_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/tmp/macrocast_preview&quot;</span><span class="p">,</span>
     <span class="n">recipe_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;examples/recipes/model-benchmark.yaml&quot;</span><span class="p">,</span>
     <span class="n">max_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
