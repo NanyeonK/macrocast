@@ -160,17 +160,9 @@ workbook adapter.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">source_adapter=custom_csv/custom_parquet</span></code> remains operational but requires <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>.</p></li>
 <li><p>Official dataset transforms now have canonical Layer 1 axes:
 <code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code> and <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>.</p></li>
-<li><p>Old Layer 2 t-code fields remain accepted as legacy compatibility inputs.
-The compiler derives the Layer 1 official-transform spec from those fields
-when old recipes omit the new axes, derives runtime <code class="docutils literal notranslate"><span class="pre">PreprocessContract</span></code>
-fallback fields from Layer 1 for new recipes, and rejects conflicting
-new/legacy choices.</p></li>
-<li><p>Legacy <code class="docutils literal notranslate"><span class="pre">dataset_source</span></code> remains accepted as a compiler alias for canonical
-<code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>. New recipes, manifests, and docs should use
-<code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>.</p></li>
-<li><p>Legacy <code class="docutils literal notranslate"><span class="pre">task</span></code> remains accepted as a compiler alias for canonical
-<code class="docutils literal notranslate"><span class="pre">target_structure</span></code>. New recipes, manifests, and docs should use
-<code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.</p></li>
+<li><p>Official transform choices are read from Layer 1 axes. The compiler derives runtime <code class="docutils literal notranslate"><span class="pre">PreprocessContract</span></code> fields from those choices for the current execution path, while generated recipes keep the official-transform decision in Layer 1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> is the only source-dispatch axis. Removed source-dispatch aliases are rejected during registry validation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code> is the only Layer 1 target-shape axis. Runner grammar remains in Layer 0 through <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code>.</p></li>
 </ul>
 </section>
 <section id="target-structure">

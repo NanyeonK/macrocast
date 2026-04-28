@@ -369,7 +369,6 @@
     <span class="n">task</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">_sv</span><span class="p">(</span><span class="s2">&quot;target_structure&quot;</span><span class="p">)</span>
         <span class="ow">or</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target_structure&quot;</span><span class="p">)</span>
-        <span class="ow">or</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task&quot;</span><span class="p">)</span>
         <span class="ow">or</span> <span class="s2">&quot;single_target&quot;</span>
     <span class="p">)</span>
     <span class="n">model_sel</span> <span class="o">=</span> <span class="n">selection_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_family&quot;</span><span class="p">)</span>
@@ -460,7 +459,7 @@
             <span class="n">previous</span> <span class="o">=</span> <span class="n">seen</span><span class="p">[</span><span class="n">selection</span><span class="o">.</span><span class="n">axis_name</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">previous</span><span class="o">.</span><span class="n">selected_values</span> <span class="o">!=</span> <span class="n">selection</span><span class="o">.</span><span class="n">selected_values</span> <span class="ow">or</span> <span class="n">previous</span><span class="o">.</span><span class="n">selection_mode</span> <span class="o">!=</span> <span class="n">selection</span><span class="o">.</span><span class="n">selection_mode</span> <span class="ow">or</span> <span class="n">previous</span><span class="o">.</span><span class="n">layer</span> <span class="o">!=</span> <span class="n">selection</span><span class="o">.</span><span class="n">layer</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;axis </span><span class="si">{</span><span class="n">selection</span><span class="o">.</span><span class="n">axis_name</span><span class="si">!r}</span><span class="s2"> was specified more than once through canonical/legacy aliases&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;axis </span><span class="si">{</span><span class="n">selection</span><span class="o">.</span><span class="n">axis_name</span><span class="si">!r}</span><span class="s2"> was specified more than once with conflicting values&quot;</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">seen</span><span class="p">[</span><span class="n">selection</span><span class="o">.</span><span class="n">axis_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">selection</span>
@@ -3118,7 +3117,7 @@
         <span class="s2">&quot;expanding&quot;</span><span class="p">:</span> <span class="s2">&quot;expanding_window_oos&quot;</span><span class="p">,</span>
         <span class="s2">&quot;rolling&quot;</span><span class="p">:</span> <span class="s2">&quot;rolling_window_oos&quot;</span><span class="p">,</span>
     <span class="p">}[</span><span class="n">framework</span><span class="p">]</span>
-    <span class="n">info_set_token</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">design_information_set</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;final_revised_data&quot;</span><span class="p">:</span> <span class="s2">&quot;revised_monthly&quot;</span><span class="p">,</span>
         <span class="s2">&quot;pseudo_oos_on_revised_data&quot;</span><span class="p">:</span> <span class="s2">&quot;pseudo_oos_on_revised_data&quot;</span><span class="p">,</span>
     <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">information_set_type</span><span class="p">,</span> <span class="n">information_set_type</span><span class="p">)</span>
@@ -3128,7 +3127,7 @@
         <span class="n">experiment_unit</span><span class="o">=</span><span class="n">experiment_unit</span> <span class="k">if</span> <span class="n">experiment_unit_explicit</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fixed_design</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">&quot;dataset_adapter&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="p">,</span>
-            <span class="s2">&quot;information_set&quot;</span><span class="p">:</span> <span class="n">info_set_token</span><span class="p">,</span>
+            <span class="s2">&quot;information_set&quot;</span><span class="p">:</span> <span class="n">design_information_set</span><span class="p">,</span>
             <span class="s2">&quot;sample_split&quot;</span><span class="p">:</span> <span class="n">sample_split</span><span class="p">,</span>
             <span class="s2">&quot;benchmark&quot;</span><span class="p">:</span> <span class="n">benchmark</span><span class="p">,</span>
             <span class="s2">&quot;evaluation_protocol&quot;</span><span class="p">:</span> <span class="s2">&quot;point_forecast_core&quot;</span><span class="p">,</span>
@@ -3851,8 +3850,6 @@
 <div class="viewcode-block" id="compile_recipe_dict">
 <a class="viewcode-back" href="../../../api/compiler.html#macrocast.compiler.compile_recipe_dict">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compile_recipe_dict</span><span class="p">(</span><span class="n">recipe_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">CompileResult</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">macrocast.compiler.migrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrate_legacy_stat_test</span>
-    <span class="n">recipe_dict</span> <span class="o">=</span> <span class="n">migrate_legacy_stat_test</span><span class="p">(</span><span class="n">recipe_dict</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">recipe_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recipe_id&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="s2">&quot;recipe_id is required&quot;</span><span class="p">)</span>
     <span class="n">selections</span> <span class="o">=</span> <span class="n">_build_axis_selections</span><span class="p">(</span><span class="n">recipe_dict</span><span class="p">)</span>
@@ -3967,7 +3964,6 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_stat_test_spec</span><span class="p">(</span><span class="n">selection_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AxisSelection</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
     <span class="n">raw</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;stat_test&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;stat_test&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">),</span>
         <span class="s2">&quot;test_scope&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;test_scope&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;per_target&quot;</span><span class="p">),</span>
         <span class="s2">&quot;dependence_correction&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;dependence_correction&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">),</span>
         <span class="s2">&quot;overlap_handling&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;overlap_handling&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;allow_overlap&quot;</span><span class="p">),</span>

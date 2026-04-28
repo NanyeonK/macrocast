@@ -93,11 +93,10 @@ target series.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">multi_target</span></code>: two or more target series. Requires
 <code class="docutils literal notranslate"><span class="pre">leaf_config.targets</span></code>.</p></li>
 </ul>
-<p>Compatibility:</p>
+<p>Canonical API:</p>
 <ul class="simple">
-<li><p>Legacy recipes may still use <code class="docutils literal notranslate"><span class="pre">task</span></code>.</p></li>
-<li><p>The compiler canonicalizes <code class="docutils literal notranslate"><span class="pre">task</span></code> to <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.</p></li>
-<li><p>New generated recipes, manifests, and docs should use <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.</p></li>
+<li><p>Generated recipes, manifests, and docs use <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.</p></li>
+<li><p>Removed target-shape aliases are rejected during registry validation.</p></li>
 </ul>
 <p>Layer 0 connection:</p>
 <ul class="simple">

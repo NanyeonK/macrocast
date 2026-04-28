@@ -248,7 +248,7 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.load_custom_parquet(path,</span> <span class="pre">*,</span> <span class="pre">dataset,</span> <span class="pre">cache_root=None)</span></code> — direct call (requires pyarrow or fastparquet).</p></li>
 <li><p>Dispatcher: <code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code> in <code class="docutils literal notranslate"><span class="pre">macrocast/execution/build.py</span></code> checks <code class="docutils literal notranslate"><span class="pre">recipe.data_task_spec[&quot;source_adapter&quot;]</span></code> first; falls through to the FRED-canonical path otherwise.</p></li>
 <li><p>Compile guard: <code class="docutils literal notranslate"><span class="pre">source_adapter</span> <span class="pre">∈</span> <span class="pre">{custom_csv,</span> <span class="pre">custom_parquet}</span></code> + no <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code> → <code class="docutils literal notranslate"><span class="pre">CompileValidationError</span></code>.</p></li>
-<li><p>Compatibility: legacy recipes may still use <code class="docutils literal notranslate"><span class="pre">dataset_source</span></code>; the compiler treats it as an alias for <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> and rejects conflicting old/new choices.</p></li>
+<li><p>Canonical API: <code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code> reads <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>; removed source-dispatch aliases are rejected at compile time.</p></li>
 </ul>
 </section>
 <section id="id3">
@@ -365,7 +365,7 @@
 <h3>Functions &amp; features<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Runtime: loaders (<code class="docutils literal notranslate"><span class="pre">raw/datasets/fred_md.py</span></code> etc.) pick the correct data source based on the dataset axis; <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code> shapes the downstream pseudo-OOS masking when set.</p></li>
-<li><p>Compat mirror: the older recipe alias <code class="docutils literal notranslate"><span class="pre">info_set</span></code> is canonicalised to <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code> (compiler/build.py alias map).</p></li>
+<li><p>Canonical API: recipes use <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code> directly; removed information-set aliases are rejected at compile time.</p></li>
 </ul>
 </section>
 <section id="id9">
@@ -401,7 +401,7 @@
 <h2>Source &amp; Frame (1.1) takeaways<a class="headerlink" href="#source-frame-1-1-takeaways" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">dataset</span></code></strong> and <strong><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></strong> are the two axes the user usually decides in 1.1; standalone FRED-SD also requires <code class="docutils literal notranslate"><span class="pre">frequency</span></code>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></strong> now carries actual loader dispatch: FRED canonical (default) vs <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> vs <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>. 14 reserved third-party adapter labels dropped. Legacy <code class="docutils literal notranslate"><span class="pre">dataset_source</span></code> remains a recipe alias during the compatibility window.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></strong> carries actual loader dispatch: FRED canonical (default) vs <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> vs <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>. Removed adapter labels and source-dispatch aliases are rejected.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">frequency</span></code></strong> is executable: it controls conversion and is compile-checked for FRED-SD composites.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">data_domain</span></code></strong> axis dropped entirely (pure duplication of <code class="docutils literal notranslate"><span class="pre">dataset.source_family</span></code>).</p></li>
 </ul>

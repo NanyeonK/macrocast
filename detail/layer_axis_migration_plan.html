@@ -175,14 +175,14 @@ describes the registry layer after migration.</p>
 <td><p>Target/X official transform scope is part of official frame construction.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dataset_source</span></code></p></td>
+<td><p>source-dispatch alias</p></td>
 <td><p>1_data_task</p></td>
 <td><p>Loader dispatch is an adapter choice; <code class="docutils literal notranslate"><span class="pre">dataset</span></code> remains the schema identity.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">task</span></code></p></td>
+<td><p>target-shape alias</p></td>
 <td><p>1_data_task</p></td>
-<td><p>Layer 1 records target cautoregressive_diffusion_indexnality; Layer 0 owns runner grammar.</p></td>
+<td><p>Layer 1 records target cardinality; Layer 0 owns runner grammar.</p></td>
 </tr>
 </tbody>
 </table>
@@ -305,45 +305,13 @@ tests.</p>
 <section id="compatibility-policy">
 <h2>Compatibility Policy<a class="headerlink" href="#compatibility-policy" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Do not break old recipes in this pass.</p></li>
-<li><p>Registry <code class="docutils literal notranslate"><span class="pre">layer</span></code> is canonical for docs/governance.</p></li>
-<li><p>Compiler continues to accept migrated axes at old recipe paths.</p></li>
-<li><p>Compiler now records Layer 1 <code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code> and
-<code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code> in <code class="docutils literal notranslate"><span class="pre">data_task_spec</span></code>, deriving them from legacy
-Layer 2 t-code fields when old recipes omit the new canonical axes.</p></li>
-<li><p>Generated default recipes no longer need to place official t-code bridge
-fields in <code class="docutils literal notranslate"><span class="pre">2_preprocessing</span></code>; the compiler derives the runtime
-<code class="docutils literal notranslate"><span class="pre">PreprocessContract</span></code> bridge from Layer 1 official-transform axes.</p></li>
-<li><p>Runtime official dataset transformation now reads <code class="docutils literal notranslate"><span class="pre">data_task_spec</span></code> first.
-Legacy <code class="docutils literal notranslate"><span class="pre">PreprocessContract.tcode_*</span></code> fields remain only as fallback for older
-compiled specs.</p></li>
-<li><p>Compiled manifests include <code class="docutils literal notranslate"><span class="pre">data_task_spec[&quot;official_transform_source&quot;]</span></code>;
-runtime t-code reports include the matching source/fallback marker. This keeps
-the bridge visible without making <code class="docutils literal notranslate"><span class="pre">PreprocessContract</span></code> the owner of the
-official-transform choice.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">dataset_source</span></code> remains accepted as a legacy recipe alias for
-<code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>. New compiled specs and manifests write
-<code class="docutils literal notranslate"><span class="pre">data_task_spec[&quot;source_adapter&quot;]</span></code>; execution falls back to old
-<code class="docutils literal notranslate"><span class="pre">data_task_spec[&quot;dataset_source&quot;]</span></code> only for previously compiled specs.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">task</span></code> remains accepted as a legacy recipe alias for <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.
-New compiled specs and manifests write <code class="docutils literal notranslate"><span class="pre">data_task_spec[&quot;target_structure&quot;]</span></code>.</p></li>
-<li><p>Generated recipes should be updated gradually after tests lock the canonical layers.</p></li>
-<li><p>Runtime dispatch reads explicit Layer 2 feature blocks first and keeps
-<code class="docutils literal notranslate"><span class="pre">feature_builder</span></code>, <code class="docutils literal notranslate"><span class="pre">predictor_family</span></code>, <code class="docutils literal notranslate"><span class="pre">data_richness_mode</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">factor_count</span></code> from compiled specs as compatibility/provenance fields. The
-registry layer records their canonical ownership as Layer 2. Explicit Layer 2
-block recipes can omit the legacy <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code> input; the compiler
-derives the bridge internally for Stage 0 and old runtime dispatch.</p></li>
-<li><p>Layer 2 cleanup is closed for supported fixed full/runtime slices. Generic
-<code class="docutils literal notranslate"><span class="pre">Z</span></code> unification is a Layer 2 representation-handoff task, while Layer 3 stays
-a forecast-generator consumer. The current cleanup frontier is making that
-Layer 3 boundary explicit. The first implementation pass now writes
-target-lag and custom-hook Layer 2 choices into
-<code class="docutils literal notranslate"><span class="pre">layer2_representation_spec</span></code>; old <code class="docutils literal notranslate"><span class="pre">training_spec</span></code> readers remain as
-compatibility fallbacks. Factor-count, factor-lag, target construction,
-input-panel, and deterministic-block runtime migration are now also Layer 2
-metadata-first. Remaining implementation debt is adding the Layer 3
-capability matrix and removing remaining compatibility bridges.</p></li>
+<li><p>Registry <code class="docutils literal notranslate"><span class="pre">layer</span></code> is canonical for docs and governance.</p></li>
+<li><p>Generated recipes, Navigator paths, and docs use canonical axis names only.</p></li>
+<li><p>Removed name aliases for source dispatch, information-set regime, target shape, and Layer 6 test routing are rejected by compiler and registry validation.</p></li>
+<li><p>Runtime fallback fields are kept only where needed to read already compiled manifests or feed older execution internals; they are not user-facing recipe choices.</p></li>
+<li><p>Official dataset transformation is a Layer 1 decision through <code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code> and <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>; runtime derives the lower-level transform contract from those axes.</p></li>
+<li><p>Runtime dispatch reads explicit Layer 2 feature blocks first and keeps compatibility/provenance fields only as internal payloads. Explicit Layer 2 block recipes can omit bridge inputs; the compiler derives any required runtime payload internally.</p></li>
+<li><p>Layer 2 cleanup is closed for supported fixed full/runtime slices. Generic <code class="docutils literal notranslate"><span class="pre">Z</span></code> unification is a Layer 2 representation-handoff task, while Layer 3 stays a forecast-generator consumer. Remaining cleanup is focused on shrinking internal fallback readers without reopening the public recipe API.</p></li>
 </ul>
 </section>
 </section>
