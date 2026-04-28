@@ -108,7 +108,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutionError</span>
 
 
-<span class="n">DEFAULT_RESEARCH_DESIGN</span> <span class="o">=</span> <span class="s2">&quot;controlled_variation&quot;</span>
+<span class="n">DEFAULT_EXECUTION_ROUTE</span> <span class="o">=</span> <span class="s2">&quot;comparison_sweep&quot;</span>
 
 
 <div class="viewcode-block" id="VariantResult">
@@ -247,7 +247,7 @@
     <span class="n">plan</span><span class="p">:</span> <span class="n">SweepPlan</span><span class="p">,</span>
     <span class="n">output_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">local_raw_source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">research_design</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_RESEARCH_DESIGN</span><span class="p">,</span>
+    <span class="n">execution_route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_EXECUTION_ROUTE</span><span class="p">,</span>
     <span class="n">extra_provenance</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SweepResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute every variant of ``plan`` under ``output_root``.</span>
@@ -273,8 +273,8 @@
 <span class="sd">            the aggregate ``study_manifest.json``.</span>
 <span class="sd">        local_raw_source: Passed through to :func:`execute_recipe` so</span>
 <span class="sd">            tests can use fixture CSVs.</span>
-<span class="sd">        research_design: Recorded on the study manifest. Defaults to</span>
-<span class="sd">            ``controlled_variation``.</span>
+<span class="sd">        execution_route: Recorded on the study manifest. Defaults to</span>
+<span class="sd">            ``comparison_sweep``.</span>
 <span class="sd">        extra_provenance: Optional dict merged into each variant&#39;s</span>
 <span class="sd">            ``provenance_payload`` on top of ``variant_id`` / ``study_id``.</span>
 
@@ -470,7 +470,7 @@
 
     <span class="n">manifest</span> <span class="o">=</span> <span class="n">build_study_manifest</span><span class="p">(</span>
         <span class="n">study_id</span><span class="o">=</span><span class="n">plan</span><span class="o">.</span><span class="n">study_id</span><span class="p">,</span>
-        <span class="n">research_design</span><span class="o">=</span><span class="n">research_design</span><span class="p">,</span>
+        <span class="n">execution_route</span><span class="o">=</span><span class="n">execution_route</span><span class="p">,</span>
         <span class="n">parent_recipe_id</span><span class="o">=</span><span class="n">plan</span><span class="o">.</span><span class="n">parent_recipe_id</span><span class="p">,</span>
         <span class="n">parent_recipe_dict</span><span class="o">=</span><span class="n">plan</span><span class="o">.</span><span class="n">parent_recipe_dict</span><span class="p">,</span>
         <span class="n">axes_swept</span><span class="o">=</span><span class="n">plan</span><span class="o">.</span><span class="n">axes_swept</span><span class="p">,</span>

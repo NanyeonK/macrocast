@@ -79,11 +79,10 @@
              
   <section id="design-stage-0">
 <h1>Design (Stage 0)<a class="headerlink" href="#design-stage-0" title="Link to this heading"></a></h1>
-<p>Stage 0 decides <strong>the shape of the study</strong>: which runner fires, how axes sweep, how failures are handled, how deterministic the run is, and how work is parallelised. Six axes cover 38 allowed values; the simple default path uses only the small operational subset needed for a single run or model comparison. Every axis ships a default that matches the most common research flow — most researchers leave all six alone and never read this page.</p>
+<p>Stage 0 decides <strong>the execution grammar</strong>: which unit of work is run or compared, how axes sweep, how failures are handled, how deterministic the run is, and how work is parallelised. The simple default path uses the small operational subset needed for a one-cell comparison or a controlled model comparison.</p>
 <p><strong>At a glance (defaults):</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">research_design</span> <span class="pre">=</span> <span class="pre">single_forecast_run</span></code> — one recipe, one forecast.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> is derived from <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> + sweep shape (auto-picked; never needs to be set).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span> <span class="pre">=</span> <span class="pre">single_target_single_generator</span></code> — one target, one forecasting path, one <code class="docutils literal notranslate"><span class="pre">comparison_sweep</span></code> cell.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">axis_type</span> <span class="pre">=</span> <span class="pre">fixed</span></code> per axis — set to <code class="docutils literal notranslate"><span class="pre">sweep</span></code> only on the axis you are varying.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span> <span class="pre">=</span> <span class="pre">fail_fast</span></code> — stop on the first error.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span> <span class="pre">=</span> <span class="pre">seeded_reproducible</span></code> — Python + numpy seeded; torch optional.</p></li>
@@ -91,10 +90,11 @@
 </ul>
 <p>Deviate when you explicitly want multiple variants, different runners, looser error handling, stricter determinism, or compute speedups.</p>
 <hr class="docutils" />
-<section id="research-design">
-<h2>0.1 <code class="docutils literal notranslate"><span class="pre">research_design</span></code><a class="headerlink" href="#research-design" title="Link to this heading"></a></h2>
-<p><strong>Selection question</strong>: Is this a single forecast, a horse race across variants, a Phase 8 paper bundle, or a replication of a prior recipe?</p>
-<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code> — one recipe produces one forecast and one metrics file. Most empirical work starts here.</p>
+<section id="experiment-unit">
+<h2>0.1 <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code><a class="headerlink" href="#experiment-unit" title="Link to this heading"></a></h2>
+<p><strong>Selection question</strong>: What unit of work should the study run, compare, repeat, or hand off?</p>
+<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code> for one fixed single-target path.</p>
+<p>A one-path forecast is the one-cell case of <code class="docutils literal notranslate"><span class="pre">comparison_sweep</span></code>. A controlled model, feature, preprocessing, or representation comparison is the multi-cell case of the same grammar.</p>
 <section id="value-catalog">
 <h3>Value catalog<a class="headerlink" href="#value-catalog" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -106,76 +106,15 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code></p></td>
-<td><p>operational (default)</p></td>
-<td><p>Default. Any study that compares the chosen model against a benchmark on one dataset/target combination.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;research_design&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_forecast_run&quot;</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>Horse-race studies — one axis sweeps across values, everything else held fixed.</p></td>
-<td><p>One <code class="docutils literal notranslate"><span class="pre">study_manifest.json</span></code> per sweep plan; one <code class="docutils literal notranslate"><span class="pre">run/</span></code> directory per variant.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">study_bundle</span></code></p></td>
-<td><p>operational as a routing shape</p></td>
-<td><p>Use only with an experiment unit that has a concrete runner contract. Unsupported wrapper families compile as <code class="docutils literal notranslate"><span class="pre">not_supported</span></code>.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">execution_status</span></code> is <code class="docutils literal notranslate"><span class="pre">ready_for_wrapper_runner</span></code> for supported wrappers, otherwise <code class="docutils literal notranslate"><span class="pre">not_supported</span></code>.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>Re-running an existing recipe and asserting byte-identical output.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code> returns <code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code>; identical forecast + manifest hashes.</p></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="functions-features">
-<h3>Functions &amp; features<a class="headerlink" href="#functions-features" title="Link to this heading"></a></h3>
-<ul class="simple">
-<li><p>Runner dispatch: <code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build</span></code> resolves <code class="docutils literal notranslate"><span class="pre">research_design</span></code> + <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> → <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code> via <code class="docutils literal notranslate"><span class="pre">derive_experiment_unit_default</span></code>.</p></li>
-<li><p>Artifacts: <code class="docutils literal notranslate"><span class="pre">single_forecast_run</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_recipe()</span></code>; <code class="docutils literal notranslate"><span class="pre">controlled_variation</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_sweep()</span></code>; <code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code> → <code class="docutils literal notranslate"><span class="pre">execute_replication()</span></code>.</p></li>
-</ul>
-</section>
-<section id="recipe-usage">
-<h3>Recipe usage<a class="headerlink" href="#recipe-usage" title="Link to this heading"></a></h3>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sweep across model_family while holding everything else fixed.</span>
-<span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
-<span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">sweep_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ar</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ridge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lasso</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">random_forest</span><span class="p p-Indicator">]</span>
-</pre></div>
-</div>
-</section>
-</section>
-<hr class="docutils" />
-<section id="experiment-unit">
-<h2>0.2 <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code><a class="headerlink" href="#experiment-unit" title="Link to this heading"></a></h2>
-<p><strong>Selection question</strong>: Which runner owns this recipe?</p>
-<p><strong>Default</strong>: Auto-derived from <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> and sweep shape — you never need to set this explicitly.</p>
-<p>The compiler calls <code class="docutils literal notranslate"><span class="pre">derive_experiment_unit_default(research_design,</span> <span class="pre">target_structure,</span> <span class="pre">model_axis_mode,</span> <span class="pre">feature_axis_mode,</span> <span class="pre">wrapper_family)</span></code> and picks one of the operational values below. Set it explicitly only when your recipe must declare a specific runner (e.g. for replication provenance).</p>
-<section id="id1">
-<h3>Value catalog<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Value</p></th>
-<th class="head"><p>Status</p></th>
-<th class="head"><p>When to use</p></th>
-<th class="head"><p>Verify</p></th>
-</tr>
-</thead>
-<tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_single_generator</span></code></p></td>
-<td><p>operational (default for single-target, no sweeps)</p></td>
-<td><p>Default auto-derivation.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">manifest[&quot;experiment_unit&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_target_single_generator&quot;</span></code></p></td>
+<td><p>operational</p></td>
+<td><p>One target, one forecasting path, no active sweep axes.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tree_context[&quot;route_contract&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;single_cell_executable&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_generator_grid</span></code></p></td>
 <td><p>operational</p></td>
-<td><p>Auto-picked when <code class="docutils literal notranslate"><span class="pre">model_family</span></code> sweeps.</p></td>
-<td><p>manifest records the derived value.</p></td>
+<td><p>One target with one or more supported sweep axes.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tree_context[&quot;route_contract&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;sweep_runner_executable&quot;</span></code> when sweeps are present.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target_full_sweep</span></code></p></td>
 <td><p>registry_only</p></td>
@@ -194,7 +133,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">replication_recipe</span></code></p></td>
 <td><p>operational</p></td>
-<td><p>Auto-derived when <code class="docutils literal notranslate"><span class="pre">research_design=replication_recipe</span></code>.</p></td>
+<td><p>Source recipe or paper recipe owns the path.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code> artefact.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">benchmark_suite</span></code></p></td>
@@ -213,24 +152,25 @@
 <section id="compatibility-guards">
 <h3>Compatibility guards<a class="headerlink" href="#compatibility-guards" title="Link to this heading"></a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit.requires_multi_target</span> <span class="pre">==</span> <span class="pre">True</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">multi_target_separate_runs</span></code>, <code class="docutils literal notranslate"><span class="pre">multi_target_shared_design</span></code>) requires <code class="docutils literal notranslate"><span class="pre">target_structure</span> <span class="pre">=</span> <span class="pre">multi_target</span></code>; else <code class="docutils literal notranslate"><span class="pre">blocked_by_incompatibility</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">experiment_unit.requires_multi_target</span> <span class="pre">==</span> <span class="pre">False</span></code> with <code class="docutils literal notranslate"><span class="pre">target_structure</span> <span class="pre">=</span> <span class="pre">multi_target</span></code> is also blocked.</p></li>
+<li><p>Multi-target units require <code class="docutils literal notranslate"><span class="pre">target_structure</span> <span class="pre">=</span> <span class="pre">multi_target</span></code>.</p></li>
+<li><p>Single-target units are incompatible with <code class="docutils literal notranslate"><span class="pre">target_structure</span> <span class="pre">=</span> <span class="pre">multi_target</span></code>.</p></li>
+<li><p>Wrapper and replication units must use their dedicated runners, not direct <code class="docutils literal notranslate"><span class="pre">run_compiled_recipe</span></code>.</p></li>
 </ul>
 </section>
-<section id="id2">
-<h3>Functions &amp; features<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<section id="functions-features">
+<h3>Functions &amp; features<a class="headerlink" href="#functions-features" title="Link to this heading"></a></h3>
 <ul class="simple">
-<li><p>Auto-derivation: <code class="docutils literal notranslate"><span class="pre">macrocast.design.derive.derive_experiment_unit_default</span></code>.</p></li>
+<li><p>Auto-derivation: <code class="docutils literal notranslate"><span class="pre">macrocast.registry.stage0.experiment_unit.derive_experiment_unit_default</span></code>.</p></li>
 <li><p>Runners: <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code>, <code class="docutils literal notranslate"><span class="pre">execute_sweep</span></code>, <code class="docutils literal notranslate"><span class="pre">execute_separate_runs</span></code> (<code class="docutils literal notranslate"><span class="pre">macrocast.studies.multi_target</span></code>), <code class="docutils literal notranslate"><span class="pre">execute_replication</span></code> (<code class="docutils literal notranslate"><span class="pre">macrocast.studies.replication</span></code>). <code class="docutils literal notranslate"><span class="pre">execute_ablation</span></code> is standalone until a compiled-recipe contract is added.</p></li>
 </ul>
 </section>
-<section id="id3">
-<h3>Recipe usage<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<section id="recipe-usage">
+<h3>Recipe usage<a class="headerlink" href="#recipe-usage" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Controlled model comparison: variants are executed by execute_sweep().</span>
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">research_design</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">controlled_variation</span>
+<span class="w">      </span><span class="nt">experiment_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target_generator_grid</span>
 <span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">sweep_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ar</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ridge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lasso</span><span class="p p-Indicator">]</span>
@@ -240,12 +180,12 @@
 </section>
 <hr class="docutils" />
 <section id="axis-type">
-<h2>0.3 <code class="docutils literal notranslate"><span class="pre">axis_type</span></code><a class="headerlink" href="#axis-type" title="Link to this heading"></a></h2>
+<h2>0.2 <code class="docutils literal notranslate"><span class="pre">axis_type</span></code><a class="headerlink" href="#axis-type" title="Link to this heading"></a></h2>
 <p><strong>Selection question</strong>: For a given axis, is it held fixed, swept, derived from other axes, or chosen by a rule?</p>
 <p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">fixed</span></code> — you set the axis to one value and it stays there.</p>
 <p>Applies <strong>per axis</strong>, not per recipe. The compiler derives this from how the axis appears in <code class="docutils literal notranslate"><span class="pre">path[&quot;&lt;layer&gt;&quot;]</span></code> (<code class="docutils literal notranslate"><span class="pre">fixed_axes</span></code> vs. <code class="docutils literal notranslate"><span class="pre">sweep_axes</span></code> vs. <code class="docutils literal notranslate"><span class="pre">conditional_axes</span></code>), so you almost never set it directly.</p>
-<section id="id4">
-<h3>Value catalog<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<section id="id1">
+<h3>Value catalog<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Value</p></th>
@@ -283,15 +223,15 @@
 </tbody>
 </table>
 </section>
-<section id="id5">
-<h3>Functions &amp; features<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="id2">
+<h3>Functions &amp; features<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Discovery: <code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._build_axis_selections</span></code> reads the three layer-spec forms and tags each axis with its <code class="docutils literal notranslate"><span class="pre">selection_mode</span></code>.</p></li>
 <li><p>Derivation: <code class="docutils literal notranslate"><span class="pre">macrocast.compiler.build._resolve_derived_axes</span></code> handles <code class="docutils literal notranslate"><span class="pre">derived</span></code>; rule registry for <code class="docutils literal notranslate"><span class="pre">conditional</span></code>.</p></li>
 </ul>
 </section>
-<section id="id6">
-<h3>Recipe usage<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<section id="id3">
+<h3>Recipe usage<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># nested_sweep: sweep model_family first; for quantile_linear, also sweep forecast_object.</span>
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">3_training</span><span class="p">:</span>
@@ -306,12 +246,12 @@
 </section>
 <hr class="docutils" />
 <section id="failure-policy">
-<h2>0.4 <code class="docutils literal notranslate"><span class="pre">failure_policy</span></code><a class="headerlink" href="#failure-policy" title="Link to this heading"></a></h2>
+<h2>0.3 <code class="docutils literal notranslate"><span class="pre">failure_policy</span></code><a class="headerlink" href="#failure-policy" title="Link to this heading"></a></h2>
 <p><strong>Selection question</strong>: What happens when a variant / cell fails at runtime?</p>
 <p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code> — the first failure aborts the study so you can investigate.</p>
 <p>Loosen when you’re running a large sweep and want a partial report rather than an abort.</p>
-<section id="id7">
-<h3>Value catalog<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<section id="id4">
+<h3>Value catalog<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Value</p></th>
@@ -349,15 +289,15 @@
 </tbody>
 </table>
 </section>
-<section id="id8">
-<h3>Functions &amp; features<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id5">
+<h3>Functions &amp; features<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Dispatch: <code class="docutils literal notranslate"><span class="pre">macrocast.execution.sweep_runner._extract_parent_failure_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">_CONTINUE_ON_VARIANT_FAILURE</span></code> frozenset.</p></li>
 <li><p>Ablation: <code class="docutils literal notranslate"><span class="pre">macrocast.studies.ablation._ensure_baseline_failure_policy</span></code> auto-upgrades the baseline to <code class="docutils literal notranslate"><span class="pre">skip_failed_cell</span></code> unless the user sets something stricter.</p></li>
 </ul>
 </section>
-<section id="id9">
-<h3>Recipe usage<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<section id="id6">
+<h3>Recipe usage<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># 100-variant sweep — skip any cell that crashes instead of aborting.</span>
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
@@ -372,12 +312,12 @@
 </section>
 <hr class="docutils" />
 <section id="reproducibility-mode">
-<h2>0.5 <code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code><a class="headerlink" href="#reproducibility-mode" title="Link to this heading"></a></h2>
+<h2>0.4 <code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code><a class="headerlink" href="#reproducibility-mode" title="Link to this heading"></a></h2>
 <p><strong>Selection question</strong>: How hard do you want to pin the stochastic components?</p>
 <p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">seeded_reproducible</span></code> — Python <code class="docutils literal notranslate"><span class="pre">random</span></code>, numpy, and torch (if available) are seeded; no cudnn / BLAS determinism.</p>
 <p>Escalate when you need bit-identical reruns (paper replication) or when you don’t care at all (exploratory drafting).</p>
-<section id="id10">
-<h3>Value catalog<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<section id="id7">
+<h3>Value catalog<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Value</p></th>
@@ -410,15 +350,15 @@
 </tbody>
 </table>
 </section>
-<section id="id11">
-<h3>Functions &amp; features<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id8">
+<h3>Functions &amp; features<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Helper: <code class="docutils literal notranslate"><span class="pre">macrocast.execution.seed_policy.apply_reproducibility_mode(mode,</span> <span class="pre">seed,</span> <span class="pre">configure_torch=True)</span></code>.</p></li>
 <li><p>Called by <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> before any stochastic step; result stored in <code class="docutils literal notranslate"><span class="pre">manifest[&quot;reproducibility_applied&quot;]</span></code>.</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Recipe usage<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<section id="id9">
+<h3>Recipe usage<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Paper replication — strict determinism.</span>
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
@@ -432,12 +372,12 @@
 </section>
 <hr class="docutils" />
 <section id="compute-mode">
-<h2>0.6 <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code><a class="headerlink" href="#compute-mode" title="Link to this heading"></a></h2>
+<h2>0.5 <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code><a class="headerlink" href="#compute-mode" title="Link to this heading"></a></h2>
 <p><strong>Selection question</strong>: Which level of the sweep should run in parallel?</p>
 <p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">serial</span></code> — one variant / horizon / origin at a time.</p>
 <p>Pick a parallel mode when the sweep is big enough that wall-clock matters and the chosen level actually has multiple units of work.</p>
-<section id="id13">
-<h3>Value catalog<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<section id="id10">
+<h3>Value catalog<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Value</p></th>
@@ -476,16 +416,16 @@
 </table>
 <p>A parallel mode that doesn’t have multiple units of work (e.g. <code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code> with a single-horizon recipe) is a silent no-op — not an error.</p>
 </section>
-<section id="id14">
-<h3>Functions &amp; features<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<section id="id11">
+<h3>Functions &amp; features<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.sweep_runner.execute_sweep._extract_parent_compute_mode</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.build._build_predictions</span></code> handles <code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code> / <code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.execution.build.execute_recipe</span></code> handles <code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code>.</p></li>
 </ul>
 </section>
-<section id="id15">
-<h3>Recipe usage<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<section id="id12">
+<h3>Recipe usage<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># 30-variant model sweep on a multi-core box.</span>
 <span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
@@ -503,7 +443,7 @@
 <h2>Design (Stage 0) takeaways<a class="headerlink" href="#design-stage-0-takeaways" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p>Six axes, 38 allowed values, and the simple default path keeps the operational surface narrow. Researchers who don’t need sweeps, parallelism, or strict reproducibility write Stage 0 by omission.</p></li>
-<li><p>Runner dispatch flows <code class="docutils literal notranslate"><span class="pre">research_design</span></code> → <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code>. The second is auto-derived; the first is the user-facing lever for “what kind of study is this?”</p></li>
+<li><p>Runner dispatch flows from <code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code>. One fixed path and a controlled sweep both use the <code class="docutils literal notranslate"><span class="pre">comparison_sweep</span></code> route; the difference is whether any downstream <code class="docutils literal notranslate"><span class="pre">sweep_axes</span></code> are present.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> + <code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> + <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> are three independent dials. Pick per-run, don’t carry them over from copy-pasted templates.</p></li>
 <li><p>Every resolved value lands in <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> — when a run does something unexpected, read the manifest before anything else.</p></li>
 </ul>

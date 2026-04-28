@@ -85,7 +85,6 @@
     <span class="n">normalize_comparison_contract</span><span class="p">,</span>
     <span class="n">normalize_fixed_design</span><span class="p">,</span>
     <span class="n">normalize_replication_input</span><span class="p">,</span>
-    <span class="n">normalize_research_design</span><span class="p">,</span>
     <span class="n">normalize_varying_design</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">DesignFrame</span>
@@ -103,7 +102,6 @@
 <a class="viewcode-back" href="../../../api/design.html#macrocast.design.design_from_dict">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">design_from_dict</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DesignFrame</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">build_design_frame</span><span class="p">(</span>
-        <span class="n">research_design</span><span class="o">=</span><span class="n">normalize_research_design</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;research_design&quot;</span><span class="p">]),</span>
         <span class="n">fixed_design</span><span class="o">=</span><span class="n">normalize_fixed_design</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;fixed_design&quot;</span><span class="p">]),</span>
         <span class="n">comparison_contract</span><span class="o">=</span><span class="n">normalize_comparison_contract</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;comparison_contract&quot;</span><span class="p">]),</span>
         <span class="n">varying_design</span><span class="o">=</span><span class="n">normalize_varying_design</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;varying_design&quot;</span><span class="p">)),</span>

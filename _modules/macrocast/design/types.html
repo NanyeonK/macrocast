@@ -82,16 +82,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
-<span class="n">ResearchDesign</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
-    <span class="s2">&quot;single_forecast_run&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;controlled_variation&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;study_bundle&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;replication_recipe&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-
 <span class="n">ExecutionPosture</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
-    <span class="s2">&quot;single_run_recipe&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;single_run_with_internal_sweep&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;comparison_cell&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;comparison_sweep_plan&quot;</span><span class="p">,</span>
     <span class="s2">&quot;wrapper_bundle_plan&quot;</span><span class="p">,</span>
     <span class="s2">&quot;replication_locked_plan&quot;</span><span class="p">,</span>
 <span class="p">]</span>
@@ -155,7 +148,6 @@
 <a class="viewcode-back" href="../../../api/design.html#macrocast.design.DesignFrame">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">DesignFrame</span><span class="p">:</span>
-    <span class="n">research_design</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">fixed_design</span><span class="p">:</span> <span class="n">FixedDesign</span>
     <span class="n">comparison_contract</span><span class="p">:</span> <span class="n">ComparisonContract</span>
     <span class="n">varying_design</span><span class="p">:</span> <span class="n">VaryingDesign</span>

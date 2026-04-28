@@ -365,7 +365,6 @@
             <span class="k">return</span> <span class="n">selection_map</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">selected_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">default</span>
 
-    <span class="n">research_design</span> <span class="o">=</span> <span class="n">_sv</span><span class="p">(</span><span class="s2">&quot;research_design&quot;</span><span class="p">,</span> <span class="s2">&quot;single_forecast_run&quot;</span><span class="p">)</span>
     <span class="n">task</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">_sv</span><span class="p">(</span><span class="s2">&quot;target_structure&quot;</span><span class="p">)</span>
         <span class="ow">or</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target_structure&quot;</span><span class="p">)</span>
@@ -374,7 +373,6 @@
     <span class="n">model_sel</span> <span class="o">=</span> <span class="n">selection_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_family&quot;</span><span class="p">)</span>
     <span class="n">feature_sel</span> <span class="o">=</span> <span class="n">selection_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_builder&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">derive_experiment_unit_default</span><span class="p">(</span>
-        <span class="n">research_design</span><span class="o">=</span><span class="n">research_design</span> <span class="ow">or</span> <span class="s2">&quot;single_forecast_run&quot;</span><span class="p">,</span>
         <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
         <span class="n">model_axis_mode</span><span class="o">=</span><span class="n">model_sel</span><span class="o">.</span><span class="n">selection_mode</span> <span class="k">if</span> <span class="n">model_sel</span> <span class="k">else</span> <span class="s2">&quot;fixed&quot;</span><span class="p">,</span>
         <span class="n">feature_axis_mode</span><span class="o">=</span><span class="n">feature_sel</span><span class="o">.</span><span class="n">selection_mode</span> <span class="k">if</span> <span class="n">feature_sel</span> <span class="k">else</span> <span class="s2">&quot;fixed&quot;</span><span class="p">,</span>
@@ -544,7 +542,7 @@
         <span class="k">return</span> <span class="n">default</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">selection_map</span><span class="p">[</span><span class="n">axis_name</span><span class="p">]</span><span class="o">.</span><span class="n">selected_values</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;axis </span><span class="si">{</span><span class="n">axis_name</span><span class="si">!r}</span><span class="s2"> must be fixed for direct single-run compilation&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;axis </span><span class="si">{</span><span class="n">axis_name</span><span class="si">!r}</span><span class="s2"> must be fixed for direct comparison-cell compilation&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 
@@ -928,7 +926,7 @@
     <span class="n">failure_policy</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">selection</span><span class="o">.</span><span class="n">selected_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">selection</span> <span class="ow">in</span> <span class="n">selections</span> <span class="k">if</span> <span class="n">selection</span><span class="o">.</span><span class="n">axis_name</span> <span class="o">==</span> <span class="s2">&quot;failure_policy&quot;</span><span class="p">),</span> <span class="s2">&quot;fail_fast&quot;</span><span class="p">)</span>
     <span class="n">variation_axes</span> <span class="o">=</span> <span class="n">_variation_axes</span><span class="p">(</span><span class="n">selections</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;research_design&quot;</span><span class="p">:</span> <span class="n">stage0</span><span class="o">.</span><span class="n">research_design</span><span class="p">,</span>
+        <span class="s2">&quot;execution_route&quot;</span><span class="p">:</span> <span class="s2">&quot;comparison_sweep&quot;</span><span class="p">,</span>
         <span class="s2">&quot;design_shape&quot;</span><span class="p">:</span> <span class="n">stage0</span><span class="o">.</span><span class="n">design_shape</span><span class="p">,</span>
         <span class="s2">&quot;execution_posture&quot;</span><span class="p">:</span> <span class="n">stage0</span><span class="o">.</span><span class="n">execution_posture</span><span class="p">,</span>
         <span class="s2">&quot;experiment_unit&quot;</span><span class="p">:</span> <span class="n">stage0</span><span class="o">.</span><span class="n">experiment_unit</span><span class="p">,</span>
@@ -982,10 +980,10 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_route_contract</span><span class="p">(</span><span class="n">stage0</span><span class="p">,</span> <span class="n">run_spec</span><span class="p">:</span> <span class="n">RunSpec</span><span class="p">,</span> <span class="n">selections</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">AxisSelection</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="n">route_owner</span> <span class="o">=</span> <span class="n">run_spec</span><span class="o">.</span><span class="n">route_owner</span>
-    <span class="k">if</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;single_run&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;comparison_sweep&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">_variation_axes</span><span class="p">(</span><span class="n">selections</span><span class="p">):</span>
             <span class="k">return</span> <span class="s2">&quot;sweep_runner_executable&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;single_run_executable&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;single_cell_executable&quot;</span>
     <span class="k">if</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;wrapper&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;wrapper_handoff&quot;</span>
     <span class="k">if</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;replication&quot;</span><span class="p">:</span>
@@ -3067,7 +3065,6 @@
     <span class="n">leaf_config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">preprocess_contract</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="n">research_design</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;research_design&quot;</span><span class="p">)</span>
     <span class="n">dataset</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
     <span class="n">information_set_type</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;information_set_type&quot;</span><span class="p">)</span>
     <span class="n">target_structure</span> <span class="o">=</span> <span class="n">_target_structure</span><span class="p">(</span><span class="n">selection_map</span><span class="p">)</span>
@@ -3090,7 +3087,6 @@
             <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="s2">&quot;single-target recipes require leaf_config.target&quot;</span><span class="p">)</span>
 
     <span class="n">derived_experiment_unit</span> <span class="o">=</span> <span class="n">derive_experiment_unit_default</span><span class="p">(</span>
-        <span class="n">research_design</span><span class="o">=</span><span class="n">research_design</span><span class="p">,</span>
         <span class="n">task</span><span class="o">=</span><span class="n">target_structure</span><span class="p">,</span>
         <span class="n">model_axis_mode</span><span class="o">=</span><span class="n">model_axis</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span>
         <span class="n">feature_axis_mode</span><span class="o">=</span><span class="n">feature_axis</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span>
@@ -3100,10 +3096,6 @@
     <span class="n">experiment_unit</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;experiment_unit&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">derived_experiment_unit</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">experiment_unit_explicit</span><span class="p">:</span>
         <span class="n">unit_entry</span> <span class="o">=</span> <span class="n">get_experiment_unit_entry</span><span class="p">(</span><span class="n">experiment_unit</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">experiment_unit</span> <span class="o">!=</span> <span class="n">derived_experiment_unit</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;experiment_unit=</span><span class="si">{</span><span class="n">experiment_unit</span><span class="si">!r}</span><span class="s2"> conflicts with current recipe shape; implied unit is </span><span class="si">{</span><span class="n">derived_experiment_unit</span><span class="si">!r}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
         <span class="k">if</span> <span class="n">unit_entry</span><span class="o">.</span><span class="n">requires_multi_target</span> <span class="ow">and</span> <span class="n">target_structure</span> <span class="o">!=</span> <span class="s2">&quot;multi_target&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;experiment_unit=</span><span class="si">{</span><span class="n">experiment_unit</span><span class="si">!r}</span><span class="s2"> requires target_structure=&#39;multi_target&#39;&quot;</span>
@@ -3123,7 +3115,6 @@
     <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">information_set_type</span><span class="p">,</span> <span class="n">information_set_type</span><span class="p">)</span>
 
     <span class="n">stage0</span> <span class="o">=</span> <span class="n">build_design_frame</span><span class="p">(</span>
-        <span class="n">research_design</span><span class="o">=</span><span class="n">research_design</span><span class="p">,</span>
         <span class="n">experiment_unit</span><span class="o">=</span><span class="n">experiment_unit</span> <span class="k">if</span> <span class="n">experiment_unit_explicit</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fixed_design</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">&quot;dataset_adapter&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="p">,</span>
@@ -3792,7 +3783,7 @@
         <span class="n">not_supported</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="s2">&quot;route_owner=&#39;orchestrator&#39; has no executable runner contract in the current runtime&quot;</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;single_run&quot;</span> <span class="ow">and</span> <span class="n">has_runner_managed_sweep</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">route_owner</span> <span class="o">==</span> <span class="s2">&quot;comparison_sweep&quot;</span> <span class="ow">and</span> <span class="n">has_runner_managed_sweep</span><span class="p">:</span>
         <span class="n">runner_ready_status</span> <span class="o">=</span> <span class="s2">&quot;ready_for_sweep_runner&quot;</span>
 
     <span class="k">if</span> <span class="n">blocked</span><span class="p">:</span>
@@ -3858,7 +3849,7 @@
     <span class="n">selections</span> <span class="o">=</span> <span class="n">_append_feature_builder_bridge_if_needed</span><span class="p">(</span><span class="n">selections</span><span class="p">,</span> <span class="n">selection_map</span><span class="p">)</span>
     <span class="n">_ensure_unique_axis_selections</span><span class="p">(</span><span class="n">selections</span><span class="p">)</span>
     <span class="n">selection_map</span> <span class="o">=</span> <span class="n">_selection_map</span><span class="p">(</span><span class="n">selections</span><span class="p">)</span>
-    <span class="n">required_axes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;research_design&quot;</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;information_set_type&quot;</span><span class="p">,</span> <span class="s2">&quot;target_structure&quot;</span><span class="p">,</span> <span class="s2">&quot;framework&quot;</span><span class="p">,</span> <span class="s2">&quot;benchmark_family&quot;</span><span class="p">,</span> <span class="s2">&quot;model_family&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_builder&quot;</span><span class="p">}</span>
+    <span class="n">required_axes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;information_set_type&quot;</span><span class="p">,</span> <span class="s2">&quot;target_structure&quot;</span><span class="p">,</span> <span class="s2">&quot;framework&quot;</span><span class="p">,</span> <span class="s2">&quot;benchmark_family&quot;</span><span class="p">,</span> <span class="s2">&quot;model_family&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_builder&quot;</span><span class="p">}</span>
     <span class="n">missing_axes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">axis</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">required_axes</span> <span class="k">if</span> <span class="n">axis</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selection_map</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">missing_axes</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;recipe missing required axes: </span><span class="si">{</span><span class="n">missing_axes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -4044,10 +4035,10 @@
     <span class="n">output_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">local_raw_source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="k">if</span> <span class="n">compiled</span><span class="o">.</span><span class="n">run_spec</span><span class="o">.</span><span class="n">route_owner</span> <span class="o">!=</span> <span class="s2">&quot;single_run&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">compiled</span><span class="o">.</span><span class="n">run_spec</span><span class="o">.</span><span class="n">route_owner</span> <span class="o">!=</span> <span class="s2">&quot;comparison_sweep&quot;</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;compiled recipe route_owner=</span><span class="si">{</span><span class="n">compiled</span><span class="o">.</span><span class="n">run_spec</span><span class="o">.</span><span class="n">route_owner</span><span class="si">!r}</span><span class="s2"> requires a dedicated runner; &quot;</span>
-            <span class="s2">&quot;run_compiled_recipe only executes route_owner=&#39;single_run&#39;&quot;</span>
+            <span class="s2">&quot;run_compiled_recipe only executes route_owner=&#39;comparison_sweep&#39;&quot;</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">compiled</span><span class="o">.</span><span class="n">execution_status</span> <span class="o">!=</span> <span class="s2">&quot;executable&quot;</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>

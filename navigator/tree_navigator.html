@@ -153,26 +153,21 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p>1</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">research_design</span></code></p></td>
-<td><p>Study route</p></td>
-<td><p>User-facing runner route. Affects executor family, sweep interpretation, and artifact shape.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code></p></td>
+<td><p>Execution Unit</p></td>
+<td><p>Work unit for one-cell comparison, controlled sweep, multi-target run, wrapper handoff, or replication handoff.</p></td>
 </tr>
 <tr class="row-odd"><td><p>2</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">experiment_unit</span></code></p></td>
-<td><p>Runner unit</p></td>
-<td><p>Usually compiler-derived from study route, target structure, and sweep shape. Explicit values must match runner constraints.</p></td>
-</tr>
-<tr class="row-even"><td><p>3</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code></p></td>
 <td><p>Failure handling</p></td>
-<td><p>Runtime failure behavior for single runs and sweeps.</p></td>
+<td><p>Runtime failure behavior for comparison cells, sweeps, and handoff runners.</p></td>
 </tr>
-<tr class="row-odd"><td><p>4</p></td>
+<tr class="row-even"><td><p>3</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code></p></td>
 <td><p>Reproducibility</p></td>
 <td><p>Seed and determinism policy applied before stochastic model code runs.</p></td>
 </tr>
-<tr class="row-even"><td><p>5</p></td>
+<tr class="row-odd"><td><p>4</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code></p></td>
 <td><p>Compute layout</p></td>
 <td><p>Serial or parallel execution request; unsupported modes and singleton work units degrade to serial/no-op behavior.</p></td>
