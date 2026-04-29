@@ -9,6 +9,8 @@
 
 This is a runtime discipline axis. It does not change the statistical model. It changes whether the runner stops, skips, warns, or preserves partial artifacts.
 
+The default is `fail_fast`. Users do not need to choose this axis for ordinary runs; the compiler and runtime treat an omitted `failure_policy` as `fail_fast`.
+
 ## Where It Lives In Code
 
 | Purpose | Function or object |
@@ -26,21 +28,21 @@ This is a runtime discipline axis. It does not change the statistical model. It 
 
 Read this axis as the run's error-handling policy. It does not change the model; it changes whether the runtime stops or records failed units and continues.
 
+Only executable policies are exposed as public choices.
+
 ### Quick Map
 
-| Choice | Current State | Best Use |
+| Choice | State | Best Use |
 |---|---|---|
-| `fail_fast` | runnable | debugging, replication |
+| `fail_fast` | runnable, default | ordinary runs, debugging, replication |
 | `skip_failed_cell` | runnable | large sweeps |
 | `skip_failed_model` | runnable | multi-model direct runs |
 | `save_partial_results` | runnable | long runs where partial artifacts matter |
 | `warn_only` | runnable | exploratory runs |
-| `retry_then_skip` | reserved | planned retry policy |
-| `fallback_to_default_hp` | reserved | planned tuning fallback |
 
 ### `fail_fast`
 
-Use this when a failure should stop the run immediately.
+Use this when a failure should stop the run immediately. This is the package default.
 
 ```yaml
 path:
@@ -54,6 +56,15 @@ Runtime behavior:
 ```text
 direct recipe = re-raise first error
 sweep runner  = stop at first failed variant
+```
+
+If the recipe omits `failure_policy`, the runtime behaves as if this value were selected:
+
+```yaml
+path:
+  0_meta:
+    fixed_axes:
+      study_scope: one_target_one_method
 ```
 
 ### `skip_failed_cell`
@@ -130,42 +141,6 @@ artifact     = failed units recorded
 run status   = continues where recoverable
 ```
 
-### `retry_then_skip`
-
-This is reserved policy grammar. It describes retrying a failed unit and skipping it if retry also fails.
-
-```yaml
-path:
-  0_meta:
-    fixed_axes:
-      failure_policy: retry_then_skip
-```
-
-Current status:
-
-```text
-status = registry_only
-compiler = reports not-supported for runnable recipes
-```
-
-### `fallback_to_default_hp`
-
-This is reserved policy grammar for tuning failures.
-
-```yaml
-path:
-  0_meta:
-    fixed_axes:
-      failure_policy: fallback_to_default_hp
-```
-
-Current status:
-
-```text
-status = registry_only
-runtime = no current fallback executor
-```
-
 ## Failure Scope
 
 The same axis is read at two levels:
@@ -176,6 +151,17 @@ The same axis is read at two levels:
 This matters because `skip_failed_cell` is mainly a sweep-cell policy, while `skip_failed_model`, `save_partial_results`, and `warn_only` are also meaningful inside direct recipe execution.
 
 ## YAML
+
+Default behavior can be left implicit:
+
+```yaml
+path:
+  0_meta:
+    fixed_axes:
+      study_scope: one_target_one_method
+```
+
+Or written explicitly:
 
 ```yaml
 path:
@@ -223,4 +209,6 @@ Use `skip_failed_cell` for large sweeps where invalid combinations are expected.
 
 Use `warn_only` for exploratory work where warnings should be visible in logs but the run should continue.
 
-Use registry-only policies only when documenting planned contracts, not for runnable recipes.
+The public axis intentionally contains only executable policies. Retry and
+hyperparameter-fallback behavior should be added later only when the runtime
+executor exists.

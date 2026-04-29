@@ -47,12 +47,13 @@ AXIS_PRESENTATION_MAP: dict[str, dict[str, Any]] = {
         "summary": "Controls whether the run stops, skips failed units, warns, or preserves partial results.",
         "docs_url": "../detail/layer0/failure_policy.html",
         "contract": "Runtime failure contract. Sweep-compatible modes decide whether invalid variants stop or are skipped.",
-        "selection_kind": "user_choice",
+        "selection_kind": "defaulted_choice",
+        "default_value": "fail_fast",
         "values": {
             "fail_fast": {
-                "label": "Stop on First Failure",
-                "short_label": "Stop",
-                "summary": "Abort immediately so the first error can be investigated.",
+                "label": "Stop on First Failure (Default)",
+                "short_label": "Stop (Default)",
+                "summary": "Default. Abort immediately so the first error can be investigated.",
             },
             "skip_failed_cell": {
                 "label": "Skip Failed Sweep Cells",
@@ -63,16 +64,6 @@ AXIS_PRESENTATION_MAP: dict[str, dict[str, Any]] = {
                 "label": "Skip Failed Model Branches",
                 "short_label": "Skip Models",
                 "summary": "Continue after failures scoped to one model branch.",
-            },
-            "retry_then_skip": {
-                "label": "Retry Then Skip",
-                "short_label": "Retry/Skip",
-                "summary": "Reserved policy for retryable cells before skipping.",
-            },
-            "fallback_to_default_hp": {
-                "label": "Use Default Hyperparameters",
-                "short_label": "Default HP",
-                "summary": "Reserved policy for using default hyperparameters after tuning failure.",
             },
             "save_partial_results": {
                 "label": "Save Partial Results",

@@ -126,6 +126,20 @@ function valueSummary(axisName, value) {
   return valuePresentation(axisName, value).summary || "";
 }
 
+function defaultValue(axisName) {
+  return axisPresentation(axisName).default_value || null;
+}
+
+function isDefaultSelection(axisName, value) {
+  const fallback = defaultValue(axisName);
+  return fallback !== null && String(fallback) === String(value);
+}
+
+function selectedDisplayLabel(axisName, value) {
+  const label = valueDisplayName(axisName, value);
+  return isDefaultSelection(axisName, value) ? `${label} [default]` : label;
+}
+
 function docsLink(axisName) {
   return axisPresentation(axisName).docs_url || "";
 }
@@ -231,7 +245,7 @@ function renderAxisList() {
       const disabled = axis.options.filter((option) => !option.enabled).length;
       const active = axis.axis === state.activeAxis ? " active" : "";
       const edited = axis.edited ? `<span class="axis-edited">edited</span>` : "";
-      const selectedLabel = valueDisplayName(axis.axis, axis.selected);
+      const selectedLabel = selectedDisplayLabel(axis.axis, axis.selected);
       const summary = axisSummary(axis);
       return `
         <button type="button" class="axis-button${active}" data-axis="${escapeHtml(axis.axis)}">
@@ -262,9 +276,10 @@ function renderOptions() {
   const layerAxes = allAxes().filter((item) => item.layer === axis.layer);
   const stepIndex = Math.max(0, layerAxes.findIndex((item) => item.axis === axis.axis));
   const presentation = axisPresentation(axis.axis);
-  const selectedLabel = valueDisplayName(axis.axis, axis.selected) || "-";
+  const selectedLabel = selectedDisplayLabel(axis.axis, axis.selected) || "-";
   const selectedSummary = valueSummary(axis.axis, axis.selected);
   const docs = docsLink(axis.axis);
+  const defaultLabel = defaultValue(axis.axis) ? valueDisplayName(axis.axis, defaultValue(axis.axis)) : "";
   els.axisTitle.textContent = axisDisplayName(axis);
   els.axisLayer.textContent = `${layerLabel(axis.layer)} | step ${stepIndex + 1} of ${layerAxes.length}`;
   els.axisSelected.textContent = `selected: ${selectedLabel}`;
@@ -273,8 +288,9 @@ function renderOptions() {
     <p class="decision-summary">${escapeHtml(axisSummary(axis))}</p>
     <div class="decision-meta">
       <span><strong>Current selection:</strong> ${escapeHtml(selectedLabel)}</span>
+      ${defaultLabel ? `<span><strong>Default:</strong> ${escapeHtml(defaultLabel)}</span>` : ""}
       <span><strong>YAML key:</strong> ${escapeHtml(axis.axis)}</span>
-      ${presentation.selection_kind ? `<span><strong>Selection type:</strong> ${escapeHtml(presentation.selection_kind)}</span>` : ""}
+      ${presentation.selection_kind ? `<span><strong>Selection type:</strong> ${escapeHtml(humanizeToken(presentation.selection_kind))}</span>` : ""}
     </div>
     ${selectedSummary ? `<p class="decision-selected">${escapeHtml(selectedSummary)}</p>` : ""}
     ${presentation.contract ? `<p class="decision-contract"><strong>Contract:</strong> ${escapeHtml(presentation.contract)}</p>` : ""}
@@ -288,11 +304,12 @@ function renderOptions() {
       const disabledAttr = option.enabled ? "" : " disabled";
       const summary = valueSummary(axis.axis, option.value);
       const optionLabel = valueDisplayName(axis.axis, option.value);
+      const statusLabel = isDefaultSelection(axis.axis, option.value) ? `${option.status} · default` : option.status;
       return `
         <button type="button" class="option-card ${stateClass}${selected}" data-option="${escapeHtml(option.value)}"${disabledAttr}>
           <div class="option-value">
             <span>${escapeHtml(optionLabel)}</span>
-            <span class="status">${escapeHtml(option.status)}</span>
+            <span class="status">${escapeHtml(statusLabel)}</span>
           </div>
           <div class="option-code">YAML value: ${escapeHtml(option.value)}</div>
           ${summary ? `<p class="option-summary">${escapeHtml(summary)}</p>` : ""}
@@ -360,6 +377,7 @@ function renderPathAxis(axis, axisIdx, current) {
   const edited = axis.edited ? `<span class="path-edited">edited</span>` : "";
   const docs = docsLink(axis.axis);
   const valueLabel = valueDisplayName(axis.axis, axis.selected);
+  const selectedValueLabel = selectedDisplayLabel(axis.axis, axis.selected);
   const selectedSummary = valueSummary(axis.axis, axis.selected);
   const presentation = axisPresentation(axis.axis);
   const contract = presentation.contract ? `<span class="path-contract"><strong>Contract:</strong> ${escapeHtml(presentation.contract)}</span>` : "";
@@ -380,7 +398,7 @@ function renderPathAxis(axis, axisIdx, current) {
       <span class="path-step">${axisIdx + 1}</span>
       <span class="path-body">
         <span class="path-axis">${escapeHtml(axisDisplayName(axis))}</span>
-        <span class="path-value">${escapeHtml(valueLabel || "-")}</span>
+        <span class="path-value">${escapeHtml(selectedValueLabel || valueLabel || "-")}</span>
         <span class="path-raw">YAML: ${escapeHtml(axis.axis)} = ${escapeHtml(axis.selected ?? "-")}</span>
         ${edited}
         ${detail}

@@ -50,6 +50,8 @@ blocked. Layers 3+ are outside this quick-reference page.
 
 **What it picks:** What happens when a variant / cell fails.
 
+**Default:** `fail_fast`. This is already selected when the recipe omits the axis.
+
 | Value | Check / observe |
 |---|---|
 | `fail_fast` (default) | first failure aborts the run |

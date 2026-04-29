@@ -879,8 +879,6 @@
         "fail_fast",
         "skip_failed_cell",
         "skip_failed_model",
-        "retry_then_skip",
-        "fallback_to_default_hp",
         "save_partial_results",
         "warn_only"
       ],
@@ -889,8 +887,6 @@
       "compatible_with": {},
       "current_status": {
         "fail_fast": "operational",
-        "fallback_to_default_hp": "registry_only",
-        "retry_then_skip": "registry_only",
         "save_partial_results": "operational",
         "skip_failed_cell": "operational",
         "skip_failed_model": "operational",
@@ -3342,28 +3338,19 @@
     },
     "failure_policy": {
       "contract": "Runtime failure contract. Sweep-compatible modes decide whether invalid variants stop or are skipped.",
+      "default_value": "fail_fast",
       "docs_url": "../detail/layer0/failure_policy.html",
       "label": "Failure Handling",
       "order": 2,
       "question": "What should happen when a run, variant, or cell fails?",
-      "selection_kind": "user_choice",
+      "selection_kind": "defaulted_choice",
       "short_label": "Failures",
       "summary": "Controls whether the run stops, skips failed units, warns, or preserves partial results.",
       "values": {
         "fail_fast": {
-          "label": "Stop on First Failure",
-          "short_label": "Stop",
-          "summary": "Abort immediately so the first error can be investigated."
-        },
-        "fallback_to_default_hp": {
-          "label": "Use Default Hyperparameters",
-          "short_label": "Default HP",
-          "summary": "Reserved policy for using default hyperparameters after tuning failure."
-        },
-        "retry_then_skip": {
-          "label": "Retry Then Skip",
-          "short_label": "Retry/Skip",
-          "summary": "Reserved policy for retryable cells before skipping."
+          "label": "Stop on First Failure (Default)",
+          "short_label": "Stop (Default)",
+          "summary": "Default. Abort immediately so the first error can be investigated."
         },
         "save_partial_results": {
           "label": "Save Partial Results",
@@ -4098,6 +4085,7 @@
             "evaluation_scale": "raw_level",
             "exogenous_x_path_policy": "unavailable",
             "export_format": "json",
+            "failure_policy": "fail_fast",
             "feature_builder": "target_lag_features",
             "feature_selection_policy": "none",
             "forecast_object": "point_mean",
@@ -4598,20 +4586,6 @@
                 "value": "skip_failed_model"
               },
               {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'retry_then_skip'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "retry_then_skip"
-              },
-              {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'fallback_to_default_hp'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "fallback_to_default_hp"
-              },
-              {
                 "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'save_partial_results'",
                 "disabled_reason": null,
                 "enabled": true,
@@ -4626,7 +4600,7 @@
                 "value": "warn_only"
               }
             ],
-            "selected": null
+            "selected": "fail_fast"
           },
           {
             "axis": "reproducibility_mode",
@@ -10060,20 +10034,6 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "skip_failed_model"
-              },
-              {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'retry_then_skip'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "retry_then_skip"
-              },
-              {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'fallback_to_default_hp'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "fallback_to_default_hp"
               },
               {
                 "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'save_partial_results'",
@@ -15657,20 +15617,6 @@
                 "value": "skip_failed_model"
               },
               {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'retry_then_skip'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "retry_then_skip"
-              },
-              {
-                "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'fallback_to_default_hp'",
-                "disabled_reason": "registered in the grammar, but no current runtime cell is open",
-                "enabled": false,
-                "status": "registry_only",
-                "value": "fallback_to_default_hp"
-              },
-              {
                 "canonical_path_effect": "path.0_meta.fixed_axes.failure_policy = 'save_partial_results'",
                 "disabled_reason": null,
                 "enabled": true,
@@ -20425,6 +20371,7 @@
       "equal_predictive": "none",
       "exogenous_x_path_policy": "unavailable",
       "export_format": "json",
+      "failure_policy": "fail_fast",
       "forecast_object": "point_mean",
       "forecast_type": "direct",
       "fred_sd_frequency_policy": "report_only",

@@ -217,7 +217,11 @@ def test_navigator_ui_data_exports_layer0_presentation_contract():
     assert presentation["study_scope"]["docs_url"].endswith("/detail/layer0/study_scope.html")
     assert presentation["study_scope"]["selection_kind"] == "user_choice"
     assert presentation["compute_mode"]["values"]["parallel_by_model"]["label"] == "Parallelize Models"
-    assert AXIS_PRESENTATION_MAP["failure_policy"]["values"]["fail_fast"]["label"] == "Stop on First Failure"
+    assert AXIS_PRESENTATION_MAP["failure_policy"]["default_value"] == "fail_fast"
+    assert "Default" in AXIS_PRESENTATION_MAP["failure_policy"]["values"]["fail_fast"]["label"]
+    assert "retry_then_skip" not in AXIS_PRESENTATION_MAP["failure_policy"]["values"]
+    assert "fallback_to_default_hp" not in AXIS_PRESENTATION_MAP["failure_policy"]["values"]
+    assert payload["state_engine"]["default_selections"]["failure_policy"] == "fail_fast"
 
 
 def test_navigator_ui_data_omits_rename_ledger():

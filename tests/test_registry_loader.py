@@ -139,11 +139,10 @@ def test_registry_loader_discovers_failure_policy_meta_axis() -> None:
         "fail_fast",
         "skip_failed_cell",
         "skip_failed_model",
-        "retry_then_skip",
-        "fallback_to_default_hp",
         "save_partial_results",
         "warn_only",
     )
+    assert set(entry.current_status.values()) == {"operational"}
 
 
 
