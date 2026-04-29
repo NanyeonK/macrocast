@@ -261,6 +261,31 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
         "release_lag_rule",
         "contemporaneous_x_rule",
     ]
+    layer1_groups = payload["layer_axis_groups"]["1_data_task"]
+    assert [group["id"] for group in layer1_groups] == [
+        "source_identity",
+        "information_regime",
+        "fred_sd_source_scope",
+        "target_request",
+        "source_universe",
+        "raw_source_quality",
+        "official_frame_policy",
+    ]
+    assert layer1_groups[0]["level"] == "primary_decision"
+    assert layer1_groups[0]["axes"] == ["dataset", "frequency"]
+    assert layer1_groups[2]["parent_axis"] == "dataset"
+    assert layer1_groups[2]["level"] == "conditional_subgroup"
+    sample_axes = {item["axis"]: item for item in payload["samples"][0]["view"]["tree"]}
+    assert sample_axes["dataset"]["group_id"] == "source_identity"
+    assert sample_axes["dataset"]["axis_level"] == "primary_decision"
+    assert sample_axes["frequency"]["axis_level"] == "derived_or_required"
+    assert sample_axes["fred_sd_state_group"]["group_id"] == "fred_sd_source_scope"
+    assert sample_axes["fred_sd_state_group"]["axis_level"] == "conditional_subdecision"
+    assert sample_axes["target_structure"]["parent_axis"] == "study_scope"
+    assert sample_axes["target_structure"]["axis_level"] == "contract_derived"
+    assert sample_axes["raw_missing_policy"]["group_id"] == "raw_source_quality"
+    assert sample_axes["raw_missing_policy"]["axis_level"] == "secondary_policy"
+    assert sample_axes["missing_availability"]["group_id"] == "official_frame_policy"
     assert presentation["dataset"]["label"] == "Dataset"
     assert presentation["dataset"]["values"]["fred_md+fred_sd"]["label"] == "FRED-MD + FRED-SD"
     assert presentation["dataset"]["values"]["custom_csv"]["label"] == "Custom CSV"
