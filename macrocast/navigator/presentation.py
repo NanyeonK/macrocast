@@ -183,17 +183,27 @@ AXIS_PRESENTATION_MAP: dict[str, dict[str, Any]] = {
                 "short_label": "QD + SD",
                 "summary": "Quarterly national panel plus state-level source columns.",
             },
+            "custom_csv": {
+                "label": "Custom CSV",
+                "short_label": "Custom CSV",
+                "summary": "User-supplied CSV panel; set leaf_config.custom_dataset_schema and custom_data_path.",
+            },
+            "custom_parquet": {
+                "label": "Custom Parquet",
+                "short_label": "Custom Parquet",
+                "summary": "User-supplied Parquet panel; set leaf_config.custom_dataset_schema and custom_data_path.",
+            },
         },
     },
     "source_adapter": {
         "order": 6,
-        "label": "Source Loader",
-        "short_label": "Loader",
-        "question": "Which loader should read the source panel?",
-        "summary": "Usually omitted for built-in FRED panels; custom loaders require a data path.",
+        "label": "Source Loader Dispatch",
+        "short_label": "Loader Dispatch",
+        "question": "Which internal loader should read the source panel?",
+        "summary": "Internal dispatch axis derived from dataset; ordinary recipes should omit it.",
         "docs_url": "../detail/layer1/source_frame.html",
-        "contract": "Loader contract. Built-in FRED datasets derive the loader from dataset; custom CSV/Parquet routes require leaf_config.custom_data_path.",
-        "selection_kind": "advanced_choice",
+        "contract": "Internal loader-dispatch contract. Kept for compatibility with old custom-loader recipes; new recipes choose custom_csv/custom_parquet on dataset.",
+        "selection_kind": "internal_derived_choice",
         "values": {
             "fred_md": {
                 "label": "FRED-MD Loader",

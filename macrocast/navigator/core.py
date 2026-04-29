@@ -39,7 +39,6 @@ _TREE_AXES = {
     ),
     "1_data_task": (
         "dataset",
-        "source_adapter",
         "frequency",
         "information_set_type",
         "fred_sd_frequency_policy",
@@ -518,10 +517,11 @@ def _selection_has_fred_sd(selected: Mapping[str, Any]) -> bool:
     return "fred_sd" in tokens
 
 
-def _dataset_implied_frequency(dataset: str) -> str | None:
-    if dataset in {"fred_md", "fred_md+fred_sd"}:
+def _dataset_implied_frequency(dataset: str, custom_dataset_schema: str | None = None) -> str | None:
+    schema = custom_dataset_schema if dataset in {"custom_csv", "custom_parquet"} else dataset
+    if schema in {"fred_md", "fred_md+fred_sd"}:
         return "monthly"
-    if dataset in {"fred_qd", "fred_qd+fred_sd"}:
+    if schema in {"fred_qd", "fred_qd+fred_sd"}:
         return "quarterly"
     return None
 
@@ -550,7 +550,10 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
         if value == "parallel_by_target" and study_scope in {"one_target_one_method", "one_target_compare_methods"}:
             return "parallel_by_target is active only when Study Scope has multiple targets"
     if axis_name == "frequency":
-        implied_frequency = _dataset_implied_frequency(dataset)
+        implied_frequency = _dataset_implied_frequency(
+            dataset,
+            str(selected.get("custom_dataset_schema", "")) or None,
+        )
         if implied_frequency is not None and value != implied_frequency:
             return f"dataset={dataset} requires frequency={implied_frequency}"
     if axis_name == "target_structure":

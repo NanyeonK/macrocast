@@ -75,6 +75,9 @@ _COMPOSITE_DATASET_FREQUENCY = {
     "fred_qd+fred_sd": "quarterly",
 }
 
+_CUSTOM_DATASETS = {"custom_csv", "custom_parquet"}
+_CUSTOM_DATASET_SCHEMAS = {"fred_md", "fred_qd", "fred_sd"}
+
 _X_IMPUTATION_METHODS = {"mean", "median", "ffill", "bfill"}
 
 _MULTI_BENCHMARK_ALLOWED_MEMBERS = {
@@ -202,6 +205,41 @@ _LOCAL_IMPORTANCE_METHODS = {"kernel_shap", "lime", "feature_ablation"}
 def _dataset_has_fred_sd(dataset: object) -> bool:
     tokens = str(dataset).replace(",", "+").split("+")
     return "fred_sd" in {token.strip().lower() for token in tokens if token.strip()}
+
+
+def _dataset_is_custom(dataset: object) -> bool:
+    return str(dataset) in _CUSTOM_DATASETS
+
+
+def _source_adapter_for_dataset(selection_map: dict[str, AxisSelection], dataset: str) -> str:
+    return _selection_value(selection_map, "source_adapter", default=dataset)
+
+
+def _raw_dataset_schema(
+    selection_map: dict[str, AxisSelection],
+    leaf_config: Mapping[str, Any],
+) -> str:
+    dataset = _selection_value(selection_map, "dataset")
+    source_adapter = _source_adapter_for_dataset(selection_map, dataset)
+    if dataset in _CUSTOM_DATASETS:
+        schema = leaf_config.get("custom_dataset_schema")
+        if schema not in _CUSTOM_DATASET_SCHEMAS:
+            raise CompileValidationError(
+                "dataset='custom_csv'/'custom_parquet' requires "
+                f"leaf_config.custom_dataset_schema in {sorted(_CUSTOM_DATASET_SCHEMAS)}"
+            )
+        if "source_adapter" in selection_map and source_adapter != dataset:
+            raise CompileValidationError(
+                f"dataset={dataset!r} derives source_adapter={dataset!r}; "
+                "omit source_adapter or set it to the same custom dataset value"
+            )
+        return str(schema)
+    if source_adapter in _CUSTOM_DATASETS and dataset not in _CUSTOM_DATASET_SCHEMAS:
+        raise CompileValidationError(
+            f"source_adapter={source_adapter!r} requires dataset to declare one of "
+            f"{sorted(_CUSTOM_DATASET_SCHEMAS)} as the custom file schema"
+        )
+    return dataset
 
 
 def _sd_target_parts(target: str) -> tuple[str, str] | None:
@@ -1054,10 +1092,12 @@ def _validate_layer1_data_task_contract(
     _validate_official_transform_contract(selection_map)
 
     dataset = _selection_value(selection_map, "dataset")
-    if dataset == "fred_sd" and "frequency" not in selection_map:
+    raw_dataset_schema = _raw_dataset_schema(selection_map, leaf_config)
+    source_adapter = _source_adapter_for_dataset(selection_map, dataset)
+    if raw_dataset_schema == "fred_sd" and "frequency" not in selection_map:
         raise CompileValidationError("dataset='fred_sd' requires explicit frequency ('monthly' or 'quarterly')")
-    if dataset in _COMPOSITE_DATASET_FREQUENCY:
-        expected = _COMPOSITE_DATASET_FREQUENCY[dataset]
+    if raw_dataset_schema in _COMPOSITE_DATASET_FREQUENCY:
+        expected = _COMPOSITE_DATASET_FREQUENCY[raw_dataset_schema]
         frequency = _selection_value(selection_map, "frequency", default=expected)
         if frequency != expected:
             raise CompileValidationError(
@@ -1065,7 +1105,11 @@ def _validate_layer1_data_task_contract(
             )
 
     targets = _targets_for_layer1_contract(selection_map, leaf_config)
-    has_fred_sd = _dataset_has_fred_sd(dataset)
+    has_fred_sd = _dataset_has_fred_sd(raw_dataset_schema)
+    if source_adapter in _CUSTOM_DATASETS and not leaf_config.get("custom_data_path"):
+        raise CompileValidationError(
+            f"dataset={dataset!r} requires leaf_config.custom_data_path"
+        )
     fred_sd_frequency_policy = _selection_value(selection_map, "fred_sd_frequency_policy", default="report_only")
     if fred_sd_frequency_policy != "report_only" and not has_fred_sd:
         raise CompileValidationError(
@@ -1294,7 +1338,8 @@ def _validate_layer2_feature_block_contract(
 
 def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[str, Any]) -> dict[str, Any]:
     dataset = _first_selected_value(selection_map, "dataset", "fred_md")
-    source_adapter = _selection_value(selection_map, "source_adapter", default=dataset)
+    raw_dataset_schema = _raw_dataset_schema(selection_map, leaf_config)
+    source_adapter = _source_adapter_for_dataset(selection_map, dataset)
     target_structure = _first_selected_value(selection_map, "target_structure", "single_target")
     feature_builder = _first_selected_value(selection_map, "feature_builder", "target_lag_features")
     information_set_type = _first_selected_value(selection_map, "information_set_type", "final_revised_data")
@@ -1303,13 +1348,20 @@ def _data_task_spec(selection_map: dict[str, AxisSelection], leaf_config: dict[s
     if not isinstance(custom_feature_blocks, dict):
         custom_feature_blocks = {}
     return {
+        "dataset": dataset,
+        "dataset_schema": raw_dataset_schema,
+        "custom_dataset_schema": leaf_config.get("custom_dataset_schema"),
         "custom_data_path": leaf_config.get("custom_data_path"),
         "source_adapter": source_adapter,
         "target_structure": target_structure,
         "official_transform_policy": _official_transform_policy(selection_map),
         "official_transform_scope": _official_transform_scope(selection_map),
         "official_transform_source": _official_transform_source_payload(selection_map),
-        "frequency": _selection_value(selection_map, "frequency", default=_DATASET_DEFAULT_FREQUENCY.get(dataset, "monthly")),
+        "frequency": _selection_value(
+            selection_map,
+            "frequency",
+            default=_DATASET_DEFAULT_FREQUENCY.get(raw_dataset_schema, "monthly"),
+        ),
         "information_set_type": information_set_type,
         "fred_sd_frequency_policy": _selection_value(
             selection_map,
@@ -3090,13 +3142,14 @@ def _build_stage0_and_recipe(
         if rolling_window_size < minimum_train_size:
             raise CompileValidationError("rolling_window_size must be at least minimum_train_size for rolling framework")
     data_task_spec = _data_task_spec(selection_map, leaf_config)
+    raw_dataset_schema = data_task_spec["dataset_schema"]
     training_spec = _training_spec(selection_map, leaf_config)
     recipe_spec = build_recipe_spec(
         recipe_id=recipe_dict["recipe_id"],
         stage0=stage0,
         target=target,
         horizons=horizons,
-        raw_dataset=dataset,
+        raw_dataset=raw_dataset_schema,
         benchmark_config=benchmark_spec,
         data_task_spec=data_task_spec,
         training_spec=training_spec,
