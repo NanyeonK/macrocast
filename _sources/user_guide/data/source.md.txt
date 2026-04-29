@@ -1,31 +1,45 @@
 # Source & Frame (1.1)
 
-Declares **where the data comes from and which information-set regime applies**. The user-facing axes answer: which FRED source panel is used, whether a custom file replaces or augments it, at what frequency, and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.
+Declares **where the data comes from and which information-set regime applies**. The user-facing axes answer: whether the study uses FRED data, custom data, or both; which FRED panel route the data follows; at what frequency; and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.
 
 | Section | axis | Role |
 |---|---|---|
-| 1.1.1 | [`dataset`](#111-dataset) | Which FRED source family to load |
-| 1.1.2 | [`custom_source_policy`](#112-custom_source_policy) | FRED data only, custom data only, or FRED plus custom data |
+| 1.1.1 | [`custom_source_policy`](#111-custom_source_policy) | FRED data only, custom data only, or FRED plus custom data |
+| 1.1.2 | [`dataset`](#112-dataset) | Which FRED panel route the data follows |
 | 1.1.3 | [`custom_source_path`](#113-custom-source-path-contract) | Custom file payload path; parser/schema are inferred |
-| 1.1.4 | [`frequency`](#114-frequency) | Series frequency (monthly/quarterly); dataset-derived |
+| 1.1.4 | [`frequency`](#114-frequency) | Series frequency (monthly/quarterly); route-derived |
 | 1.1.5 | [`information_set_type`](#115-information_set_type) | Real-time regime (revised vs. vintage-aware) |
 
 **Note**: `data_domain` axis was dropped entirely in this pass — every FRED dataset implies `domain=macro` via its own source_family metadata, so a separate axis was pure duplication (same rationale as 0.5 `registry_type` drop).
 **At a glance (defaults):**
-- `dataset` — no default; you pick one FRED panel: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, or `fred_qd+fred_sd`.
-- `custom_source_policy = official_only` — default; choose `custom_panel_only` for custom data only, or `official_plus_custom` for FRED data plus custom data.
+- `custom_source_policy = official_only` — default and first source decision; choose `custom_panel_only` for custom data only, or `official_plus_custom` for FRED data plus custom data.
+- `dataset` — no default; after custom-data use, pick one FRED panel route: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, or `fred_qd+fred_sd`. For custom-only runs, this defines the route/schema contract rather than loading FRED data.
 - `custom_source_path` — required only when custom data is selected. The parser is inferred from `.csv`, `.parquet`, or `.pq`; the internal schema is inferred from `dataset` and `frequency`.
-- `frequency` — derived from `dataset` for MD/QD/composites. Standalone `fred_sd` requires an explicit monthly/quarterly choice.
+- `frequency` — derived from the selected route for MD/QD/composites. Standalone `fred_sd` requires an explicit monthly/quarterly choice.
 - `information_set_type = final_revised_data` — post-revision truth. Pick `pseudo_oos_on_revised_data` only when you want synthetic release-lag masking.
 
-**Most research runs need only `dataset` + `information_set_type`.** The other source-frame choices auto-derive, except standalone `fred_sd` and custom files.
+**Most research runs need only `custom_source_policy`, `dataset`, and `information_set_type`.** The default `custom_source_policy` is `official_only`, so FRED-only recipes often omit it. The other source-frame choices auto-derive, except standalone `fred_sd` and custom files.
 
 
 ---
 
-## 1.1.1 `dataset`
+## 1.1.1 `custom_source_policy`
 
-**Selects the FRED source family loaded.** Every recipe picks exactly one FRED source panel. Custom files are configured separately so the recipe can say whether the file replaces the FRED panel or is appended to it.
+**Controls whether a custom file is used with the FRED panel route.** This is the first Source & Frame choice because it determines what the next route choice means.
+
+| Value | Status | Meaning |
+|---|---|---|
+| `official_only` | operational | FRED data only. Use the selected FRED source panel. |
+| `custom_panel_only` | operational | Custom data only. Load a custom file instead of the selected single FRED panel route. |
+| `official_plus_custom` | operational | FRED plus custom data. Load the selected FRED panel and append custom columns that already match the selected Layer 1 frequency. |
+
+`custom_panel_only` supports only one FRED panel route (`fred_md`, `fred_qd`, or `fred_sd`). The selected route defines the expected frequency and schema; the custom file supplies the actual data. Composite routes are disabled because there is no official panel to merge.
+
+`official_plus_custom` supports single or composite FRED panel routes. The custom file is appended after it passes the selected Layer 1 frequency/form contract.
+
+## 1.1.2 `dataset`
+
+**Selects the FRED panel route.** Every recipe picks exactly one route. With `official_only` or `official_plus_custom`, this route selects the FRED loader. With `custom_panel_only`, this route defines the expected frequency and schema for the custom file.
 
 ### Value catalog
 
@@ -43,23 +57,9 @@ Each base dataset has its own dedicated documentation page covering citation, do
 
 - `macrocast.load_fred_md()` / `load_fred_qd()` / `load_fred_sd()` — public loaders.
 - `macrocast.raw.datasets.fred_md` / `fred_qd` / `fred_sd` — per-dataset modules with cache + manifest logic.
-- Compiler reads `dataset` via `_selection_value(selection_map, "dataset")` → propagated into `CompiledRecipeSpec.dataset` and every downstream spec.
+- Compiler reads `dataset` via `_selection_value(selection_map, "dataset")` -> propagated into `CompiledRecipeSpec.dataset` and every downstream spec.
 - `_DATASET_DEFAULT_FREQUENCY` in `compiler/build.py` maps MD/QD/composite datasets to their default `frequency` value.
 - Compile guard: standalone `dataset=fred_sd` requires explicit `frequency`; `fred_md+fred_sd` requires monthly; `fred_qd+fred_sd` requires quarterly.
-
-## 1.1.2 `custom_source_policy`
-
-**Controls whether a custom file is used with the FRED source panel.**
-
-| Value | Status | Meaning |
-|---|---|---|
-| `official_only` | operational | FRED data only. Use the selected FRED source panel. |
-| `custom_panel_only` | operational | Custom data only. Load a custom file instead of the selected single FRED panel. |
-| `official_plus_custom` | operational | FRED plus custom data. Load the selected FRED panel and append custom columns that already match the selected Layer 1 frequency. |
-
-`custom_panel_only` supports only one FRED panel (`fred_md`, `fred_qd`, or `fred_sd`). The selected panel defines the route shape; the custom file supplies the actual data.
-
-`official_plus_custom` supports single or composite FRED panels. The custom file is appended after it passes the selected Layer 1 frequency/form contract.
 
 ## 1.1.3 Custom source path contract
 
@@ -215,7 +215,8 @@ path:
 
 ## Source & Frame (1.1) takeaways
 
-- **`dataset`** and **`information_set_type`** are the two axes the user usually decides in 1.1; standalone FRED-SD also requires `frequency`.
+- **`custom_source_policy`** is the first source decision. Its default is `official_only`, so FRED-only recipes can omit it.
+- **`dataset`** is the follow-up route decision. For custom-only runs it defines the custom file contract rather than loading FRED data.
 - **`frequency`** is executable: it controls conversion and is compile-checked for FRED-SD composites.
 - **`data_domain`** axis dropped entirely (pure duplication of `dataset.source_family`).
 

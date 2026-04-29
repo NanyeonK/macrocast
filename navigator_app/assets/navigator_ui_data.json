@@ -3381,15 +3381,15 @@
       }
     },
     "custom_source_policy": {
-      "contract": "When custom data is selected, provide leaf_config.custom_source_path. The parser is inferred from the file extension and the internal schema is inferred from dataset/frequency. custom_panel_only supports one FRED source panel; official_plus_custom supports single or composite FRED panels.",
+      "contract": "Choose this before the FRED panel route. When custom data is selected, provide leaf_config.custom_source_path. The parser is inferred from the file extension and the internal schema is inferred from the selected route/frequency. custom_panel_only supports one FRED panel route; official_plus_custom supports single or composite FRED panel routes.",
       "default_value": "official_only",
       "docs_url": "../detail/layer1/source_frame.html",
       "label": "Custom Data Use",
-      "order": 6,
+      "order": 5,
       "question": "Do you want FRED data, custom data, or FRED data plus custom data?",
       "selection_kind": "defaulted_choice",
       "short_label": "Custom Data",
-      "summary": "Choose FRED data only, custom data only, or FRED data plus custom columns.",
+      "summary": "First Layer 1 source decision: choose FRED data only, custom data only, or FRED data plus custom columns.",
       "values": {
         "custom_panel_only": {
           "label": "Use Custom Data Only",
@@ -3410,14 +3410,14 @@
       "warning": "Custom files must already match the selected Layer 1 frequency and file-shape contract in the docs."
     },
     "dataset": {
-      "contract": "Layer 1 source contract. FRED-MD implies monthly data, FRED-QD implies quarterly data, and standalone FRED-SD requires an explicit frequency. User-supplied files are configured by custom_source_policy plus leaf_config.custom_source_path, not by this source-panel axis.",
+      "contract": "Layer 1 route contract. FRED-MD implies monthly data, FRED-QD implies quarterly data, and standalone FRED-SD requires an explicit frequency. With custom_panel_only, this axis defines the route shape for the custom file instead of loading FRED data. With official_only or official_plus_custom, it selects the FRED loader route.",
       "docs_url": "../detail/layer1/source_frame.html",
-      "label": "Source Panel",
-      "order": 5,
-      "question": "Which FRED source panel starts the study?",
+      "label": "FRED Panel Route",
+      "order": 6,
+      "question": "Which FRED panel route should the data follow?",
       "selection_kind": "user_choice",
-      "short_label": "Source",
-      "summary": "Selects the official FRED-family panel before optional custom-file use, target, timing, or representation decisions.",
+      "short_label": "Panel Route",
+      "summary": "Follow-up to Custom Data Use. For FRED-only and FRED-plus-custom runs this selects the loader; for custom-only runs it defines the frequency and schema route the file must match.",
       "values": {
         "fred_md": {
           "label": "FRED-MD",
@@ -4053,14 +4053,14 @@
     "1_data_task": [
       {
         "axes": [
-          "dataset",
           "custom_source_policy",
+          "dataset",
           "frequency"
         ],
         "id": "source_identity",
         "label": "Source Identity",
         "level": "primary_decision",
-        "summary": "Choose the FRED source family, optional custom data use, and calendar frequency."
+        "summary": "Choose custom data use first, then the FRED route shape and calendar frequency."
       },
       {
         "axes": [
@@ -5403,9 +5403,44 @@
             "selected": "serial"
           },
           {
-            "axis": "dataset",
+            "axis": "custom_source_policy",
             "axis_level": "primary_decision",
             "axis_order_in_group": 1,
+            "group_id": "source_identity",
+            "group_label": "Source Identity",
+            "group_level": "primary_decision",
+            "group_order": 1,
+            "layer": "1_data_task",
+            "layer_label": "Layer 1: FRED data frame",
+            "options": [
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "custom_panel_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_plus_custom"
+              }
+            ],
+            "selected": "official_only"
+          },
+          {
+            "axis": "dataset",
+            "axis_level": "conditional_subdecision",
+            "axis_order_in_group": 2,
             "group_id": "source_identity",
             "group_label": "Source Identity",
             "group_level": "primary_decision",
@@ -5450,41 +5485,6 @@
               }
             ],
             "selected": "fred_md"
-          },
-          {
-            "axis": "custom_source_policy",
-            "axis_level": "conditional_subdecision",
-            "axis_order_in_group": 2,
-            "group_id": "source_identity",
-            "group_label": "Source Identity",
-            "group_level": "primary_decision",
-            "group_order": 1,
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: FRED data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "custom_panel_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_plus_custom"
-              }
-            ],
-            "selected": "official_only"
           },
           {
             "axis": "frequency",
@@ -11455,9 +11455,44 @@
             "selected": "serial"
           },
           {
-            "axis": "dataset",
+            "axis": "custom_source_policy",
             "axis_level": "primary_decision",
             "axis_order_in_group": 1,
+            "group_id": "source_identity",
+            "group_label": "Source Identity",
+            "group_level": "primary_decision",
+            "group_order": 1,
+            "layer": "1_data_task",
+            "layer_label": "Layer 1: FRED data frame",
+            "options": [
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "custom_panel_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_plus_custom"
+              }
+            ],
+            "selected": "official_only"
+          },
+          {
+            "axis": "dataset",
+            "axis_level": "conditional_subdecision",
+            "axis_order_in_group": 2,
             "group_id": "source_identity",
             "group_label": "Source Identity",
             "group_level": "primary_decision",
@@ -11502,41 +11537,6 @@
               }
             ],
             "selected": "fred_md"
-          },
-          {
-            "axis": "custom_source_policy",
-            "axis_level": "conditional_subdecision",
-            "axis_order_in_group": 2,
-            "group_id": "source_identity",
-            "group_label": "Source Identity",
-            "group_level": "primary_decision",
-            "group_order": 1,
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: FRED data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "custom_panel_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_plus_custom"
-              }
-            ],
-            "selected": "official_only"
           },
           {
             "axis": "frequency",
@@ -17630,9 +17630,44 @@
             "selected": "serial"
           },
           {
-            "axis": "dataset",
+            "axis": "custom_source_policy",
             "axis_level": "primary_decision",
             "axis_order_in_group": 1,
+            "group_id": "source_identity",
+            "group_label": "Source Identity",
+            "group_level": "primary_decision",
+            "group_order": 1,
+            "layer": "1_data_task",
+            "layer_label": "Layer 1: FRED data frame",
+            "options": [
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "custom_panel_only"
+              },
+              {
+                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
+                "disabled_reason": null,
+                "enabled": true,
+                "status": "operational",
+                "value": "official_plus_custom"
+              }
+            ],
+            "selected": "official_only"
+          },
+          {
+            "axis": "dataset",
+            "axis_level": "conditional_subdecision",
+            "axis_order_in_group": 2,
             "group_id": "source_identity",
             "group_label": "Source Identity",
             "group_level": "primary_decision",
@@ -17677,41 +17712,6 @@
               }
             ],
             "selected": "fred_md"
-          },
-          {
-            "axis": "custom_source_policy",
-            "axis_level": "conditional_subdecision",
-            "axis_order_in_group": 2,
-            "group_id": "source_identity",
-            "group_label": "Source Identity",
-            "group_level": "primary_decision",
-            "group_order": 1,
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: FRED data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'custom_panel_only'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "custom_panel_only"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.custom_source_policy = 'official_plus_custom'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "official_plus_custom"
-              }
-            ],
-            "selected": "official_only"
           },
           {
             "axis": "frequency",
@@ -23105,8 +23105,8 @@
       "compute_mode"
     ],
     "1_data_task": [
-      "dataset",
       "custom_source_policy",
+      "dataset",
       "frequency",
       "information_set_type",
       "fred_sd_frequency_policy",

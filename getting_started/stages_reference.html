@@ -116,7 +116,7 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 <tr class="row-odd"><td><p>1 — Data</p></td>
 <td><p>18 registry axes, 15 primary Navigator axes</p></td>
 <td><p>all current values operational</p></td>
-<td><p>FRED data frame: dataset, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability</p></td>
+<td><p>Source frame: custom data use, FRED panel route, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability</p></td>
 </tr>
 </tbody>
 </table>
@@ -276,13 +276,13 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></td>
-<td><p>FRED source loaded/merged -&gt; <code class="docutils literal notranslate"><span class="pre">raw_result.data.columns</span></code>; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">official_only</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code>, <code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code></p></td>
-<td><p>optional custom-file use; custom files require <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_source_path</span></code>; parser/schema are inferred</p></td>
+<td><p>first source decision; custom files require <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_source_path</span></code>; parser/schema are inferred</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></td>
+<td><p>FRED route loaded/merged for FRED runs; route/schema contract for custom-only runs; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code></p></td>
 <td><p>local <code class="docutils literal notranslate"><span class="pre">.csv</span></code>, <code class="docutils literal notranslate"><span class="pre">.parquet</span></code>, or <code class="docutils literal notranslate"><span class="pre">.pq</span></code> path</p></td>

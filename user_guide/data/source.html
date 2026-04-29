@@ -79,7 +79,7 @@
              
   <section id="source-frame-1-1">
 <h1>Source &amp; Frame (1.1)<a class="headerlink" href="#source-frame-1-1" title="Link to this heading"></a></h1>
-<p>Declares <strong>where the data comes from and which information-set regime applies</strong>. The user-facing axes answer: which FRED source panel is used, whether a custom file replaces or augments it, at what frequency, and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.</p>
+<p>Declares <strong>where the data comes from and which information-set regime applies</strong>. The user-facing axes answer: whether the study uses FRED data, custom data, or both; which FRED panel route the data follows; at what frequency; and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Section</p></th>
@@ -89,12 +89,12 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p>1.1.1</p></td>
-<td><p><a class="reference internal" href="#dataset"><code class="docutils literal notranslate"><span class="pre">dataset</span></code></a></p></td>
-<td><p>Which FRED source family to load</p></td>
-</tr>
-<tr class="row-odd"><td><p>1.1.2</p></td>
 <td><p><a class="reference internal" href="#custom-source-policy"><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code></a></p></td>
 <td><p>FRED data only, custom data only, or FRED plus custom data</p></td>
+</tr>
+<tr class="row-odd"><td><p>1.1.2</p></td>
+<td><p><a class="reference internal" href="#dataset"><code class="docutils literal notranslate"><span class="pre">dataset</span></code></a></p></td>
+<td><p>Which FRED panel route the data follows</p></td>
 </tr>
 <tr class="row-even"><td><p>1.1.3</p></td>
 <td><p><a class="reference internal" href="#custom-source-path-contract"><code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code></a></p></td>
@@ -102,7 +102,7 @@
 </tr>
 <tr class="row-odd"><td><p>1.1.4</p></td>
 <td><p><a class="reference internal" href="#frequency"><code class="docutils literal notranslate"><span class="pre">frequency</span></code></a></p></td>
-<td><p>Series frequency (monthly/quarterly); dataset-derived</p></td>
+<td><p>Series frequency (monthly/quarterly); route-derived</p></td>
 </tr>
 <tr class="row-even"><td><p>1.1.5</p></td>
 <td><p><a class="reference internal" href="#information-set-type"><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></a></p></td>
@@ -113,17 +113,45 @@
 <p><strong>Note</strong>: <code class="docutils literal notranslate"><span class="pre">data_domain</span></code> axis was dropped entirely in this pass — every FRED dataset implies <code class="docutils literal notranslate"><span class="pre">domain=macro</span></code> via its own source_family metadata, so a separate axis was pure duplication (same rationale as 0.5 <code class="docutils literal notranslate"><span class="pre">registry_type</span></code> drop).
 <strong>At a glance (defaults):</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> — no default; you pick one FRED panel: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span> <span class="pre">=</span> <span class="pre">official_only</span></code> — default; choose <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> for custom data only, or <code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code> for FRED data plus custom data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span> <span class="pre">=</span> <span class="pre">official_only</span></code> — default and first source decision; choose <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> for custom data only, or <code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code> for FRED data plus custom data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> — no default; after custom-data use, pick one FRED panel route: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>. For custom-only runs, this defines the route/schema contract rather than loading FRED data.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code> — required only when custom data is selected. The parser is inferred from <code class="docutils literal notranslate"><span class="pre">.csv</span></code>, <code class="docutils literal notranslate"><span class="pre">.parquet</span></code>, or <code class="docutils literal notranslate"><span class="pre">.pq</span></code>; the internal schema is inferred from <code class="docutils literal notranslate"><span class="pre">dataset</span></code> and <code class="docutils literal notranslate"><span class="pre">frequency</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code> — derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code> for MD/QD/composites. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> requires an explicit monthly/quarterly choice.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code> — derived from the selected route for MD/QD/composites. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> requires an explicit monthly/quarterly choice.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span> <span class="pre">=</span> <span class="pre">final_revised_data</span></code> — post-revision truth. Pick <code class="docutils literal notranslate"><span class="pre">pseudo_oos_on_revised_data</span></code> only when you want synthetic release-lag masking.</p></li>
 </ul>
-<p><strong>Most research runs need only <code class="docutils literal notranslate"><span class="pre">dataset</span></code> + <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>.</strong> The other source-frame choices auto-derive, except standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> and custom files.</p>
+<p><strong>Most research runs need only <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, and <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>.</strong> The default <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code> is <code class="docutils literal notranslate"><span class="pre">official_only</span></code>, so FRED-only recipes often omit it. The other source-frame choices auto-derive, except standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> and custom files.</p>
 <hr class="docutils" />
+<section id="custom-source-policy">
+<h2>1.1.1 <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code><a class="headerlink" href="#custom-source-policy" title="Link to this heading"></a></h2>
+<p><strong>Controls whether a custom file is used with the FRED panel route.</strong> This is the first Source &amp; Frame choice because it determines what the next route choice means.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Status</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">official_only</span></code></p></td>
+<td><p>operational</p></td>
+<td><p>FRED data only. Use the selected FRED source panel.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code></p></td>
+<td><p>operational</p></td>
+<td><p>Custom data only. Load a custom file instead of the selected single FRED panel route.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code></p></td>
+<td><p>operational</p></td>
+<td><p>FRED plus custom data. Load the selected FRED panel and append custom columns that already match the selected Layer 1 frequency.</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> supports only one FRED panel route (<code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>). The selected route defines the expected frequency and schema; the custom file supplies the actual data. Composite routes are disabled because there is no official panel to merge.</p>
+<p><code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code> supports single or composite FRED panel routes. The custom file is appended after it passes the selected Layer 1 frequency/form contract.</p>
+</section>
 <section id="dataset">
-<h2>1.1.1 <code class="docutils literal notranslate"><span class="pre">dataset</span></code><a class="headerlink" href="#dataset" title="Link to this heading"></a></h2>
-<p><strong>Selects the FRED source family loaded.</strong> Every recipe picks exactly one FRED source panel. Custom files are configured separately so the recipe can say whether the file replaces the FRED panel or is appended to it.</p>
+<h2>1.1.2 <code class="docutils literal notranslate"><span class="pre">dataset</span></code><a class="headerlink" href="#dataset" title="Link to this heading"></a></h2>
+<p><strong>Selects the FRED panel route.</strong> Every recipe picks exactly one route. With <code class="docutils literal notranslate"><span class="pre">official_only</span></code> or <code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code>, this route selects the FRED loader. With <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code>, this route defines the expected frequency and schema for the custom file.</p>
 <section id="value-catalog">
 <h3>Value catalog<a class="headerlink" href="#value-catalog" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -169,39 +197,11 @@
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.load_fred_md()</span></code> / <code class="docutils literal notranslate"><span class="pre">load_fred_qd()</span></code> / <code class="docutils literal notranslate"><span class="pre">load_fred_sd()</span></code> — public loaders.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.raw.datasets.fred_md</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> — per-dataset modules with cache + manifest logic.</p></li>
-<li><p>Compiler reads <code class="docutils literal notranslate"><span class="pre">dataset</span></code> via <code class="docutils literal notranslate"><span class="pre">_selection_value(selection_map,</span> <span class="pre">&quot;dataset&quot;)</span></code> → propagated into <code class="docutils literal notranslate"><span class="pre">CompiledRecipeSpec.dataset</span></code> and every downstream spec.</p></li>
+<li><p>Compiler reads <code class="docutils literal notranslate"><span class="pre">dataset</span></code> via <code class="docutils literal notranslate"><span class="pre">_selection_value(selection_map,</span> <span class="pre">&quot;dataset&quot;)</span></code> -&gt; propagated into <code class="docutils literal notranslate"><span class="pre">CompiledRecipeSpec.dataset</span></code> and every downstream spec.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">_DATASET_DEFAULT_FREQUENCY</span></code> in <code class="docutils literal notranslate"><span class="pre">compiler/build.py</span></code> maps MD/QD/composite datasets to their default <code class="docutils literal notranslate"><span class="pre">frequency</span></code> value.</p></li>
 <li><p>Compile guard: standalone <code class="docutils literal notranslate"><span class="pre">dataset=fred_sd</span></code> requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code>; <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code> requires monthly; <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code> requires quarterly.</p></li>
 </ul>
 </section>
-</section>
-<section id="custom-source-policy">
-<h2>1.1.2 <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code><a class="headerlink" href="#custom-source-policy" title="Link to this heading"></a></h2>
-<p><strong>Controls whether a custom file is used with the FRED source panel.</strong></p>
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Value</p></th>
-<th class="head"><p>Status</p></th>
-<th class="head"><p>Meaning</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">official_only</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>FRED data only. Use the selected FRED source panel.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>Custom data only. Load a custom file instead of the selected single FRED panel.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code></p></td>
-<td><p>operational</p></td>
-<td><p>FRED plus custom data. Load the selected FRED panel and append custom columns that already match the selected Layer 1 frequency.</p></td>
-</tr>
-</tbody>
-</table>
-<p><code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> supports only one FRED panel (<code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>). The selected panel defines the route shape; the custom file supplies the actual data.</p>
-<p><code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code> supports single or composite FRED panels. The custom file is appended after it passes the selected Layer 1 frequency/form contract.</p>
 </section>
 <section id="custom-source-path-contract">
 <h2>1.1.3 Custom source path contract<a class="headerlink" href="#custom-source-path-contract" title="Link to this heading"></a></h2>
@@ -388,7 +388,8 @@ path and file hash as part of study provenance.</p>
 <section id="source-frame-1-1-takeaways">
 <h2>Source &amp; Frame (1.1) takeaways<a class="headerlink" href="#source-frame-1-1-takeaways" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">dataset</span></code></strong> and <strong><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></strong> are the two axes the user usually decides in 1.1; standalone FRED-SD also requires <code class="docutils literal notranslate"><span class="pre">frequency</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code></strong> is the first source decision. Its default is <code class="docutils literal notranslate"><span class="pre">official_only</span></code>, so FRED-only recipes can omit it.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">dataset</span></code></strong> is the follow-up route decision. For custom-only runs it defines the custom file contract rather than loading FRED data.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">frequency</span></code></strong> is executable: it controls conversion and is compile-checked for FRED-SD composites.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">data_domain</span></code></strong> axis dropped entirely (pure duplication of <code class="docutils literal notranslate"><span class="pre">dataset.source_family</span></code>).</p></li>
 </ul>

@@ -3,12 +3,16 @@
 - Parent: [4.1 Layer 1: Data Task](index.md)
 - Current group: Source and frame
 
-This group starts the Layer 1 hierarchy. `dataset` means the FRED-family source
-panel. Custom files are not FRED panels and are not selected as `dataset`
-values. If the study uses a custom file, choose
-that in `custom_source_policy`, then provide `leaf_config.custom_source_path`.
-The parser is inferred from the file extension and the internal loader schema is
-inferred from the selected route.
+This group starts the Layer 1 hierarchy. Choose `custom_source_policy` first:
+FRED data only, custom data only, or FRED data plus custom data. Then choose
+`dataset`, which is now best read as the FRED panel route. For FRED-only and
+FRED-plus-custom runs, `dataset` selects the FRED loader. For custom-only runs,
+`dataset` does not load FRED data; it defines the route shape, frequency, and
+schema contract the custom file must match.
+
+Custom files are not `dataset` values. If the study uses a custom file, provide
+`leaf_config.custom_source_path`. The parser is inferred from the file extension
+and the internal loader schema is inferred from the selected route.
 
 `frequency` is not the same level as `dataset`: it is derived for FRED-MD,
 FRED-QD, and composite FRED panels. It is only a required follow-up when
@@ -16,8 +20,8 @@ the FRED source does not imply a single calendar frequency.
 
 | Axis | Choices | Default / rule |
 |---|---|---|
-| `dataset` | `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` | Required user choice. This is the FRED source-panel family. |
-| `custom_source_policy` | `official_only`, `custom_panel_only`, `official_plus_custom` | Default is `official_only`. This is the user-facing choice: FRED data only, custom data only, or FRED data plus custom data. |
+| `custom_source_policy` | `official_only`, `custom_panel_only`, `official_plus_custom` | Default is `official_only`. First source choice: FRED data only, custom data only, or FRED data plus custom data. |
+| `dataset` | `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` | Conditional follow-up. Selects the FRED loader route for FRED runs, or the route/schema contract for custom-only runs. |
 | `frequency` | `monthly`, `quarterly` | Derived for FRED-MD/QD/composites. Required for standalone FRED-SD. |
 | `information_set_type` | `final_revised_data`, `pseudo_oos_on_revised_data` | Simple default is `final_revised_data`; Full recipes should write it explicitly. |
 
@@ -26,16 +30,17 @@ Contracts:
 - `fred_md` and `fred_md+fred_sd` are monthly.
 - `fred_qd` and `fred_qd+fred_sd` are quarterly.
 - standalone `fred_sd` must choose monthly or quarterly because the source contains mixed native frequencies.
+- `custom_source_policy: official_only` means FRED data only. It requires no
+  `leaf_config.custom_source_path`; `dataset` selects the FRED loader.
+- `custom_source_policy: custom_panel_only` means custom data only. It loads a
+  custom file instead of one selected FRED panel route. It supports single FRED
+  routes only: `fred_md`, `fred_qd`, or `fred_sd`. Composite routes are
+  disabled because there is no official panel to merge.
+- `custom_source_policy: official_plus_custom` loads the selected FRED
+  panel and appends custom columns. It can be used with single or composite
+  FRED panel routes.
 - User-supplied files are configured with `custom_source_policy` plus
   `leaf_config.custom_source_path`, not as `dataset` values.
-- `custom_source_policy: official_only` means FRED data only. It requires no
-  `leaf_config.custom_source_path`.
-- `custom_source_policy: custom_panel_only` means custom data only. It loads a
-  custom file instead of one selected FRED panel. It supports single FRED
-  panels only: `fred_md`, `fred_qd`, or `fred_sd`.
-- `custom_source_policy: official_plus_custom` loads the selected FRED
-  panel and appends custom columns. It can be used
-  with single or composite FRED panels.
 - custom sources require `leaf_config.custom_source_path`. The compiler infers
   `csv` from `.csv` and `parquet` from `.parquet`/`.pq`. Legacy recipes may
   still set `fixed_axes.custom_source_format` when a path has no extension.

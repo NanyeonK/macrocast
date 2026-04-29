@@ -1,12 +1,12 @@
 # Data (Stage 1)
 
-Stage 1 answers **"what FRED data frame does this study start from?"** — once Stage 0 has fixed the study scope and recipe shape, Stage 1 loads the dataset, fixes the information set, identifies the target/horizon/sample period, and applies only FRED availability rules.
+Stage 1 answers **"what source frame does this study start from?"** — once Stage 0 has fixed the study scope and recipe shape, Stage 1 chooses FRED-only, custom-only, or FRED-plus-custom data use; resolves the FRED panel route/frequency; fixes the information set; identifies the target/horizon/sample period; and applies only source-frame availability rules.
 
 After the layer-boundary migration, Stage 1 holds **17 canonical axes** under the `1_data_task` layer. Fifteen are shown in the primary Navigator tree; `state_selection` and `sd_variable_selection` are hidden lower selectors used by explicit FRED-SD selector helpers and group resolution.
 
 | Group | Axes | Focus |
 |---|---|---:|---|
-| Source & frame | 5 | `dataset`, `custom_source_policy`, `custom_source_path` payload, `frequency`, `information_set_type` |
+| Source & frame | 5 | `custom_source_policy`, `dataset`, `custom_source_path` payload, `frequency`, `information_set_type` |
 | FRED-SD source selection | 5 | `fred_sd_frequency_policy`, `fred_sd_state_group`, `fred_sd_variable_group`, hidden `state_selection`, hidden `sd_variable_selection` |
 | Target structure | 1 | `target_structure`; target/targets/horizons live in `leaf_config` |
 | Variable universe | 1 | `variable_universe` |
