@@ -167,7 +167,7 @@ the route remains in the registry but must not be exposed as runnable.
 | Axis | Executable values | Not-supported registry values |
 |------|-------------------|---------------------------|
 | `compute_mode` | `serial`, `parallel_by_model`, `parallel_by_horizon`, `parallel_by_target`, `parallel_by_oos_date` | `parallel_by_trial`, `distributed_cluster` |
-| `failure_policy` | `fail_fast`, `skip_failed_cell`, `skip_failed_model`, `save_partial_results`, `warn_only` | `retry_then_skip`, `fallback_to_default_hp` |
+| `failure_policy` | `fail_fast` (default), `skip_failed_cell`, `skip_failed_model`, `save_partial_results`, `warn_only` | none |
 | `reproducibility_mode` | `strict_reproducible`, `seeded_reproducible`, `best_effort`, `exploratory` | none |
 
 `strict_reproducible` and `seeded_reproducible` require `leaf_config.random_seed`.

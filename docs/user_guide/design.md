@@ -98,7 +98,7 @@ path:
 
 **Selection question**: What happens when a variant / cell fails at runtime?
 
-**Default**: `fail_fast` — the first failure aborts the study so you can investigate.
+**Default**: `fail_fast` — the first failure aborts the study so you can investigate. You can leave this axis out of a recipe unless you want a more tolerant run.
 
 Loosen when you're running a large sweep and want a partial report rather than an abort.
 
