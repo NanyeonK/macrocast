@@ -106,8 +106,9 @@
 <li><p>Current: <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code></p></li>
 <li><p>Next: none inside Layer 0</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> requests where parallel work should happen.</p>
-<p>It is an execution-layout contract, not a modeling choice. It does not change target construction, features, models, metrics, or statistical tests. It only changes whether a supported runner uses serial loops or thread pools over a specific work unit.</p>
+<p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> selects the execution layout.</p>
+<p>It is an execution-layout contract, not a modeling choice. It does not change target construction, features, models, metrics, or statistical tests. It only changes whether a supported runner uses serial loops or local thread pools over a specific work unit.</p>
+<p>The default is <code class="docutils literal notranslate"><span class="pre">serial</span></code>. Users do not need to choose this axis for ordinary runs; the compiler and runtime treat an omitted <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> as <code class="docutils literal notranslate"><span class="pre">serial</span></code>.</p>
 <section id="where-it-lives-in-code">
 <h2>Where It Lives In Code<a class="headerlink" href="#where-it-lives-in-code" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -147,6 +148,11 @@
 <section id="choices">
 <h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
 <p>Read this axis as an execution layout request. Parallel modes only help when the selected work unit has more than one item.</p>
+<p>The Navigator uses the selected Study Scope to disable incompatible options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> is active only when Study Scope compares methods.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> is active only when Study Scope has multiple targets.</p></li>
+</ul>
 <section id="quick-map">
 <h3>Quick Map<a class="headerlink" href="#quick-map" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -159,7 +165,7 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">serial</span></code></p></td>
 <td><p>none</p></td>
-<td><p>runnable</p></td>
+<td><p>runnable, default</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code></p></td>
 <td><p>model variants</p></td>
@@ -177,14 +183,6 @@
 <td><p>OOS origin dates</p></td>
 <td><p>runnable for long pseudo-OOS loops</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_trial</span></code></p></td>
-<td><p>tuning trials</p></td>
-<td><p>reserved</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">distributed_cluster</span></code></p></td>
-<td><p>external cluster tasks</p></td>
-<td><p>reserved</p></td>
-</tr>
 </tbody>
 </table>
 </section>
@@ -200,6 +198,13 @@
 <p>Runtime behavior:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>runner = execute one unit at a time
 parallel workers = none
+</pre></div>
+</div>
+<p>If the recipe omits <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code>, the runtime behaves as if this value were selected:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">study_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">one_target_one_method</span>
 </pre></div>
 </div>
 </section>
@@ -222,7 +227,7 @@ work unit = model-family variant
 executor = ThreadPoolExecutor, capped at 4 workers
 </pre></div>
 </div>
-<p>If there is no <code class="docutils literal notranslate"><span class="pre">model_family</span></code> sweep, this behaves like serial sweep execution.</p>
+<p>Navigator disables this for <code class="docutils literal notranslate"><span class="pre">one_target_one_method</span></code> and <code class="docutils literal notranslate"><span class="pre">multiple_targets_one_method</span></code>, because those scopes fix the method path. If there is no <code class="docutils literal notranslate"><span class="pre">model_family</span></code> sweep inside a method-comparison scope, this behaves like serial sweep execution.</p>
 </section>
 <section id="parallel-by-horizon">
 <h3><code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code><a class="headerlink" href="#parallel-by-horizon" title="Link to this heading"></a></h3>
@@ -264,7 +269,7 @@ work unit = target
 executor = ThreadPoolExecutor, capped at 4 workers
 </pre></div>
 </div>
-<p>If there is only one target, this is a no-op.</p>
+<p>Navigator disables this for <code class="docutils literal notranslate"><span class="pre">one_target_one_method</span></code> and <code class="docutils literal notranslate"><span class="pre">one_target_compare_methods</span></code>, because those scopes have one target. If there is only one target, this is a no-op.</p>
 </section>
 <section id="parallel-by-oos-date">
 <h3><code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code><a class="headerlink" href="#parallel-by-oos-date" title="Link to this heading"></a></h3>
@@ -283,40 +288,10 @@ executor = ThreadPoolExecutor, capped at 4 workers
 </div>
 <p>Refit-policy state is computed serially before origin-date model/benchmark fits are parallelized.</p>
 </section>
-<section id="parallel-by-trial">
-<h3><code class="docutils literal notranslate"><span class="pre">parallel_by_trial</span></code><a class="headerlink" href="#parallel-by-trial" title="Link to this heading"></a></h3>
-<p>Reserved for tuning or trial-level parallelism.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_by_trial</span>
-</pre></div>
-</div>
-<p>Current status:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
-runtime = not supported by current slice
-</pre></div>
-</div>
-</section>
-<section id="distributed-cluster">
-<h3><code class="docutils literal notranslate"><span class="pre">distributed_cluster</span></code><a class="headerlink" href="#distributed-cluster" title="Link to this heading"></a></h3>
-<p>Reserved for external cluster execution.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">compute_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_cluster</span>
-</pre></div>
-</div>
-<p>Current status:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
-runtime = not supported by current slice
-</pre></div>
-</div>
-</section>
 </section>
 <section id="compiler-contract">
 <h2>Compiler Contract<a class="headerlink" href="#compiler-contract" title="Link to this heading"></a></h2>
-<p>The compiler currently accepts only these runtime-supported values:</p>
+<p>The compiler currently accepts these values:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">serial</span></code>;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code>;</p></li>
@@ -324,7 +299,7 @@ runtime = not supported by current slice
 <li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code>;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code>.</p></li>
 </ul>
-<p>Selecting <code class="docutils literal notranslate"><span class="pre">parallel_by_trial</span></code> or <code class="docutils literal notranslate"><span class="pre">distributed_cluster</span></code> produces a not-supported compiler status.</p>
+<p>Omitted <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">serial</span></code>.</p>
 <p>The compiler writes:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;compute_mode_spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;compute_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;serial&quot;</span>
@@ -335,7 +310,14 @@ runtime = not supported by current slice
 </section>
 <section id="yaml-examples">
 <h2>YAML Examples<a class="headerlink" href="#yaml-examples" title="Link to this heading"></a></h2>
-<p>Serial default:</p>
+<p>Default research run can be left implicit:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">study_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">one_target_one_method</span>
+</pre></div>
+</div>
+<p>Serial default, written explicitly:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
@@ -377,10 +359,11 @@ runtime = not supported by current slice
 <li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> with one target behaves like serial execution.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> without a model-family sweep behaves like serial sweep execution.</p></li>
 </ul>
+<p>Scope-incompatible choices are stricter than no-op cases: Navigator marks them disabled before YAML generation.</p>
 </section>
 <section id="guidance">
 <h2>Guidance<a class="headerlink" href="#guidance" title="Link to this heading"></a></h2>
-<p>Use <code class="docutils literal notranslate"><span class="pre">serial</span></code> for debugging and replication.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">serial</span></code> for ordinary runs, debugging, and replication.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> for model comparison sweeps.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code> when horizons are independent and numerous.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> for multi-target recipes.</p>

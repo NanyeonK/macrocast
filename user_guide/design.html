@@ -353,9 +353,9 @@
 <hr class="docutils" />
 <section id="compute-mode">
 <h2>0.5 <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code><a class="headerlink" href="#compute-mode" title="Link to this heading"></a></h2>
-<p><strong>Selection question</strong>: Which level of the sweep should run in parallel?</p>
-<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">serial</span></code> — one variant / horizon / origin at a time.</p>
-<p>Pick a parallel mode when the sweep is big enough that wall-clock matters and the chosen level actually has multiple units of work.</p>
+<p><strong>Selection question</strong>: How should execution work be laid out?</p>
+<p><strong>Default</strong>: <code class="docutils literal notranslate"><span class="pre">serial</span></code> — one variant / horizon / target / origin at a time. You can leave this axis out of a recipe unless the run has a natural parallel work unit.</p>
+<p>Pick a parallel mode when wall-clock matters and the chosen level actually has multiple units of work. Navigator disables scope-incompatible choices: <code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code> requires a Study Scope that compares methods, and <code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code> requires a multiple-target Study Scope.</p>
 <section id="id10">
 <h3>Value catalog<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -374,7 +374,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_model</span></code></p></td>
 <td><p>operational</p></td>
-<td><p>Sweep with many model_family variants.</p></td>
+<td><p>Method-comparison Study Scope with many model_family variants.</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ThreadPoolExecutor(max_workers=min(n_variants,</span> <span class="pre">4))</span></code> in <code class="docutils literal notranslate"><span class="pre">sweep_runner._run_variant</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_horizon</span></code></p></td>
@@ -384,7 +384,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_target</span></code></p></td>
 <td><p>operational</p></td>
-<td><p>Multi-target recipe, N targets.</p></td>
+<td><p>Multiple-target Study Scope.</p></td>
 <td><p>Pool inside <code class="docutils literal notranslate"><span class="pre">execute_recipe</span></code> when <code class="docutils literal notranslate"><span class="pre">len(targets)</span> <span class="pre">&gt;</span> <span class="pre">1</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_by_oos_date</span></code></p></td>
@@ -422,9 +422,9 @@
 <section id="design-stage-0-takeaways">
 <h2>Design (Stage 0) takeaways<a class="headerlink" href="#design-stage-0-takeaways" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Six axes, 38 allowed values, and the simple default path keeps the operational surface narrow. Researchers who don’t need sweeps, parallelism, or strict reproducibility write Stage 0 by omission.</p></li>
+<li><p>Four user-facing axes plus internal YAML grammar keep the operational surface narrow. Researchers who do not need failure-policy changes, stricter reproducibility, or parallelism write Layer 0 mostly by omission.</p></li>
 <li><p>Runner dispatch flows from <code class="docutils literal notranslate"><span class="pre">study_scope</span></code>. One fixed path and a controlled sweep both use the <code class="docutils literal notranslate"><span class="pre">comparison_sweep</span></code> route; the difference is whether any downstream <code class="docutils literal notranslate"><span class="pre">sweep_axes</span></code> are present.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> + <code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> + <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> are three independent dials. Pick per-run, don’t carry them over from copy-pasted templates.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> + <code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> + <code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> are three defaulted execution dials. Pick per-run, and let Navigator show which compute choices are disabled by the chosen Study Scope.</p></li>
 <li><p>Every resolved value lands in <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> — when a run does something unexpected, read the manifest before anything else.</p></li>
 </ul>
 <p>Next: <a class="reference internal" href="data/index.html"><span class="std std-doc">Data (Stage 1)</span></a>.</p>
