@@ -154,6 +154,9 @@
     <span class="s2">&quot;fred_qd+fred_sd&quot;</span><span class="p">:</span> <span class="s2">&quot;quarterly&quot;</span><span class="p">,</span>
 <span class="p">}</span>
 
+<span class="n">_CUSTOM_DATASETS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;custom_csv&quot;</span><span class="p">,</span> <span class="s2">&quot;custom_parquet&quot;</span><span class="p">}</span>
+<span class="n">_CUSTOM_DATASET_SCHEMAS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fred_md&quot;</span><span class="p">,</span> <span class="s2">&quot;fred_qd&quot;</span><span class="p">,</span> <span class="s2">&quot;fred_sd&quot;</span><span class="p">}</span>
+
 <span class="n">_X_IMPUTATION_METHODS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span> <span class="s2">&quot;ffill&quot;</span><span class="p">,</span> <span class="s2">&quot;bfill&quot;</span><span class="p">}</span>
 
 <span class="n">_MULTI_BENCHMARK_ALLOWED_MEMBERS</span> <span class="o">=</span> <span class="p">{</span>
@@ -281,6 +284,41 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_dataset_has_fred_sd</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="n">tokens</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;+&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="s2">&quot;fred_sd&quot;</span> <span class="ow">in</span> <span class="p">{</span><span class="n">token</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span> <span class="k">if</span> <span class="n">token</span><span class="o">.</span><span class="n">strip</span><span class="p">()}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dataset_is_custom</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASETS</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_source_adapter_for_dataset</span><span class="p">(</span><span class="n">selection_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AxisSelection</span><span class="p">],</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;source_adapter&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_raw_dataset_schema</span><span class="p">(</span>
+    <span class="n">selection_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AxisSelection</span><span class="p">],</span>
+    <span class="n">leaf_config</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+    <span class="n">source_adapter</span> <span class="o">=</span> <span class="n">_source_adapter_for_dataset</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASETS</span><span class="p">:</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;custom_dataset_schema&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASET_SCHEMAS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;dataset=&#39;custom_csv&#39;/&#39;custom_parquet&#39; requires &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;leaf_config.custom_dataset_schema in </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_CUSTOM_DATASET_SCHEMAS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;source_adapter&quot;</span> <span class="ow">in</span> <span class="n">selection_map</span> <span class="ow">and</span> <span class="n">source_adapter</span> <span class="o">!=</span> <span class="n">dataset</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;dataset=</span><span class="si">{</span><span class="n">dataset</span><span class="si">!r}</span><span class="s2"> derives source_adapter=</span><span class="si">{</span><span class="n">dataset</span><span class="si">!r}</span><span class="s2">; &quot;</span>
+                <span class="s2">&quot;omit source_adapter or set it to the same custom dataset value&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source_adapter</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASETS</span> <span class="ow">and</span> <span class="n">dataset</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASET_SCHEMAS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;source_adapter=</span><span class="si">{</span><span class="n">source_adapter</span><span class="si">!r}</span><span class="s2"> requires dataset to declare one of &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_CUSTOM_DATASET_SCHEMAS</span><span class="p">)</span><span class="si">}</span><span class="s2"> as the custom file schema&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">dataset</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_sd_target_parts</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
@@ -1136,10 +1174,12 @@
     <span class="n">_validate_official_transform_contract</span><span class="p">(</span><span class="n">selection_map</span><span class="p">)</span>
 
     <span class="n">dataset</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">dataset</span> <span class="o">==</span> <span class="s2">&quot;fred_sd&quot;</span> <span class="ow">and</span> <span class="s2">&quot;frequency&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selection_map</span><span class="p">:</span>
+    <span class="n">raw_dataset_schema</span> <span class="o">=</span> <span class="n">_raw_dataset_schema</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">leaf_config</span><span class="p">)</span>
+    <span class="n">source_adapter</span> <span class="o">=</span> <span class="n">_source_adapter_for_dataset</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">raw_dataset_schema</span> <span class="o">==</span> <span class="s2">&quot;fred_sd&quot;</span> <span class="ow">and</span> <span class="s2">&quot;frequency&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selection_map</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="s2">&quot;dataset=&#39;fred_sd&#39; requires explicit frequency (&#39;monthly&#39; or &#39;quarterly&#39;)&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">_COMPOSITE_DATASET_FREQUENCY</span><span class="p">:</span>
-        <span class="n">expected</span> <span class="o">=</span> <span class="n">_COMPOSITE_DATASET_FREQUENCY</span><span class="p">[</span><span class="n">dataset</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">raw_dataset_schema</span> <span class="ow">in</span> <span class="n">_COMPOSITE_DATASET_FREQUENCY</span><span class="p">:</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">_COMPOSITE_DATASET_FREQUENCY</span><span class="p">[</span><span class="n">raw_dataset_schema</span><span class="p">]</span>
         <span class="n">frequency</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">expected</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">frequency</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
@@ -1147,7 +1187,11 @@
             <span class="p">)</span>
 
     <span class="n">targets</span> <span class="o">=</span> <span class="n">_targets_for_layer1_contract</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">leaf_config</span><span class="p">)</span>
-    <span class="n">has_fred_sd</span> <span class="o">=</span> <span class="n">_dataset_has_fred_sd</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">has_fred_sd</span> <span class="o">=</span> <span class="n">_dataset_has_fred_sd</span><span class="p">(</span><span class="n">raw_dataset_schema</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source_adapter</span> <span class="ow">in</span> <span class="n">_CUSTOM_DATASETS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;custom_data_path&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;dataset=</span><span class="si">{</span><span class="n">dataset</span><span class="si">!r}</span><span class="s2"> requires leaf_config.custom_data_path&quot;</span>
+        <span class="p">)</span>
     <span class="n">fred_sd_frequency_policy</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;fred_sd_frequency_policy&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;report_only&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fred_sd_frequency_policy</span> <span class="o">!=</span> <span class="s2">&quot;report_only&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_fred_sd</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span>
@@ -1376,7 +1420,8 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_data_task_spec</span><span class="p">(</span><span class="n">selection_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AxisSelection</span><span class="p">],</span> <span class="n">leaf_config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="n">dataset</span> <span class="o">=</span> <span class="n">_first_selected_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;fred_md&quot;</span><span class="p">)</span>
-    <span class="n">source_adapter</span> <span class="o">=</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;source_adapter&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">raw_dataset_schema</span> <span class="o">=</span> <span class="n">_raw_dataset_schema</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">leaf_config</span><span class="p">)</span>
+    <span class="n">source_adapter</span> <span class="o">=</span> <span class="n">_source_adapter_for_dataset</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
     <span class="n">target_structure</span> <span class="o">=</span> <span class="n">_first_selected_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;target_structure&quot;</span><span class="p">,</span> <span class="s2">&quot;single_target&quot;</span><span class="p">)</span>
     <span class="n">feature_builder</span> <span class="o">=</span> <span class="n">_first_selected_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;feature_builder&quot;</span><span class="p">,</span> <span class="s2">&quot;target_lag_features&quot;</span><span class="p">)</span>
     <span class="n">information_set_type</span> <span class="o">=</span> <span class="n">_first_selected_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;information_set_type&quot;</span><span class="p">,</span> <span class="s2">&quot;final_revised_data&quot;</span><span class="p">)</span>
@@ -1385,13 +1430,20 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">custom_feature_blocks</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="n">custom_feature_blocks</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="p">,</span>
+        <span class="s2">&quot;dataset_schema&quot;</span><span class="p">:</span> <span class="n">raw_dataset_schema</span><span class="p">,</span>
+        <span class="s2">&quot;custom_dataset_schema&quot;</span><span class="p">:</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;custom_dataset_schema&quot;</span><span class="p">),</span>
         <span class="s2">&quot;custom_data_path&quot;</span><span class="p">:</span> <span class="n">leaf_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;custom_data_path&quot;</span><span class="p">),</span>
         <span class="s2">&quot;source_adapter&quot;</span><span class="p">:</span> <span class="n">source_adapter</span><span class="p">,</span>
         <span class="s2">&quot;target_structure&quot;</span><span class="p">:</span> <span class="n">target_structure</span><span class="p">,</span>
         <span class="s2">&quot;official_transform_policy&quot;</span><span class="p">:</span> <span class="n">_official_transform_policy</span><span class="p">(</span><span class="n">selection_map</span><span class="p">),</span>
         <span class="s2">&quot;official_transform_scope&quot;</span><span class="p">:</span> <span class="n">_official_transform_scope</span><span class="p">(</span><span class="n">selection_map</span><span class="p">),</span>
         <span class="s2">&quot;official_transform_source&quot;</span><span class="p">:</span> <span class="n">_official_transform_source_payload</span><span class="p">(</span><span class="n">selection_map</span><span class="p">),</span>
-        <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">_DATASET_DEFAULT_FREQUENCY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s2">&quot;monthly&quot;</span><span class="p">)),</span>
+        <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span>
+            <span class="n">selection_map</span><span class="p">,</span>
+            <span class="s2">&quot;frequency&quot;</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="n">_DATASET_DEFAULT_FREQUENCY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">raw_dataset_schema</span><span class="p">,</span> <span class="s2">&quot;monthly&quot;</span><span class="p">),</span>
+        <span class="p">),</span>
         <span class="s2">&quot;information_set_type&quot;</span><span class="p">:</span> <span class="n">information_set_type</span><span class="p">,</span>
         <span class="s2">&quot;fred_sd_frequency_policy&quot;</span><span class="p">:</span> <span class="n">_selection_value</span><span class="p">(</span>
             <span class="n">selection_map</span><span class="p">,</span>
@@ -3172,13 +3224,14 @@
         <span class="k">if</span> <span class="n">rolling_window_size</span> <span class="o">&lt;</span> <span class="n">minimum_train_size</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">CompileValidationError</span><span class="p">(</span><span class="s2">&quot;rolling_window_size must be at least minimum_train_size for rolling framework&quot;</span><span class="p">)</span>
     <span class="n">data_task_spec</span> <span class="o">=</span> <span class="n">_data_task_spec</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">leaf_config</span><span class="p">)</span>
+    <span class="n">raw_dataset_schema</span> <span class="o">=</span> <span class="n">data_task_spec</span><span class="p">[</span><span class="s2">&quot;dataset_schema&quot;</span><span class="p">]</span>
     <span class="n">training_spec</span> <span class="o">=</span> <span class="n">_training_spec</span><span class="p">(</span><span class="n">selection_map</span><span class="p">,</span> <span class="n">leaf_config</span><span class="p">)</span>
     <span class="n">recipe_spec</span> <span class="o">=</span> <span class="n">build_recipe_spec</span><span class="p">(</span>
         <span class="n">recipe_id</span><span class="o">=</span><span class="n">recipe_dict</span><span class="p">[</span><span class="s2">&quot;recipe_id&quot;</span><span class="p">],</span>
         <span class="n">stage0</span><span class="o">=</span><span class="n">stage0</span><span class="p">,</span>
         <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
         <span class="n">horizons</span><span class="o">=</span><span class="n">horizons</span><span class="p">,</span>
-        <span class="n">raw_dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+        <span class="n">raw_dataset</span><span class="o">=</span><span class="n">raw_dataset_schema</span><span class="p">,</span>
         <span class="n">benchmark_config</span><span class="o">=</span><span class="n">benchmark_spec</span><span class="p">,</span>
         <span class="n">data_task_spec</span><span class="o">=</span><span class="n">data_task_spec</span><span class="p">,</span>
         <span class="n">training_spec</span><span class="o">=</span><span class="n">training_spec</span><span class="p">,</span>

@@ -51,7 +51,7 @@ This census is generated from the live registry and Navigator tree after PR #92.
 | Axis | Component | Type | Default policy | Value status counts | Values by status |
 |---|---|---|---|---|---|
 | `contemporaneous_x_rule` | - | `enum` | `fixed` | operational=2 | `operational`: `allow_same_period_predictors`, `forbid_same_period_predictors` |
-| `dataset` | - | `enum` | `fixed` | operational=5 | `operational`: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` |
+| `dataset` | - | `enum` | `fixed` | operational=7 | `operational`: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd`, `custom_csv`, `custom_parquet` |
 | `fred_sd_frequency_policy` | - | `enum` | `fixed` | operational=4 | `operational`: `report_only`, `allow_mixed_frequency`, `reject_mixed_known_frequency`, `require_single_known_frequency` |
 | `fred_sd_state_group` | - | `enum` | `fixed` | operational=16 | `operational`: `all_states`, `census_region_northeast`, `census_region_midwest`, `census_region_south`, `census_region_west`, `census_division_new_england`, `census_division_middle_atlantic`, `census_division_east_north_central`, `census_division_west_north_central`, `census_division_south_atlantic`, `census_division_east_south_central`, `census_division_west_south_central`, `census_division_mountain`, `census_division_pacific`, `contiguous_48_plus_dc`, `custom_state_group` |
 | `fred_sd_variable_group` | - | `enum` | `fixed` | operational=12 | `operational`: `all_sd_variables`, `labor_market_core`, `employment_sector`, `gsp_output`, `housing`, `trade`, `income`, `direct_analog_high_confidence`, `provisional_analog_medium`, `semantic_review_outputs`, `no_reliable_analog`, `custom_sd_variable_group` |
@@ -64,7 +64,7 @@ This census is generated from the live registry and Navigator tree after PR #92.
 | `raw_outlier_policy` | - | `enum` | `fixed` | operational=6 | `operational`: `preserve_raw_outliers`, `winsorize_raw`, `iqr_clip_raw`, `mad_clip_raw`, `zscore_clip_raw`, `set_raw_outliers_to_missing` |
 | `release_lag_rule` | - | `enum` | `fixed` | operational=3 | `operational`: `ignore_release_lag`, `fixed_lag_all_series`, `series_specific_lag` |
 | `sd_variable_selection` | - | `enum` | `fixed` | operational=2 | `operational`: `all_sd_variables`, `selected_sd_variables` |
-| `source_adapter` | - | `enum` | `fixed` | operational=5 | `operational`: `fred_md`, `fred_qd`, `fred_sd`, `custom_csv`, `custom_parquet` |
+| `source_adapter` | - | `enum` | `fixed` | operational=5 | `operational`: `fred_md`, `fred_qd`, `fred_sd`, `custom_csv`, `custom_parquet`; internal dispatch bridge derived from `dataset` |
 | `state_selection` | - | `enum` | `fixed` | operational=2 | `operational`: `all_states`, `selected_states` |
 | `target_structure` | - | `enum` | `fixed` | operational=2 | `operational`: `single_target`, `multi_target` |
 | `variable_universe` | - | `enum` | `fixed` | operational=5 | `operational`: `all_variables`, `core_variables`, `category_variables`, `target_specific_variables`, `explicit_variable_list` |

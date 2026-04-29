@@ -79,7 +79,7 @@
              
   <section id="source-frame-1-1">
 <h1>Source &amp; Frame (1.1)<a class="headerlink" href="#source-frame-1-1" title="Link to this heading"></a></h1>
-<p>Declares <strong>where the data comes from and which information-set regime applies</strong>. These four axes together answer: which dataset, at what frequency, and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.</p>
+<p>Declares <strong>where the data comes from and which information-set regime applies</strong>. The user-facing axes answer: which dataset, at what frequency, and under which real-time regime — before the target-structure choice (1.2) or the evaluation window (1.3) is fixed.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Section</p></th>
@@ -90,11 +90,11 @@
 <tbody>
 <tr class="row-even"><td><p>1.1.1</p></td>
 <td><p><a class="reference internal" href="#dataset"><code class="docutils literal notranslate"><span class="pre">dataset</span></code></a></p></td>
-<td><p>Which FRED-family dataset schema to load</p></td>
+<td><p>Which source family to load, including custom CSV/Parquet</p></td>
 </tr>
 <tr class="row-odd"><td><p>1.1.2</p></td>
-<td><p><a class="reference internal" href="#source-adapter"><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></a></p></td>
-<td><p>Which loader to use (FRED canonical / user CSV / user Parquet)</p></td>
+<td><p><a class="reference internal" href="#source-adapter-internal"><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></a></p></td>
+<td><p>Internal loader dispatch derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>1.1.3</p></td>
 <td><p><a class="reference internal" href="#frequency"><code class="docutils literal notranslate"><span class="pre">frequency</span></code></a></p></td>
@@ -109,16 +109,16 @@
 <p><strong>Note</strong>: <code class="docutils literal notranslate"><span class="pre">data_domain</span></code> axis was dropped entirely in this pass — every FRED dataset implies <code class="docutils literal notranslate"><span class="pre">domain=macro</span></code> via its own source_family metadata, so a separate axis was pure duplication (same rationale as 0.5 <code class="docutils literal notranslate"><span class="pre">registry_type</span></code> drop).
 <strong>At a glance (defaults):</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> — no default; you pick one of <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> — mirrors <code class="docutils literal notranslate"><span class="pre">dataset</span></code> automatically (canonical FRED loader). Override only for <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> / <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> — no default; you pick one of <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code>, or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> — internal dispatch bridge derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code>; omit in new recipes.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code> — derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code> for MD/QD/composites. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> requires an explicit monthly/quarterly choice.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span> <span class="pre">=</span> <span class="pre">revised</span></code> — post-revision truth. Pick <code class="docutils literal notranslate"><span class="pre">pseudo_oos_on_revised_data</span></code> only when you want synthetic release-lag masking.</p></li>
 </ul>
-<p><strong>Most research runs need only <code class="docutils literal notranslate"><span class="pre">dataset</span></code> + <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>.</strong> The other two auto-derive.</p>
+<p><strong>Most research runs need only <code class="docutils literal notranslate"><span class="pre">dataset</span></code> + <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>.</strong> The other source-frame choices auto-derive, except standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> and custom files.</p>
 <hr class="docutils" />
 <section id="dataset">
 <h2>1.1.1 <code class="docutils literal notranslate"><span class="pre">dataset</span></code><a class="headerlink" href="#dataset" title="Link to this heading"></a></h2>
-<p><strong>Selects the schema of the dataset loaded.</strong> Every recipe picks exactly one.</p>
+<p><strong>Selects the source family loaded.</strong> Every recipe picks exactly one. Custom files are first-class dataset choices; their FRED-family schema is declared separately in <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code>.</p>
 <section id="value-catalog">
 <h3>Value catalog<a class="headerlink" href="#value-catalog" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -155,6 +155,16 @@
 <td><p>composite loader</p></td>
 <td><p>FRED-QD quarterly panel plus FRED-SD state panel converted to quarterly when needed.</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_csv</span></code></p></td>
+<td><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.raw.load_custom_csv</span></code></p></td>
+<td><p>User-supplied CSV panel. Requires <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
+<td><p>operational</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macrocast.raw.load_custom_parquet</span></code></p></td>
+<td><p>User-supplied Parquet panel. Requires <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>.</p></td>
+</tr>
 </tbody>
 </table>
 <p>Each base dataset has its own dedicated documentation page covering citation, download path, variable groups, transformation codes, and changes from the original working paper to the current vintage. Composite dataset values are compiler/runtime contracts over those base loaders: the registry entry is used by the compiler, the composite loader chooses the relevant FRED loaders at run time, and the merged panel flows into every downstream axis.</p>
@@ -167,6 +177,7 @@
 <li><p>Compiler reads <code class="docutils literal notranslate"><span class="pre">dataset</span></code> via <code class="docutils literal notranslate"><span class="pre">_selection_value(selection_map,</span> <span class="pre">&quot;dataset&quot;)</span></code> → propagated into <code class="docutils literal notranslate"><span class="pre">CompiledRecipeSpec.dataset</span></code> and every downstream spec.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">_DATASET_DEFAULT_FREQUENCY</span></code> in <code class="docutils literal notranslate"><span class="pre">compiler/build.py</span></code> maps MD/QD/composite datasets to their default <code class="docutils literal notranslate"><span class="pre">frequency</span></code> value.</p></li>
 <li><p>Compile guard: standalone <code class="docutils literal notranslate"><span class="pre">dataset=fred_sd</span></code> requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code>; <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code> requires monthly; <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code> requires quarterly.</p></li>
+<li><p>Compile guard: <code class="docutils literal notranslate"><span class="pre">dataset=custom_csv/custom_parquet</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> in <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, plus <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>.</p></li>
 </ul>
 </section>
 <section id="recipe-usage">
@@ -183,9 +194,9 @@
 </section>
 </section>
 <hr class="docutils" />
-<section id="source-adapter">
-<h2>1.1.2 <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code><a class="headerlink" href="#source-adapter" title="Link to this heading"></a></h2>
-<p><strong>Selects which loader is used.</strong> Orthogonal to <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (which declares the schema). The canonical FRED values call the corresponding <code class="docutils literal notranslate"><span class="pre">load_fred_*</span></code> loader; the two <code class="docutils literal notranslate"><span class="pre">custom_*</span></code> values load a user-supplied file conforming to the declared schema.</p>
+<section id="source-adapter-internal">
+<h2>1.1.2 <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> (internal)<a class="headerlink" href="#source-adapter-internal" title="Link to this heading"></a></h2>
+<p><strong>Internal loader dispatch.</strong> New recipes should not set this axis. The compiler derives it from <code class="docutils literal notranslate"><span class="pre">dataset</span></code>: canonical FRED dataset values dispatch to their FRED loaders, and <code class="docutils literal notranslate"><span class="pre">dataset=custom_csv/custom_parquet</span></code> dispatches to the custom loader.</p>
 <section id="id1">
 <h3>Value catalog<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
@@ -215,12 +226,12 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_csv</span></code></p></td>
 <td><p>operational</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">load_custom_csv</span></code></p></td>
-<td><p><strong>User-supplied CSV</strong> at <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>; must conform to <code class="docutils literal notranslate"><span class="pre">dataset</span></code> schema</p></td>
+<td><p>Compatibility route for old recipes. Prefer <code class="docutils literal notranslate"><span class="pre">dataset:</span> <span class="pre">custom_csv</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
 <td><p>operational</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">load_custom_parquet</span></code></p></td>
-<td><p><strong>User-supplied Parquet</strong> at <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code>; same schema rules</p></td>
+<td><p>Compatibility route for old recipes. Prefer <code class="docutils literal notranslate"><span class="pre">dataset:</span> <span class="pre">custom_parquet</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -231,10 +242,10 @@
 </section>
 <section id="custom-csv-parquet-implementation-contract">
 <h3>Custom CSV / Parquet — implementation contract<a class="headerlink" href="#custom-csv-parquet-implementation-contract" title="Link to this heading"></a></h3>
-<p>When <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> is <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>:</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>:</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code></strong> is <strong>required</strong>. Compile-time validation in <code class="docutils literal notranslate"><span class="pre">compile_recipe_dict</span></code> raises <code class="docutils literal notranslate"><span class="pre">CompileValidationError</span></code> if missing.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">dataset</span></code></strong> still declares the schema the custom file must conform to (<code class="docutils literal notranslate"><span class="pre">fred_md</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>). The loader validates the schema label and labels the resulting panel accordingly.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code></strong> is <strong>required</strong> and declares the schema the custom file must conform to (<code class="docutils literal notranslate"><span class="pre">fred_md</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code> / <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>). The loader validates the schema label and labels the resulting panel accordingly.</p></li>
 <li><p><strong>CSV shape</strong>: first column is a date index (parseable by <code class="docutils literal notranslate"><span class="pre">pandas.read_csv(...,</span> <span class="pre">parse_dates=True)</span></code>); remaining columns are numeric with series IDs as headers. Optional FRED-style T-code row is not consumed automatically — pre-strip it or use <code class="docutils literal notranslate"><span class="pre">tcode_policy:</span> <span class="pre">raw_only</span></code>.</p></li>
 <li><p><strong>Parquet shape</strong>: DatetimeIndex OR first column parseable as date; numeric columns.</p></li>
 <li><p><strong>No caching</strong> — the custom loader reads the file fresh each time (no vintage / no cache key). For reproducibility, users should treat the path as part of the recipe provenance and keep the file pinned.</p></li>
@@ -246,9 +257,9 @@
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.load_custom_csv(path,</span> <span class="pre">*,</span> <span class="pre">dataset,</span> <span class="pre">cache_root=None)</span></code> — direct call.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">macrocast.load_custom_parquet(path,</span> <span class="pre">*,</span> <span class="pre">dataset,</span> <span class="pre">cache_root=None)</span></code> — direct call (requires pyarrow or fastparquet).</p></li>
-<li><p>Dispatcher: <code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code> in <code class="docutils literal notranslate"><span class="pre">macrocast/execution/build.py</span></code> checks <code class="docutils literal notranslate"><span class="pre">recipe.data_task_spec[&quot;source_adapter&quot;]</span></code> first; falls through to the FRED-canonical path otherwise.</p></li>
-<li><p>Compile guard: <code class="docutils literal notranslate"><span class="pre">source_adapter</span> <span class="pre">∈</span> <span class="pre">{custom_csv,</span> <span class="pre">custom_parquet}</span></code> + no <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code> → <code class="docutils literal notranslate"><span class="pre">CompileValidationError</span></code>.</p></li>
-<li><p>Canonical API: <code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code> reads <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>; removed source-dispatch aliases are rejected at compile time.</p></li>
+<li><p>Dispatcher: <code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code> in <code class="docutils literal notranslate"><span class="pre">macrocast/execution/build.py</span></code> reads the derived <code class="docutils literal notranslate"><span class="pre">recipe.data_task_spec[&quot;source_adapter&quot;]</span></code>.</p></li>
+<li><p>Compile guard: <code class="docutils literal notranslate"><span class="pre">dataset</span> <span class="pre">∈</span> <span class="pre">{custom_csv,</span> <span class="pre">custom_parquet}</span></code> + missing <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> or <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_data_path</span></code> → <code class="docutils literal notranslate"><span class="pre">CompileValidationError</span></code>.</p></li>
+<li><p>Compatibility: old recipes using <code class="docutils literal notranslate"><span class="pre">dataset:</span> <span class="pre">fred_md</span></code> plus <code class="docutils literal notranslate"><span class="pre">source_adapter:</span> <span class="pre">custom_csv</span></code> still compile, but the preferred public axis is now <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
 </ul>
 </section>
 <section id="id3">
@@ -258,7 +269,6 @@
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fred_md</span>
-<span class="w">      </span><span class="c1"># source_adapter: fred_md  (omit — defaults to dataset value)</span>
 <span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INDPRO</span>
 <span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">]</span>
@@ -268,11 +278,12 @@
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fred_md</span><span class="w">          </span><span class="c1"># schema declaration</span>
-<span class="w">      </span><span class="nt">source_adapter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom_csv</span>
+<span class="w">      </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom_csv</span>
+<span class="w">      </span><span class="nt">frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly</span>
 <span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INDPRO</span>
 <span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">custom_dataset_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fred_md</span>
 <span class="w">      </span><span class="nt">custom_data_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my_fred_md_extract.csv</span>
 </pre></div>
 </div>
@@ -280,11 +291,12 @@
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fred_qd</span>
-<span class="w">      </span><span class="nt">source_adapter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom_parquet</span>
+<span class="w">      </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom_parquet</span>
+<span class="w">      </span><span class="nt">frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quarterly</span>
 <span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GDPC1</span>
 <span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">custom_dataset_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fred_qd</span>
 <span class="w">      </span><span class="nt">custom_data_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my_fred_qd_extract.parquet</span>
 </pre></div>
 </div>
@@ -401,7 +413,7 @@
 <h2>Source &amp; Frame (1.1) takeaways<a class="headerlink" href="#source-frame-1-1-takeaways" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">dataset</span></code></strong> and <strong><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></strong> are the two axes the user usually decides in 1.1; standalone FRED-SD also requires <code class="docutils literal notranslate"><span class="pre">frequency</span></code>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></strong> carries actual loader dispatch: FRED canonical (default) vs <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> vs <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code>. Removed adapter labels and source-dispatch aliases are rejected.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></strong> is internal loader dispatch derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code>; new recipes do not set it.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">frequency</span></code></strong> is executable: it controls conversion and is compile-checked for FRED-SD composites.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">data_domain</span></code></strong> axis dropped entirely (pure duplication of <code class="docutils literal notranslate"><span class="pre">dataset.source_family</span></code>).</p></li>
 </ul>

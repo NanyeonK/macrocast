@@ -110,7 +110,7 @@
 <section id="simple-vs-full">
 <h2>Simple vs Full<a class="headerlink" href="#simple-vs-full" title="Link to this heading"></a></h2>
 <p>Simple asks for the data question directly: <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">target</span></code>, <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code>, and <code class="docutils literal notranslate"><span class="pre">horizons</span></code>. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> also needs <code class="docutils literal notranslate"><span class="pre">frequency</span></code>. Optional Simple helpers expose FRED-SD state/variable selection, FRED-SD frequency policy, and FRED-SD t-code policies, but the ordinary path keeps Layer 1 mostly defaulted.</p>
-<p>Full exposes the complete Layer 1 official-frame contract. The live registry has <strong>18 Layer 1 axes</strong>. The Navigator primary tree shows 16 of them; <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> and <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
+<p>Full exposes the complete Layer 1 official-frame contract. The live registry has <strong>18 Layer 1 axes</strong>. The Navigator primary tree shows 15 user-facing axes; <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> is now an internal dispatch bridge, and <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
 </section>
 <section id="decision-order">
 <h2>Decision order<a class="headerlink" href="#decision-order" title="Link to this heading"></a></h2>
@@ -125,7 +125,7 @@
 <tbody>
 <tr class="row-even"><td><p>4.1.1</p></td>
 <td><p><a class="reference internal" href="source_frame.html"><span class="std std-doc">Source and frame</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>; <code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> is derived/internal</p></td>
 </tr>
 <tr class="row-odd"><td><p>4.1.2</p></td>
 <td><p><a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">FRED-SD source selection</span></a></p></td>
@@ -162,11 +162,11 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
 <td><p>required user choice</p></td>
-<td><p>required</p></td>
+<td><p>required; choose <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code> for user-supplied files</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></p></td>
-<td><p>same as <code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
-<td><p>omitted means use the canonical loader for <code class="docutils literal notranslate"><span class="pre">dataset</span></code>; set only for <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> / <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
+<td><p>derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
+<td><p>internal dispatch bridge; omit in new recipes</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
 <td><p>inferred for FRED-MD/QD/composites; required for standalone FRED-SD</p></td>

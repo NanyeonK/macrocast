@@ -114,9 +114,9 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 <td><p>Study scope, failure handling, reproducibility, compute layout, and YAML sweep grammar</p></td>
 </tr>
 <tr class="row-odd"><td><p>1 — Data</p></td>
-<td><p>18 registry axes, 16 primary Navigator axes</p></td>
+<td><p>18 registry axes, 15 primary Navigator axes</p></td>
 <td><p>all current values operational</p></td>
-<td><p>Official data frame: dataset, source, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability</p></td>
+<td><p>Official data frame: dataset, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability</p></td>
 </tr>
 </tbody>
 </table>
@@ -277,12 +277,12 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></td>
-<td><p>schema loaded/merged → <code class="docutils literal notranslate"><span class="pre">raw_result.data.columns</span></code>; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
+<td><p>source loaded/merged → <code class="docutils literal notranslate"><span class="pre">raw_result.data.columns</span></code>; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code>; custom files require <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">custom_data_path</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
-<td><p>which loader fires (<code class="docutils literal notranslate"><span class="pre">_load_raw_for_recipe</span></code>), <code class="docutils literal notranslate"><span class="pre">manifest.raw_artifact</span></code>; this is the sole source-dispatch axis</p></td>
+<td><p>internal dispatch derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code>; old custom-loader recipes may still set it explicitly</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">monthly</span></code>, <code class="docutils literal notranslate"><span class="pre">quarterly</span></code></p></td>

@@ -18,7 +18,7 @@ result = exp.run()
 
 Required arguments:
 
-- `dataset`: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, or `fred_qd+fred_sd`
+- `dataset`: `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd`, `custom_csv`, or `custom_parquet`
 - `target`: target series name
 - `start`: first sample date
 - `end`: last sample date
