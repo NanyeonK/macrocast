@@ -108,7 +108,7 @@
 </div>
 <p>Required arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code>, or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>: official source panel, one of <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">target</span></code>: target series name</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">start</span></code>: first sample date</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">end</span></code>: last sample date</p></li>
@@ -117,6 +117,9 @@
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">horizons</span></code>: forecast horizons, default <code class="docutils literal notranslate"><span class="pre">[1]</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code>: required only for <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> alone</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code>: default <code class="docutils literal notranslate"><span class="pre">no_custom_source</span></code>; use <code class="docutils literal notranslate"><span class="pre">replace_official_panel</span></code> or <code class="docutils literal notranslate"><span class="pre">append_to_official_panel</span></code> for custom files</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code>: <code class="docutils literal notranslate"><span class="pre">csv</span></code> or <code class="docutils literal notranslate"><span class="pre">parquet</span></code> when a custom source is selected</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">custom_data_path</span></code>: required when a custom source is selected</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">vintage</span></code>: data vintage; if omitted, current/latest data is used</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">model_family</span></code>: default model, usually left as <code class="docutils literal notranslate"><span class="pre">ar</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">primary_metric</span></code>: default <code class="docutils literal notranslate"><span class="pre">msfe</span></code></p></li>

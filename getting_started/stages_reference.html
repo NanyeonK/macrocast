@@ -277,8 +277,16 @@ blocked. Layers 3+ are outside this quick-reference page.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code></p></td>
-<td><p>source loaded/merged → <code class="docutils literal notranslate"><span class="pre">raw_result.data.columns</span></code>; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code>; custom files require <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">custom_data_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></td>
+<td><p>official source loaded/merged -&gt; <code class="docutils literal notranslate"><span class="pre">raw_result.data.columns</span></code>; standalone FRED-SD requires explicit <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">no_custom_source</span></code>, <code class="docutils literal notranslate"><span class="pre">replace_official_panel</span></code>, <code class="docutils literal notranslate"><span class="pre">append_to_official_panel</span></code></p></td>
+<td><p>optional custom-file use; custom files require <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_dataset_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">custom_data_path</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">csv</span></code>, <code class="docutils literal notranslate"><span class="pre">parquet</span></code></p></td>
+<td><p>file format for the custom source when one is selected</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">monthly</span></code>, <code class="docutils literal notranslate"><span class="pre">quarterly</span></code></p></td>

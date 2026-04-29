@@ -109,8 +109,8 @@
 <p>Layer 1 owns the official data task. It decides which data source is used, which target structure is being forecast, what information is available, and how raw source-level missing/outlier and official-transform policies are handled before representation construction.</p>
 <section id="simple-vs-full">
 <h2>Simple vs Full<a class="headerlink" href="#simple-vs-full" title="Link to this heading"></a></h2>
-<p>Simple asks for the data question directly: <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">target</span></code>, <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code>, and <code class="docutils literal notranslate"><span class="pre">horizons</span></code>. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> also needs <code class="docutils literal notranslate"><span class="pre">frequency</span></code>. Optional Simple helpers expose FRED-SD state/variable selection, FRED-SD frequency policy, and FRED-SD t-code policies, but the ordinary path keeps Layer 1 mostly defaulted.</p>
-<p>Full exposes the complete Layer 1 official-frame contract. The live registry has <strong>17 Layer 1 axes</strong>. The Navigator primary tree shows 15 axes, but those axes are not all the same depth: some are primary decisions, some are derived/required follow-ups, some are conditional FRED-SD sub-decisions, and many are defaulted policy controls. <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
+<p>Simple asks for the data question directly: <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">target</span></code>, <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code>, and <code class="docutils literal notranslate"><span class="pre">horizons</span></code>. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> also needs <code class="docutils literal notranslate"><span class="pre">frequency</span></code>. Custom files are optional source modifiers: Simple can expose <code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_dataset_schema</span></code>, and <code class="docutils literal notranslate"><span class="pre">custom_data_path</span></code> when the user wants to replace or append to the official source panel. Optional Simple helpers expose FRED-SD state/variable selection, FRED-SD frequency policy, and FRED-SD t-code policies, but the ordinary path keeps Layer 1 mostly defaulted.</p>
+<p>Full exposes the complete Layer 1 official-frame contract. The live registry has <strong>19 Layer 1 axes</strong>. The Navigator primary tree shows 17 axes, but those axes are not all the same depth: some are primary decisions, some are derived/required follow-ups, some are conditional custom/FRED-SD sub-decisions, and many are defaulted policy controls. <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
 </section>
 <section id="hierarchy">
 <h2>Hierarchy<a class="headerlink" href="#hierarchy" title="Link to this heading"></a></h2>
@@ -126,8 +126,8 @@
 <tbody>
 <tr class="row-even"><td><p>Primary decision</p></td>
 <td><p>Source identity</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> is the source choice. <code class="docutils literal notranslate"><span class="pre">frequency</span></code> is derived for MD/QD/composites and required only for standalone FRED-SD or custom schemas where the schema does not imply it.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code> is the official source-panel choice. Custom source axes decide whether to replace or append a user file. <code class="docutils literal notranslate"><span class="pre">frequency</span></code> is derived for MD/QD/composites and required only for standalone FRED-SD.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Primary policy</p></td>
 <td><p>Information regime</p></td>
@@ -175,7 +175,7 @@
 <tbody>
 <tr class="row-even"><td><p>4.1.1</p></td>
 <td><p><a class="reference internal" href="source_frame.html"><span class="std std-doc">Source and frame</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code>, <code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>4.1.2</p></td>
 <td><p><a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">FRED-SD source selection</span></a></p></td>
@@ -212,7 +212,15 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
 <td><p>required user choice</p></td>
-<td><p>required; choose <code class="docutils literal notranslate"><span class="pre">custom_csv</span></code> or <code class="docutils literal notranslate"><span class="pre">custom_parquet</span></code> for user-supplied files</p></td>
+<td><p>required; official source panel only: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">no_custom_source</span></code></p></td>
+<td><p>choose <code class="docutils literal notranslate"><span class="pre">replace_official_panel</span></code> or <code class="docutils literal notranslate"><span class="pre">append_to_official_panel</span></code> when using a custom file</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_format</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
+<td><p>required as <code class="docutils literal notranslate"><span class="pre">csv</span></code> or <code class="docutils literal notranslate"><span class="pre">parquet</span></code> when <code class="docutils literal notranslate"><span class="pre">custom_source_mode</span></code> is not <code class="docutils literal notranslate"><span class="pre">no_custom_source</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
 <td><p>inferred for FRED-MD/QD/composites; required for standalone FRED-SD</p></td>
