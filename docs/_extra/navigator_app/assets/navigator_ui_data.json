@@ -394,12 +394,16 @@
         "fred_qd",
         "fred_sd",
         "fred_md+fred_sd",
-        "fred_qd+fred_sd"
+        "fred_qd+fred_sd",
+        "custom_csv",
+        "custom_parquet"
       ],
       "axis_name": "dataset",
       "axis_type": "enum",
       "compatible_with": {},
       "current_status": {
+        "custom_csv": "operational",
+        "custom_parquet": "operational",
         "fred_md": "operational",
         "fred_md+fred_sd": "operational",
         "fred_qd": "operational",
@@ -3356,6 +3360,16 @@
       "short_label": "Dataset",
       "summary": "Selects the source panel before any target, timing, or representation decisions.",
       "values": {
+        "custom_csv": {
+          "label": "Custom CSV",
+          "short_label": "Custom CSV",
+          "summary": "User-supplied CSV panel; set leaf_config.custom_dataset_schema and custom_data_path."
+        },
+        "custom_parquet": {
+          "label": "Custom Parquet",
+          "short_label": "Custom Parquet",
+          "summary": "User-supplied Parquet panel; set leaf_config.custom_dataset_schema and custom_data_path."
+        },
         "fred_md": {
           "label": "FRED-MD",
           "short_label": "FRED-MD",
@@ -3892,14 +3906,14 @@
       }
     },
     "source_adapter": {
-      "contract": "Loader contract. Built-in FRED datasets derive the loader from dataset; custom CSV/Parquet routes require leaf_config.custom_data_path.",
+      "contract": "Internal loader-dispatch contract. Kept for compatibility with old custom-loader recipes; new recipes choose custom_csv/custom_parquet on dataset.",
       "docs_url": "../detail/layer1/source_frame.html",
-      "label": "Source Loader",
+      "label": "Source Loader Dispatch",
       "order": 6,
-      "question": "Which loader should read the source panel?",
-      "selection_kind": "advanced_choice",
-      "short_label": "Loader",
-      "summary": "Usually omitted for built-in FRED panels; custom loaders require a data path.",
+      "question": "Which internal loader should read the source panel?",
+      "selection_kind": "internal_derived_choice",
+      "short_label": "Loader Dispatch",
+      "summary": "Internal dispatch axis derived from dataset; ordinary recipes should omit it.",
       "values": {
         "custom_csv": {
           "label": "Custom CSV",
@@ -5313,52 +5327,23 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "fred_qd+fred_sd"
-              }
-            ],
-            "selected": "fred_md"
-          },
-          {
-            "axis": "source_adapter",
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: official data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_md'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_md"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_qd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_qd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_sd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_sd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_csv'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_csv'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
                 "value": "custom_csv"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_parquet'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_parquet'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
                 "value": "custom_parquet"
               }
             ],
-            "selected": null
+            "selected": "fred_md"
           },
           {
             "axis": "frequency",
@@ -10757,45 +10742,16 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "fred_qd+fred_sd"
-              }
-            ],
-            "selected": "fred_md"
-          },
-          {
-            "axis": "source_adapter",
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: official data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_md'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_md"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_qd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_qd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_sd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_sd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_csv'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_csv'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
                 "value": "custom_csv"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_parquet'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_parquet'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
@@ -16324,45 +16280,16 @@
                 "enabled": true,
                 "status": "operational",
                 "value": "fred_qd+fred_sd"
-              }
-            ],
-            "selected": "fred_md"
-          },
-          {
-            "axis": "source_adapter",
-            "layer": "1_data_task",
-            "layer_label": "Layer 1: official data frame",
-            "options": [
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_md'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_md"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_qd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_qd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'fred_sd'",
-                "disabled_reason": null,
-                "enabled": true,
-                "status": "operational",
-                "value": "fred_sd"
-              },
-              {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_csv'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_csv'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
                 "value": "custom_csv"
               },
               {
-                "canonical_path_effect": "path.1_data_task.fixed_axes.source_adapter = 'custom_parquet'",
+                "canonical_path_effect": "path.1_data_task.fixed_axes.dataset = 'custom_parquet'",
                 "disabled_reason": null,
                 "enabled": true,
                 "status": "operational",
@@ -21173,7 +21100,6 @@
     ],
     "1_data_task": [
       "dataset",
-      "source_adapter",
       "frequency",
       "information_set_type",
       "fred_sd_frequency_policy",

@@ -6,7 +6,7 @@ After the layer-boundary migration, Stage 1 holds **18 canonical axes** under th
 
 | Group | Axes | Focus |
 |---|---|---:|---|
-| Source & frame | 4 | `dataset`, `source_adapter`, `frequency`, `information_set_type` |
+| Source & frame | 3 user-facing + 1 internal | `dataset`, `frequency`, `information_set_type`; `source_adapter` is derived/internal |
 | FRED-SD source selection | 5 | `fred_sd_frequency_policy`, `fred_sd_state_group`, `fred_sd_variable_group`, hidden `state_selection`, hidden `sd_variable_selection` |
 | Target structure | 1 | `target_structure`; target/targets/horizons live in `leaf_config` |
 | Variable universe | 1 | `variable_universe` |

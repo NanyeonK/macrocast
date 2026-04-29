@@ -1732,9 +1732,14 @@ def _load_raw_for_recipe(recipe: RecipeSpec, local_raw_source: str | Path | Mapp
                 f"source_adapter={source_adapter!r} requires leaf_config.custom_data_path "
                 "(or pass local_raw_source to execute_recipe)"
             )
+        custom_schema = (
+            recipe.data_task_spec.get("custom_dataset_schema")
+            or recipe.data_task_spec.get("dataset_schema")
+            or recipe.raw_dataset
+        )
         if source_adapter == "custom_csv":
-            return load_custom_csv(custom_path, dataset=recipe.raw_dataset, cache_root=cache_root)
-        return load_custom_parquet(custom_path, dataset=recipe.raw_dataset, cache_root=cache_root)
+            return load_custom_csv(custom_path, dataset=str(custom_schema), cache_root=cache_root)
+        return load_custom_parquet(custom_path, dataset=str(custom_schema), cache_root=cache_root)
     parts = _dataset_parts(recipe.raw_dataset)
     if parts == {"fred_md", "fred_sd"}:
         if local_raw_source is not None and not isinstance(local_raw_source, Mapping):

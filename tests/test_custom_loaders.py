@@ -104,6 +104,124 @@ def test_custom_csv_via_execute_recipe_requires_custom_data_path() -> None:
         compile_recipe_dict(recipe)
 
 
+def test_custom_csv_dataset_requires_custom_dataset_schema(tmp_path: Path) -> None:
+    from macrocast.compiler.build import compile_recipe_dict
+
+    csv_path = tmp_path / "custom.csv"
+    _write_sample_csv(csv_path)
+    recipe = {
+        "recipe_id": "custom-csv-missing-schema",
+        "path": {
+            "0_meta": {"fixed_axes": {"study_scope": "one_target_one_method"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "custom_csv",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "custom_data_path": str(csv_path),
+                },
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level",
+                "tcode_policy": "raw_only", "target_missing_policy": "none",
+                "x_missing_policy": "none", "target_outlier_policy": "none",
+                "x_outlier_policy": "none", "scaling_policy": "none",
+                "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable",
+                "inverse_transform_policy": "none", "evaluation_scale": "raw_level",
+            }},
+            "3_training": {"fixed_axes": {
+                "framework": "expanding", "benchmark_family": "zero_change",
+                "feature_builder": "target_lag_features", "model_family": "ar",
+            }},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+    with pytest.raises(CompileValidationError, match="custom_dataset_schema"):
+        compile_recipe_dict(recipe)
+
+
+def test_custom_csv_dataset_compiles_to_schema_and_adapter(tmp_path: Path) -> None:
+    from macrocast.compiler.build import compile_recipe_dict
+
+    csv_path = tmp_path / "custom.csv"
+    _write_sample_csv(csv_path)
+    recipe = {
+        "recipe_id": "custom-csv-dataset",
+        "path": {
+            "0_meta": {"fixed_axes": {"study_scope": "one_target_one_method"}},
+            "1_data_task": {
+                "fixed_axes": {
+                    "dataset": "custom_csv",
+                    "frequency": "monthly",
+                    "information_set_type": "final_revised_data",
+                    "target_structure": "single_target",
+                },
+                "leaf_config": {
+                    "target": "INDPRO",
+                    "horizons": [1],
+                    "custom_data_path": str(csv_path),
+                    "custom_dataset_schema": "fred_md",
+                },
+            },
+            "2_preprocessing": {"fixed_axes": {
+                "target_transform_policy": "raw_level", "x_transform_policy": "raw_level",
+                "tcode_policy": "raw_only", "target_missing_policy": "none",
+                "x_missing_policy": "none", "target_outlier_policy": "none",
+                "x_outlier_policy": "none", "scaling_policy": "none",
+                "dimensionality_reduction_policy": "none", "feature_selection_policy": "none",
+                "preprocess_order": "none", "preprocess_fit_scope": "not_applicable",
+                "inverse_transform_policy": "none", "evaluation_scale": "raw_level",
+            }},
+            "3_training": {"fixed_axes": {
+                "framework": "expanding", "benchmark_family": "zero_change",
+                "feature_builder": "target_lag_features", "model_family": "ar",
+            }},
+            "4_evaluation": {"fixed_axes": {"primary_metric": "msfe"}},
+            "5_output_provenance": {"leaf_config": {"manifest_mode": "full", "benchmark_config": {"minimum_train_size": 5}}},
+            "6_stat_tests": {"fixed_axes": {}},
+            "7_importance": {"fixed_axes": {"importance_method": "none"}},
+        },
+    }
+
+    result = compile_recipe_dict(recipe)
+    recipe_spec = result.compiled.recipe_spec
+    assert recipe_spec.raw_dataset == "fred_md"
+    assert recipe_spec.data_task_spec["dataset"] == "custom_csv"
+    assert recipe_spec.data_task_spec["dataset_schema"] == "fred_md"
+    assert recipe_spec.data_task_spec["source_adapter"] == "custom_csv"
+
+
+def test_default_recipe_accepts_custom_csv_dataset(tmp_path: Path) -> None:
+    from macrocast.defaults import build_default_recipe_dict
+
+    csv_path = tmp_path / "custom.csv"
+    _write_sample_csv(csv_path)
+
+    recipe = build_default_recipe_dict(
+        dataset="custom_csv",
+        target="INDPRO",
+        start="2020-01",
+        end="2020-04",
+        horizons=[1],
+        custom_dataset_schema="fred_md",
+        custom_data_path=str(csv_path),
+    )
+
+    data_task = recipe["path"]["1_data_task"]
+    assert data_task["fixed_axes"]["dataset"] == "custom_csv"
+    assert data_task["fixed_axes"]["frequency"] == "monthly"
+    assert data_task["leaf_config"]["custom_dataset_schema"] == "fred_md"
+    assert data_task["leaf_config"]["custom_data_path"] == str(csv_path)
+
+
 def test_dataset_source_alias_is_rejected(tmp_path: Path) -> None:
     from macrocast.compiler.build import compile_recipe_dict
 

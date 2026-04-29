@@ -246,7 +246,6 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
 
     assert tree_axes == [
         "dataset",
-        "source_adapter",
         "frequency",
         "information_set_type",
         "fred_sd_frequency_policy",
@@ -264,6 +263,7 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
     ]
     assert presentation["dataset"]["label"] == "Dataset"
     assert presentation["dataset"]["values"]["fred_md+fred_sd"]["label"] == "FRED-MD + FRED-SD"
+    assert presentation["dataset"]["values"]["custom_csv"]["label"] == "Custom CSV"
     assert presentation["frequency"]["selection_kind"] == "derived_or_required_choice"
     assert presentation["target_structure"]["contract"].startswith("Target cardinality")
     assert presentation["target_structure"]["default_value"] == "single_target"

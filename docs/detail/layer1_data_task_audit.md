@@ -82,7 +82,8 @@ The following axes were moved out of Layer 1 ownership:
 
 ### 1.1 Source & Frame
 
-- `dataset` keeps `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd`.
+- `dataset` keeps `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd`
+  and now owns custom-file choices `custom_csv` / `custom_parquet`.
 - Standalone `fred_sd` requires explicit `frequency`; the source contains monthly and quarterly state series, so an implicit default would hide a research decision.
 - `fred_md+fred_sd` is fixed to monthly.
 - `fred_qd+fred_sd` is fixed to quarterly.
@@ -92,11 +93,13 @@ The following axes were moved out of Layer 1 ownership:
   replication bundles that should not require the optional Excel parser. Wide
   CSV columns use the same canonical `VARIABLE_STATE` names produced by the
   workbook adapter.
-- `source_adapter=custom_csv/custom_parquet` remains operational but requires `leaf_config.custom_data_path`.
+- `dataset=custom_csv/custom_parquet` requires `leaf_config.custom_dataset_schema`
+  and `leaf_config.custom_data_path`.
 - Official dataset transforms now have canonical Layer 1 axes:
   `official_transform_policy` and `official_transform_scope`.
 - Official transform choices are read from Layer 1 axes. The compiler derives runtime `PreprocessContract` fields from those choices for the current execution path, while generated recipes keep the official-transform decision in Layer 1.
-- `source_adapter` is the only source-dispatch axis. Removed source-dispatch aliases are rejected during registry validation.
+- `source_adapter` remains an internal dispatch bridge derived from `dataset`;
+  removed source-dispatch aliases are rejected during registry validation.
 - `target_structure` is the only Layer 1 target-shape axis. Runner grammar remains in Layer 0 through `study_scope`.
 
 ### 1.2 Target Structure

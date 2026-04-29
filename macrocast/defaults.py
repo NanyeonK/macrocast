@@ -39,6 +39,9 @@ DEFAULT_PROFILE: dict[str, Any] = {
     "preprocessing": dict(DEFAULT_PREPROCESSING_AXES),
 }
 
+_CUSTOM_DATASETS = {"custom_csv", "custom_parquet"}
+_CUSTOM_DATASET_SCHEMAS = {"fred_md", "fred_qd", "fred_sd"}
+
 
 def _normalize_horizons(horizons: Iterable[int]) -> tuple[int, ...]:
     values = tuple(int(horizon) for horizon in horizons)
@@ -88,6 +91,10 @@ def _normalize_dataset(dataset: str) -> str:
     parts = _dataset_parts(dataset)
     if not parts:
         raise ValueError("dataset is required")
+    if parts & _CUSTOM_DATASETS:
+        if len(parts) != 1:
+            raise ValueError("custom_csv/custom_parquet cannot be combined with another dataset")
+        return next(iter(parts))
     if "fred_md" in parts and "fred_qd" in parts:
         raise ValueError("fred_md and fred_qd cannot be combined in one default experiment")
     if parts == {"fred_md", "fred_sd"}:
@@ -124,6 +131,19 @@ def _resolve_frequency(dataset: str, frequency: str | None) -> str:
     return resolved
 
 
+def _custom_dataset_schema(dataset: str, custom_dataset_schema: str | None) -> str | None:
+    if dataset not in _CUSTOM_DATASETS:
+        if custom_dataset_schema is not None:
+            raise ValueError("custom_dataset_schema applies only when dataset is custom_csv or custom_parquet")
+        return None
+    if custom_dataset_schema not in _CUSTOM_DATASET_SCHEMAS:
+        raise ValueError(
+            "custom_csv/custom_parquet requires custom_dataset_schema "
+            f"in {sorted(_CUSTOM_DATASET_SCHEMAS)}"
+        )
+    return custom_dataset_schema
+
+
 def build_default_recipe_dict(
     *,
     dataset: str,
@@ -136,6 +156,8 @@ def build_default_recipe_dict(
     information_set_type: str = "final_revised_data",
     frequency: str | None = None,
     vintage: str | None = None,
+    custom_dataset_schema: str | None = None,
+    custom_data_path: str | None = None,
     framework: str = "expanding",
     benchmark_family: str = "zero_change",
     feature_builder: str = "target_lag_features",
@@ -163,7 +185,11 @@ def build_default_recipe_dict(
     if not end:
         raise ValueError("end is required")
     resolved_dataset = _normalize_dataset(dataset)
-    resolved_frequency = _resolve_frequency(resolved_dataset, frequency)
+    resolved_custom_schema = _custom_dataset_schema(resolved_dataset, custom_dataset_schema)
+    frequency_dataset = resolved_custom_schema or resolved_dataset
+    resolved_frequency = _resolve_frequency(frequency_dataset, frequency)
+    if resolved_dataset in _CUSTOM_DATASETS and not custom_data_path:
+        raise ValueError("custom_csv/custom_parquet requires custom_data_path")
     horizon_values = _normalize_horizons(horizons)
     model_values = _normalize_models(model_families, model_family)
     resolved_recipe_id = recipe_id or _default_recipe_id(
@@ -187,6 +213,18 @@ def build_default_recipe_dict(
         training_fixed["model_family"] = model_values[0]
     else:
         training_block["sweep_axes"] = {"model_family": list(model_values)}
+
+    data_leaf = {
+        "target": target,
+        "horizons": list(horizon_values),
+        "sample_start_date": str(start),
+        "sample_end_date": str(end),
+        "training_start_date": str(start),
+        "data_vintage": vintage,
+    }
+    if resolved_dataset in _CUSTOM_DATASETS:
+        data_leaf["custom_dataset_schema"] = resolved_custom_schema
+        data_leaf["custom_data_path"] = str(custom_data_path)
 
     return {
         "recipe_id": resolved_recipe_id,
@@ -216,14 +254,7 @@ def build_default_recipe_dict(
                     "target_structure": "single_target",
                     "missing_availability": "zero_fill_leading_predictor_gaps",
                 },
-                "leaf_config": {
-                    "target": target,
-                    "horizons": list(horizon_values),
-                    "sample_start_date": str(start),
-                    "sample_end_date": str(end),
-                    "training_start_date": str(start),
-                    "data_vintage": vintage,
-                },
+                "leaf_config": data_leaf,
             },
             "2_preprocessing": {"fixed_axes": dict(DEFAULT_PREPROCESSING_AXES)},
             "3_training": training_block,

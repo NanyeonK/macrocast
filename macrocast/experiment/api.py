@@ -138,6 +138,8 @@ class Experiment:
         horizons: Iterable[int] = (1,),
         frequency: str | None = None,
         vintage: str | None = None,
+        custom_dataset_schema: str | None = None,
+        custom_data_path: str | Path | None = None,
         default_profile: str = DEFAULT_PROFILE_NAME,
         recipe_id: str | None = None,
         model_family: str = "ar",
@@ -159,6 +161,8 @@ class Experiment:
         self.horizons = tuple(int(horizon) for horizon in horizons)
         self.frequency = frequency
         self.vintage = vintage
+        self.custom_dataset_schema = custom_dataset_schema
+        self.custom_data_path = None if custom_data_path is None else str(custom_data_path)
         self.default_profile = default_profile
         self.recipe_id = recipe_id
         self.model_family = model_family
@@ -340,6 +344,8 @@ class Experiment:
             horizons=self.horizons,
             frequency=self.frequency,
             vintage=self.vintage,
+            custom_dataset_schema=self.custom_dataset_schema,
+            custom_data_path=self.custom_data_path,
             recipe_id=self.recipe_id,
             default_profile=self.default_profile,
             framework=self.framework,
