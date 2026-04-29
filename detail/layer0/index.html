@@ -110,7 +110,7 @@
 <p>Layer 0 has <strong>four user-facing steps</strong>. Select them in this order:</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">study_scope</span></code> — choose target cardinality and whether the method path is fixed or compared.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> — decide how failed variants or cells are handled.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> — decide how failed variants or cells are handled; default is <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> — decide how strictly stochastic components are pinned.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> — decide whether execution is serial or parallelized over a work unit.</p></li>
 </ol>
@@ -157,7 +157,7 @@
 <p>Replication Library entries are ordinary YAML recipes with one of these four scopes; replication is not a Study Scope branch.</p>
 <p>Then set policies:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> matters most when a sweep or bundle can produce invalid cells.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> is already <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code> by default. Change it only when a sweep or bundle should continue after invalid cells.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reproducibility_mode</span></code> should be stricter for replication and looser for exploratory work.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compute_mode</span></code> is an execution request. It only has an effect when the selected run has multiple units of the chosen type.</p></li>
 </ul>

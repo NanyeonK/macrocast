@@ -108,6 +108,7 @@
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> controls what happens when a recipe, sweep variant, model branch, target branch, or cell fails.</p>
 <p>This is a runtime discipline axis. It does not change the statistical model. It changes whether the runner stops, skips, warns, or preserves partial artifacts.</p>
+<p>The default is <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code>. Users do not need to choose this axis for ordinary runs; the compiler and runtime treat an omitted <code class="docutils literal notranslate"><span class="pre">failure_policy</span></code> as <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code>.</p>
 <section id="where-it-lives-in-code">
 <h2>Where It Lives In Code<a class="headerlink" href="#where-it-lives-in-code" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -147,19 +148,20 @@
 <section id="choices">
 <h2>Choices<a class="headerlink" href="#choices" title="Link to this heading"></a></h2>
 <p>Read this axis as the run’s error-handling policy. It does not change the model; it changes whether the runtime stops or records failed units and continues.</p>
+<p>Only executable policies are exposed as public choices.</p>
 <section id="quick-map">
 <h3>Quick Map<a class="headerlink" href="#quick-map" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Choice</p></th>
-<th class="head"><p>Current State</p></th>
+<th class="head"><p>State</p></th>
 <th class="head"><p>Best Use</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fail_fast</span></code></p></td>
-<td><p>runnable</p></td>
-<td><p>debugging, replication</p></td>
+<td><p>runnable, default</p></td>
+<td><p>ordinary runs, debugging, replication</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">skip_failed_cell</span></code></p></td>
 <td><p>runnable</p></td>
@@ -177,20 +179,12 @@
 <td><p>runnable</p></td>
 <td><p>exploratory runs</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">retry_then_skip</span></code></p></td>
-<td><p>reserved</p></td>
-<td><p>planned retry policy</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fallback_to_default_hp</span></code></p></td>
-<td><p>reserved</p></td>
-<td><p>planned tuning fallback</p></td>
-</tr>
 </tbody>
 </table>
 </section>
 <section id="fail-fast">
 <h3><code class="docutils literal notranslate"><span class="pre">fail_fast</span></code><a class="headerlink" href="#fail-fast" title="Link to this heading"></a></h3>
-<p>Use this when a failure should stop the run immediately.</p>
+<p>Use this when a failure should stop the run immediately. This is the package default.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
@@ -200,6 +194,13 @@
 <p>Runtime behavior:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>direct recipe = re-raise first error
 sweep runner  = stop at first failed variant
+</pre></div>
+</div>
+<p>If the recipe omits <code class="docutils literal notranslate"><span class="pre">failure_policy</span></code>, the runtime behaves as if this value were selected:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">study_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">one_target_one_method</span>
 </pre></div>
 </div>
 </section>
@@ -265,36 +266,6 @@ run status   = continues where recoverable
 </pre></div>
 </div>
 </section>
-<section id="retry-then-skip">
-<h3><code class="docutils literal notranslate"><span class="pre">retry_then_skip</span></code><a class="headerlink" href="#retry-then-skip" title="Link to this heading"></a></h3>
-<p>This is reserved policy grammar. It describes retrying a failed unit and skipping it if retry also fails.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retry_then_skip</span>
-</pre></div>
-</div>
-<p>Current status:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
-compiler = reports not-supported for runnable recipes
-</pre></div>
-</div>
-</section>
-<section id="fallback-to-default-hp">
-<h3><code class="docutils literal notranslate"><span class="pre">fallback_to_default_hp</span></code><a class="headerlink" href="#fallback-to-default-hp" title="Link to this heading"></a></h3>
-<p>This is reserved policy grammar for tuning failures.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">failure_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fallback_to_default_hp</span>
-</pre></div>
-</div>
-<p>Current status:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>status = registry_only
-runtime = no current fallback executor
-</pre></div>
-</div>
-</section>
 </section>
 <section id="failure-scope">
 <h2>Failure Scope<a class="headerlink" href="#failure-scope" title="Link to this heading"></a></h2>
@@ -307,6 +278,14 @@ runtime = no current fallback executor
 </section>
 <section id="yaml">
 <h2>YAML<a class="headerlink" href="#yaml" title="Link to this heading"></a></h2>
+<p>Default behavior can be left implicit:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">study_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">one_target_one_method</span>
+</pre></div>
+</div>
+<p>Or written explicitly:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">0_meta</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
@@ -344,7 +323,9 @@ runtime = no current fallback executor
 <p>Use <code class="docutils literal notranslate"><span class="pre">fail_fast</span></code> for debugging and replication.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">skip_failed_cell</span></code> for large sweeps where invalid combinations are expected.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">warn_only</span></code> for exploratory work where warnings should be visible in logs but the run should continue.</p>
-<p>Use registry-only policies only when documenting planned contracts, not for runnable recipes.</p>
+<p>The public axis intentionally contains only executable policies. Retry and
+hyperparameter-fallback behavior should be added later only when the runtime
+executor exists.</p>
 </section>
 </section>
 
