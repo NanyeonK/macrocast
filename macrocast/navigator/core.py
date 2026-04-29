@@ -38,8 +38,8 @@ _TREE_AXES = {
         "compute_mode",
     ),
     "1_data_task": (
-        "dataset",
         "custom_source_policy",
+        "dataset",
         "frequency",
         "information_set_type",
         "fred_sd_frequency_policy",
@@ -158,8 +158,8 @@ _LAYER_AXIS_GROUPS = {
             "id": "source_identity",
             "label": "Source Identity",
             "level": "primary_decision",
-            "summary": "Choose the FRED source family, optional custom data use, and calendar frequency.",
-            "axes": ("dataset", "custom_source_policy", "frequency"),
+            "summary": "Choose custom data use first, then the FRED route shape and calendar frequency.",
+            "axes": ("custom_source_policy", "dataset", "frequency"),
         },
         {
             "id": "information_regime",
@@ -211,8 +211,8 @@ _LAYER_AXIS_GROUPS = {
 }
 
 _AXIS_HIERARCHY_LEVELS = {
-    "dataset": "primary_decision",
-    "custom_source_policy": "conditional_subdecision",
+    "custom_source_policy": "primary_decision",
+    "dataset": "conditional_subdecision",
     "frequency": "derived_or_required",
     "information_set_type": "primary_policy",
     "release_lag_rule": "timing_policy",
@@ -632,6 +632,9 @@ def _compatibility_reason(axis_name: str, value: str, selected: Mapping[str, Any
         implied_frequency = _dataset_implied_frequency(dataset)
         if implied_frequency is not None and value != implied_frequency:
             return f"dataset={dataset} requires frequency={implied_frequency}"
+    if axis_name == "dataset":
+        if custom_source_policy == "custom_panel_only" and "+" in value:
+            return "custom_panel_only supports one FRED source panel; choose a single source-panel route"
     if axis_name == "custom_source_policy":
         if value == "custom_panel_only" and "+" in dataset:
             return "custom_panel_only supports one FRED source panel; use official_plus_custom for composites"
