@@ -151,6 +151,82 @@ _TREE_AXES = {
     ),
 }
 
+_LAYER_AXIS_GROUPS = {
+    "1_data_task": (
+        {
+            "id": "source_identity",
+            "label": "Source Identity",
+            "level": "primary_decision",
+            "summary": "Choose the source family and resolve calendar frequency.",
+            "axes": ("dataset", "frequency"),
+        },
+        {
+            "id": "information_regime",
+            "label": "Information Regime",
+            "level": "primary_policy",
+            "summary": "Define the information set and timing discipline used before Layer 2 sees the frame.",
+            "axes": ("information_set_type", "release_lag_rule", "contemporaneous_x_rule"),
+        },
+        {
+            "id": "fred_sd_source_scope",
+            "label": "FRED-SD Source Scope",
+            "level": "conditional_subgroup",
+            "parent_axis": "dataset",
+            "condition": "Active only when dataset includes fred_sd.",
+            "summary": "Restrict FRED-SD native frequency, states, and workbook variables.",
+            "axes": ("fred_sd_frequency_policy", "fred_sd_state_group", "fred_sd_variable_group"),
+        },
+        {
+            "id": "target_request",
+            "label": "Target Request",
+            "level": "contract_derived",
+            "parent_axis": "study_scope",
+            "condition": "Target cardinality is constrained by Layer 0 Study Scope.",
+            "summary": "Record whether Layer 1 carries one target or multiple targets; target IDs and horizons live in leaf_config.",
+            "axes": ("target_structure",),
+        },
+        {
+            "id": "source_universe",
+            "label": "Source Universe",
+            "level": "secondary_policy",
+            "summary": "Limit eligible source columns before representation construction.",
+            "axes": ("variable_universe",),
+        },
+        {
+            "id": "raw_source_quality",
+            "label": "Raw Source Quality",
+            "level": "secondary_policy",
+            "summary": "Handle missing values and outliers already present in the raw source before official transforms.",
+            "axes": ("raw_missing_policy", "raw_outlier_policy"),
+        },
+        {
+            "id": "official_frame_policy",
+            "label": "Official Frame Policy",
+            "level": "secondary_policy",
+            "summary": "Apply official transforms and close availability gaps in the Layer 1 official frame.",
+            "axes": ("official_transform_policy", "official_transform_scope", "missing_availability"),
+        },
+    ),
+}
+
+_AXIS_HIERARCHY_LEVELS = {
+    "dataset": "primary_decision",
+    "frequency": "derived_or_required",
+    "information_set_type": "primary_policy",
+    "release_lag_rule": "timing_policy",
+    "contemporaneous_x_rule": "timing_policy",
+    "fred_sd_frequency_policy": "conditional_subdecision",
+    "fred_sd_state_group": "conditional_subdecision",
+    "fred_sd_variable_group": "conditional_subdecision",
+    "target_structure": "contract_derived",
+    "variable_universe": "secondary_policy",
+    "raw_missing_policy": "secondary_policy",
+    "raw_outlier_policy": "secondary_policy",
+    "official_transform_policy": "secondary_policy",
+    "official_transform_scope": "secondary_policy",
+    "missing_availability": "secondary_policy",
+}
+
 _DEFAULT_SELECTIONS = {
     "study_scope": "one_target_one_method",
     "failure_policy": "fail_fast",
@@ -700,6 +776,38 @@ def _canonical_path_effect(layer: str, axis_name: str, value: str) -> str:
     return f"path.{layer}.fixed_axes.{axis_name} = {value!r}"
 
 
+def _axis_hierarchy_metadata(layer: str, axis_name: str) -> dict[str, Any]:
+    for group_index, group in enumerate(_LAYER_AXIS_GROUPS.get(layer, ())):
+        axes = tuple(group.get("axes", ()))
+        if axis_name in axes:
+            return {
+                "group_id": str(group["id"]),
+                "group_label": str(group["label"]),
+                "group_level": str(group.get("level", "primary_decision")),
+                "axis_level": _AXIS_HIERARCHY_LEVELS.get(axis_name, str(group.get("level", "primary_decision"))),
+                "group_order": group_index + 1,
+                "axis_order_in_group": axes.index(axis_name) + 1,
+                **(
+                    {"parent_axis": str(group["parent_axis"])}
+                    if group.get("parent_axis")
+                    else {}
+                ),
+                **(
+                    {"group_condition": str(group["condition"])}
+                    if group.get("condition")
+                    else {}
+                ),
+            }
+    return {
+        "group_id": f"{layer}_default",
+        "group_label": _LAYER_LABELS.get(layer, layer),
+        "group_level": "primary_decision",
+        "axis_level": _AXIS_HIERARCHY_LEVELS.get(axis_name, "primary_decision"),
+        "group_order": 1,
+        "axis_order_in_group": 1,
+    }
+
+
 def navigator_state_engine_spec() -> dict[str, Any]:
     """Serializable rule metadata for the browser-side Navigator state engine."""
 
@@ -767,6 +875,7 @@ def _axis_view(layer: str, axis_name: str, selected: Mapping[str, Any], registry
         "layer_label": _LAYER_LABELS[layer],
         "axis": axis_name,
         "selected": selected.get(axis_name),
+        **_axis_hierarchy_metadata(layer, axis_name),
         "options": options,
     }
 

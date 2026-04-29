@@ -11,6 +11,7 @@ from .core import (
     NAVIGATOR_SCHEMA_VERSION,
     OPERATIONAL_NARROW_CONTRACTS,
     _LAYER_LABELS,
+    _LAYER_AXIS_GROUPS,
     _TREE_AXES,
     _VIRTUAL_AXES,
     _VIRTUAL_AXIS_STATUSES,
@@ -91,6 +92,19 @@ def axis_presentation() -> dict[str, Any]:
     return axis_presentation_map()
 
 
+def layer_axis_groups() -> dict[str, list[dict[str, Any]]]:
+    return {
+        layer: [
+            {
+                **{key: value for key, value in group.items() if key != "axes"},
+                "axes": list(group.get("axes", ())),
+            }
+            for group in groups
+        ]
+        for layer, groups in _LAYER_AXIS_GROUPS.items()
+    }
+
+
 def navigator_ui_data(sample_paths: tuple[str | Path, ...] | None = None) -> dict[str, Any]:
     root = _repo_root()
     paths = sample_paths or _DEFAULT_SAMPLE_PATHS
@@ -100,6 +114,7 @@ def navigator_ui_data(sample_paths: tuple[str | Path, ...] | None = None) -> dic
         "axis_presentation_schema_version": AXIS_PRESENTATION_SCHEMA_VERSION,
         "replication_library_version": REPLICATION_LIBRARY_VERSION,
         "layer_labels": dict(_LAYER_LABELS),
+        "layer_axis_groups": layer_axis_groups(),
         "tree_axes": {layer: list(axes) for layer, axes in _TREE_AXES.items()},
         "axis_catalog": axis_catalog(),
         "axis_presentation": axis_presentation(),
