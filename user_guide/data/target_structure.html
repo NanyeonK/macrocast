@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Target Structure (1.2) &mdash; macrocast</title>
+  <title>Target (y) And Predictor (x) Definition (1.2) &mdash; macrocast</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
@@ -67,7 +67,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Target Structure (1.2)</li>
+      <li class="breadcrumb-item active">Target (y) And Predictor (x) Definition (1.2)</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/NanyeonK/macrocast/blob/main/docs/user_guide/data/target_structure.md" class="fa fa-github"> Edit on GitHub</a>
       </li>
@@ -77,74 +77,119 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="target-structure-1-2">
-<h1>Target Structure (1.2)<a class="headerlink" href="#target-structure-1-2" title="Link to this heading"></a></h1>
-<p>Layer 1 only declares the target shape inside the FRED data frame. It does
-not choose the study runner. Runner ownership stays in Layer 0 through
-<code class="docutils literal notranslate"><span class="pre">study_scope</span></code>.</p>
+  <section id="target-y-and-predictor-x-definition-1-2">
+<h1>Target (y) And Predictor (x) Definition (1.2)<a class="headerlink" href="#target-y-and-predictor-x-definition-1-2" title="Link to this heading"></a></h1>
+<p>Layer 1 declares which y series is forecast and which source columns are
+eligible as candidate predictors x. It does not choose y transformations,
+horizon target construction, x lags, factors, or model-ready feature blocks.</p>
 <section id="target-structure">
 <h2>1.2.1 <code class="docutils literal notranslate"><span class="pre">target_structure</span></code><a class="headerlink" href="#target-structure" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code> says whether the recipe has one target series or multiple
-target series.</p>
-<p>Values:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">single_target</span></code>: one target series. Requires
-<code class="docutils literal notranslate"><span class="pre">leaf_config.target</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">multi_target</span></code>: two or more target series. Requires
-<code class="docutils literal notranslate"><span class="pre">leaf_config.targets</span></code>.</p></li>
-</ul>
-<p>Canonical API:</p>
-<ul class="simple">
-<li><p>Generated recipes, manifests, and docs use <code class="docutils literal notranslate"><span class="pre">target_structure</span></code>.</p></li>
-<li><p>Removed target-shape aliases are rejected during registry validation.</p></li>
-</ul>
+<p><strong>Target (y) Definition</strong> says whether the recipe has one y series or multiple y
+series.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Required payload</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_target</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.target</span></code></p></td>
+<td><p>One y series.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">multi_target</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.targets</span></code></p></td>
+<td><p>Multiple y series.</p></td>
+</tr>
+</tbody>
+</table>
 <p>Layer 0 connection:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">study_scope</span></code> is derived from <code class="docutils literal notranslate"><span class="pre">target_structure</span></code> plus the sweep shape.</p></li>
-<li><p>Multi-target <code class="docutils literal notranslate"><span class="pre">study_scope</span></code> values require
-<code class="docutils literal notranslate"><span class="pre">target_structure=multi_target</span></code>.</p></li>
-<li><p>Single-target <code class="docutils literal notranslate"><span class="pre">study_scope</span></code> values require
+<li><p><code class="docutils literal notranslate"><span class="pre">one_target_one_method</span></code> and <code class="docutils literal notranslate"><span class="pre">one_target_compare_methods</span></code> require
 <code class="docutils literal notranslate"><span class="pre">target_structure=single_target</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">multiple_targets_one_method</span></code> and <code class="docutils literal notranslate"><span class="pre">multiple_targets_compare_methods</span></code> require
+<code class="docutils literal notranslate"><span class="pre">target_structure=multi_target</span></code>.</p></li>
+</ul>
+</section>
+<section id="variable-universe">
+<h2>1.2.2 <code class="docutils literal notranslate"><span class="pre">variable_universe</span></code><a class="headerlink" href="#variable-universe" title="Link to this heading"></a></h2>
+<p><strong>Predictor (x) Universe</strong> decides which source columns are eligible as x before
+Layer 2 representation construction.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Required payload</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">all_variables</span></code></p></td>
+<td><p>none</p></td>
+<td><p>Use all eligible non-date, non-target source columns.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">core_variables</span></code></p></td>
+<td><p>package metadata</p></td>
+<td><p>Use the package’s core macro subset.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">category_variables</span></code></p></td>
+<td><p>category mapping payload</p></td>
+<td><p>Use columns mapped to a category.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">target_specific_variables</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.target_specific_columns</span></code></p></td>
+<td><p>Use different x sets by target y.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">explicit_variable_list</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">leaf_config.variable_universe_columns</span></code></p></td>
+<td><p>Use an explicit x column list.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Custom data note:</p>
+<ul class="simple">
+<li><p>Custom-only files have no automatic FRED category metadata.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">all_variables</span></code> or <code class="docutils literal notranslate"><span class="pre">explicit_variable_list</span></code> unless the recipe provides
+category or target-specific mappings.</p></li>
 </ul>
 <p>Recipe usage:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">target_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target</span>
-<span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">INDPRO</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">UNRATE</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">CPIAUCSL</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">]</span>
-</pre></div>
-</div>
-<p>Single-target usage:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">target_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_target</span>
+<span class="w">      </span><span class="nt">variable_universe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">explicit_variable_list</span>
 <span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INDPRO</span>
 <span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">variable_universe_columns</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">RPI</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">UNRATE</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">CPIAUCSL</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>Multi-target usage:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">path</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">1_data_task</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">target_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_target</span>
+<span class="w">      </span><span class="nt">variable_universe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_specific_variables</span>
+<span class="w">    </span><span class="nt">leaf_config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">INDPRO</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">UNRATE</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">horizons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">target_specific_columns</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">INDPRO</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">RPI</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">UNRATE</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">CPIAUCSL</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">UNRATE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">PAYEMS</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">CLAIMSx</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">INDPRO</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 </section>
 <section id="boundary">
 <h2>Boundary<a class="headerlink" href="#boundary" title="Link to this heading"></a></h2>
-<p>These axes are no longer Layer 1 target-structure choices:</p>
+<p>These are not Layer 1 target/predictor-definition choices:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">forecast_type</span></code>: Layer 3, because direct vs iterated is forecast-generation
-logic.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">forecast_object</span></code>: Layer 3, because mean/median/quantile is model output
-contract.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">predictor_family</span></code> and <code class="docutils literal notranslate"><span class="pre">feature_builder</span></code>: Layer 2, because they choose the
-feature representation handed to the forecast generator.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">horizon_target_construction</span></code>: Layer 2, because level/diff/logdiff target
-construction is target representation. Coulombe-style direct average and
-path-average growth/difference targets are also Layer 2 target representation
-choices, even where runtime support is still registry-only.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">multi_target_architecture</span></code>: Layer 0, through <code class="docutils literal notranslate"><span class="pre">study_scope</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">horizon_target_construction</span></code>: Layer 2 target representation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_transform</span></code> and <code class="docutils literal notranslate"><span class="pre">target_normalization</span></code>: Layer 2 target preprocessing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_lag_block</span></code>, <code class="docutils literal notranslate"><span class="pre">x_lag_feature_block</span></code>, <code class="docutils literal notranslate"><span class="pre">factor_feature_block</span></code>, and
+feature-block combinations: Layer 2 representation construction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">forecast_type</span></code> and <code class="docutils literal notranslate"><span class="pre">forecast_object</span></code>: Layer 3 forecast-generation contract.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model_family</span></code> and <code class="docutils literal notranslate"><span class="pre">benchmark_family</span></code>: Layer 3 training choices.</p></li>
 </ul>
-<p>Layer 1 owns target identity and target cardinality. Layer 0 owns how that
-cardinality is executed.</p>
 </section>
 </section>
 

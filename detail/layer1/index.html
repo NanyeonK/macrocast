@@ -54,11 +54,11 @@
 <li class="toctree-l2"><a class="reference internal" href="../layer0/index.html">4.0 Layer 0: Study Scope</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">4.1 Layer 1: Data Task</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="source_frame.html">4.1.1 Source And Frame</a></li>
-<li class="toctree-l3"><a class="reference internal" href="fred_sd_source_selection.html">4.1.2 FRED-SD Source Selection</a></li>
-<li class="toctree-l3"><a class="reference internal" href="target_universe.html">4.1.3 Target And Variable Universe</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fred_sd_source_selection.html">4.1.4 FRED-SD Predictor Scope</a></li>
+<li class="toctree-l3"><a class="reference internal" href="target_universe.html">4.1.3 Target (y) And Predictor (x) Definitions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="raw_source_cleaning.html">4.1.4 Raw Source Cleaning</a></li>
 <li class="toctree-l3"><a class="reference internal" href="official_transforms.html">4.1.5 Official Transforms</a></li>
-<li class="toctree-l3"><a class="reference internal" href="availability_timing.html">4.1.6 Availability And Timing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="availability_timing.html">4.1.2 Forecast-Time Information And Frame Availability</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../layer2/index.html">4.2 Layer 2: Representation / Research Preprocessing</a></li>
@@ -106,10 +106,18 @@
 <li><p>Current: Layer 1</p></li>
 <li><p>Next: <a class="reference internal" href="../layer2/index.html"><span class="std std-doc">4.2 Layer 2: Representation / Research Preprocessing</span></a></p></li>
 </ul>
-<p>Layer 1 owns the FRED data task. It decides which FRED source is used, whether custom data is attached, which target structure is being forecast, what information is available, and how raw source-level missing/outlier and transform policies are handled before representation construction.</p>
+<p>Layer 1 owns the source-frame contract for a macro forecasting study. It decides
+which source data define the panel, the analysis frequency, what information is
+available at each forecast origin, what target y is being forecast, and which
+predictor x columns are eligible before Layer 2 builds research representations.</p>
 <section id="simple-vs-full">
 <h2>Simple vs Full<a class="headerlink" href="#simple-vs-full" title="Link to this heading"></a></h2>
-<p>Simple asks for the data question directly: <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">target</span></code>, <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code>, and <code class="docutils literal notranslate"><span class="pre">horizons</span></code>. Standalone <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code> also needs <code class="docutils literal notranslate"><span class="pre">frequency</span></code>. Custom files are optional source modifiers: Simple can expose <code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code> when the user wants to replace or append to the FRED source panel. The file parser and internal schema are inferred from <code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, and <code class="docutils literal notranslate"><span class="pre">frequency</span></code>. Optional Simple helpers expose FRED-SD state/variable selection, FRED-SD frequency policy, and FRED-SD t-code policies, but the ordinary path keeps Layer 1 mostly defaulted.</p>
+<p>Simple asks for the data question directly: <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Source</span> <span class="pre">Mode</span></code>, analysis
+frequency when needed, target y, sample dates, and horizons. FRED-only studies
+choose a FRED source panel; custom-only studies provide a custom file path and
+frequency without choosing a FRED panel. Optional Simple helpers expose
+FRED-SD state/variable selection and FRED-SD frequency evidence policies, but
+the ordinary path keeps Layer 1 mostly defaulted.</p>
 <p>Full exposes the complete Layer 1 FRED-frame contract. The live registry keeps hidden compatibility axes for older custom-source recipes, but the Navigator primary tree shows only user-facing decisions. Those axes are not all the same depth: some are primary decisions, some are derived/required follow-ups, some are conditional FRED-SD sub-decisions, and many are defaulted policy controls. <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
 </section>
 <section id="hierarchy">
@@ -125,29 +133,29 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Primary decision</p></td>
-<td><p>Source identity</p></td>
+<td><p>Data Source Mode / Frequency</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
-<td><p>Choose custom data use first. <code class="docutils literal notranslate"><span class="pre">dataset</span></code> then selects the FRED loader route for FRED runs, or the route/schema contract for custom-only runs. <code class="docutils literal notranslate"><span class="pre">frequency</span></code> is derived for MD/QD/composites and required only for standalone FRED-SD.</p></td>
+<td><p>First choose FRED-only, custom-only, or FRED-plus-custom data. Then close the analysis frequency. <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is a FRED source-panel choice, not a custom-only choice.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Primary policy</p></td>
-<td><p>Information regime</p></td>
+<td><p>Forecast-Time Information</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>, <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
-<td><p>Defines what information is available at each forecast origin.</p></td>
+<td><p>Defines the data revision/vintage regime, publication lag, and same-period x availability at each forecast origin.</p></td>
+</tr>
+<tr class="row-even"><td><p>Contract-derived</p></td>
+<td><p>Target (y) Definition</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code></p></td>
+<td><p>Constrained by Layer 0 <code class="docutils literal notranslate"><span class="pre">study_scope</span></code>; y IDs, horizons, and dates live in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Secondary policy</p></td>
+<td><p>Predictor (x) Definition</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">variable_universe</span></code></p></td>
+<td><p>Limits eligible candidate x columns before Layer 2 builds representations.</p></td>
 </tr>
 <tr class="row-even"><td><p>Conditional subgroup</p></td>
-<td><p>FRED-SD source scope</p></td>
+<td><p>FRED-SD Predictor Scope</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code></p></td>
-<td><p>Active only when <code class="docutils literal notranslate"><span class="pre">dataset</span></code> includes FRED-SD.</p></td>
-</tr>
-<tr class="row-odd"><td><p>Contract-derived</p></td>
-<td><p>Target request</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code></p></td>
-<td><p>Constrained by Layer 0 <code class="docutils literal notranslate"><span class="pre">study_scope</span></code>; target IDs, target lists, horizons, and dates live in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code>.</p></td>
-</tr>
-<tr class="row-even"><td><p>Secondary policy</p></td>
-<td><p>Source universe</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">variable_universe</span></code></p></td>
-<td><p>Limits eligible raw source columns before Layer 2 builds representations.</p></td>
+<td><p>Active only when the FRED source panel includes FRED-SD.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Secondary policy</p></td>
 <td><p>Raw source quality</p></td>
@@ -155,9 +163,9 @@
 <td><p>Handles defects present in raw source data before FRED transforms/T-codes.</p></td>
 </tr>
 <tr class="row-even"><td><p>Secondary policy</p></td>
-<td><p>FRED frame policy</p></td>
+<td><p>FRED transform / frame availability</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>, <code class="docutils literal notranslate"><span class="pre">missing_availability</span></code></p></td>
-<td><p>Closes the official Layer 1 frame before Layer 2 research preprocessing begins.</p></td>
+<td><p>Applies FRED transform codes when available and closes source-frame availability gaps before Layer 2 begins.</p></td>
 </tr>
 </tbody>
 </table>
@@ -175,27 +183,31 @@
 <tbody>
 <tr class="row-even"><td><p>4.1.1</p></td>
 <td><p><a class="reference internal" href="source_frame.html"><span class="std std-doc">Source and frame</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>; custom paths live in <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_source_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">frequency</span></code>; custom paths live in <code class="docutils literal notranslate"><span class="pre">leaf_config.custom_source_path</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>4.1.2</p></td>
-<td><p><a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">FRED-SD source selection</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">state_selection</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
+<td><p><a class="reference internal" href="availability_timing.html"><span class="std std-doc">Forecast-time information</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>, <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>4.1.3</p></td>
-<td><p><a class="reference internal" href="target_universe.html"><span class="std std-doc">Target and variable universe</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code>, <code class="docutils literal notranslate"><span class="pre">variable_universe</span></code>; target IDs, horizons, and sample dates live in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code></p></td>
+<td><p><a class="reference internal" href="target_universe.html"><span class="std std-doc">Target (y) and predictor (x) definitions</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code>, <code class="docutils literal notranslate"><span class="pre">variable_universe</span></code>; target IDs, horizons, sample dates, and x column lists live in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>4.1.4</p></td>
+<td><p><a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">FRED-SD predictor scope</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">state_selection</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>4.1.5</p></td>
 <td><p><a class="reference internal" href="raw_source_cleaning.html"><span class="std std-doc">Raw source cleaning</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">raw_missing_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">raw_outlier_policy</span></code> before FRED transforms/T-codes</p></td>
 </tr>
-<tr class="row-even"><td><p>4.1.5</p></td>
+<tr class="row-odd"><td><p>4.1.6</p></td>
 <td><p><a class="reference internal" href="official_transforms.html"><span class="std std-doc">Official transforms</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>4.1.6</p></td>
-<td><p><a class="reference internal" href="availability_timing.html"><span class="std std-doc">Availability and timing</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">missing_availability</span></code>, <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code> after the FRED frame exists</p></td>
+<tr class="row-even"><td><p>4.1.7</p></td>
+<td><p><a class="reference internal" href="availability_timing.html"><span class="std std-doc">Frame availability</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">missing_availability</span></code> after the source frame exists</p></td>
 </tr>
 </tbody>
 </table>
@@ -212,23 +224,31 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">official_only</span></code></p></td>
-<td><p>first source choice; choose <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> or <code class="docutils literal notranslate"><span class="pre">official_plus_custom</span></code> when using a custom file</p></td>
+<td><p>first source choice; choose FRED-only, custom-only, or FRED-plus-custom data</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></td>
-<td><p>required user choice</p></td>
-<td><p>conditional route choice; FRED source panel route only: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>; <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code> allows only single routes</p></td>
+<td><p>required only when FRED data is used</p></td>
+<td><p>FRED source panel only: <code class="docutils literal notranslate"><span class="pre">fred_md</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_qd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_md+fred_sd</span></code>, or <code class="docutils literal notranslate"><span class="pre">fred_qd+fred_sd</span></code>; custom-only should not expose this as a user choice</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">custom_source_path</span></code></p></td>
 <td><p>none</p></td>
 <td><p>required in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code> when <code class="docutils literal notranslate"><span class="pre">custom_source_policy</span></code> is not <code class="docutils literal notranslate"><span class="pre">official_only</span></code>; parser/schema are inferred</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></td>
-<td><p>inferred for FRED-MD/QD/composites; required for standalone FRED-SD</p></td>
-<td><p>MD/composites are constrained; standalone FRED-SD must choose monthly or quarterly</p></td>
+<td><p>inferred for FRED-MD/QD/composites; required for standalone FRED-SD and custom-only</p></td>
+<td><p>analysis frequency: monthly or quarterly</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">final_revised_data</span></code></p></td>
-<td><p>write explicitly in Full recipes</p></td>
+<td><p>data revision/vintage regime; not the publication-lag rule</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ignore_release_lag</span></code></p></td>
+<td><p>publication-lag rule; <code class="docutils literal notranslate"><span class="pre">series_specific_lag</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.release_lag_per_series</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forbid_same_period_predictors</span></code></p></td>
+<td><p>same-period predictor rule; <code class="docutils literal notranslate"><span class="pre">allow_same_period_predictors</span></code> is an oracle benchmark</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">report_only</span></code></p></td>
@@ -278,14 +298,6 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">zero_fill_leading_predictor_gaps</span></code></p></td>
 <td><p>defaulted after the FRED frame exists</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ignore_release_lag</span></code></p></td>
-<td><p>defaulted; <code class="docutils literal notranslate"><span class="pre">series_specific_lag</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.release_lag_per_series</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forbid_same_period_predictors</span></code></p></td>
-<td><p>defaulted realistic forecasting rule; <code class="docutils literal notranslate"><span class="pre">allow_same_period_predictors</span></code> is an oracle benchmark</p></td>
-</tr>
 </tbody>
 </table>
 </section>
@@ -311,17 +323,17 @@
 <ul class="simple">
 <li><p><a class="reference internal" href="../layer1_data_task_audit.html"><span class="std std-doc">Layer 1 Data Task Audit</span></a></p></li>
 <li><p><a class="reference internal" href="../../user_guide/data/source.html"><span class="std std-doc">Data Source and Frame</span></a></p></li>
-<li><p><a class="reference internal" href="../../user_guide/data/target_structure.html"><span class="std std-doc">Target Structure</span></a></p></li>
+<li><p><a class="reference internal" href="../../user_guide/data/target_structure.html"><span class="std std-doc">Target (y) And Predictor (x) Definition</span></a></p></li>
 <li><p><a class="reference internal" href="../../user_guide/data/policies.html"><span class="std std-doc">Data Handling Policies</span></a></p></li>
 </ul>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="source_frame.html">4.1.1 Source And Frame</a></li>
-<li class="toctree-l1"><a class="reference internal" href="fred_sd_source_selection.html">4.1.2 FRED-SD Source Selection</a></li>
-<li class="toctree-l1"><a class="reference internal" href="target_universe.html">4.1.3 Target And Variable Universe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fred_sd_source_selection.html">4.1.4 FRED-SD Predictor Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="target_universe.html">4.1.3 Target (y) And Predictor (x) Definitions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="raw_source_cleaning.html">4.1.4 Raw Source Cleaning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="official_transforms.html">4.1.5 Official Transforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="availability_timing.html">4.1.6 Availability And Timing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="availability_timing.html">4.1.2 Forecast-Time Information And Frame Availability</a></li>
 </ul>
 </div>
 </section>
