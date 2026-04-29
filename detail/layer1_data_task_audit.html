@@ -99,10 +99,9 @@ Layer 1.</p>
 <section id="canonical-layer-1-after-migration">
 <h2>Canonical Layer 1 After Migration<a class="headerlink" href="#canonical-layer-1-after-migration" title="Link to this heading"></a></h2>
 <p>Layer 1 now means official data frame and target identity. The live canonical
-Layer 1 registry has 18 axes:</p>
+Layer 1 registry has 17 axes:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">dataset</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code></p></li>
@@ -172,8 +171,6 @@ and <code class="docutils literal notranslate"><span class="pre">leaf_config.cus
 <li><p>Official dataset transforms now have canonical Layer 1 axes:
 <code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code> and <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>.</p></li>
 <li><p>Official transform choices are read from Layer 1 axes. The compiler derives runtime <code class="docutils literal notranslate"><span class="pre">PreprocessContract</span></code> fields from those choices for the current execution path, while generated recipes keep the official-transform decision in Layer 1.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">source_adapter</span></code> remains an internal dispatch bridge derived from <code class="docutils literal notranslate"><span class="pre">dataset</span></code>;
-removed source-dispatch aliases are rejected during registry validation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code> is the only Layer 1 target-shape axis. Runner grammar remains in Layer 0 through <code class="docutils literal notranslate"><span class="pre">study_scope</span></code>.</p></li>
 </ul>
 </section>
