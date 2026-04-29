@@ -17,7 +17,7 @@ Simple exposes only Layer 0 Study Scope. Full exposes all four user-facing Layer
 | Stage | Axes | Allowed values | What it governs |
 |---|---|---|---|
 | 0 — Design  | 4 user-facing + internal `axis_type` | see below | Study scope, failure handling, reproducibility, compute layout, and YAML sweep grammar |
-| 1 — Data    | 18 registry axes, 15 primary Navigator axes | all current values operational | FRED data frame: dataset, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability |
+| 1 — Data    | 18 registry axes, 15 primary Navigator axes | all current values operational | Source frame: custom data use, FRED panel route, frequency, information set, FRED-SD source selection, target structure, raw cleaning, official transforms, availability |
 
 ---
 
@@ -99,8 +99,8 @@ Simple exposes only Layer 0 Study Scope. Full exposes all four user-facing Layer
 
 | Axis | Op values | Check / observe |
 |---|---|---|
-| `dataset` | `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` | FRED source loaded/merged -> `raw_result.data.columns`; standalone FRED-SD requires explicit `frequency` |
-| `custom_source_policy` | `official_only`, `custom_panel_only`, `official_plus_custom` | optional custom-file use; custom files require `leaf_config.custom_source_path`; parser/schema are inferred |
+| `custom_source_policy` | `official_only`, `custom_panel_only`, `official_plus_custom` | first source decision; custom files require `leaf_config.custom_source_path`; parser/schema are inferred |
+| `dataset` | `fred_md`, `fred_qd`, `fred_sd`, `fred_md+fred_sd`, `fred_qd+fred_sd` | FRED route loaded/merged for FRED runs; route/schema contract for custom-only runs; standalone FRED-SD requires explicit `frequency` |
 | `custom_source_path` | local `.csv`, `.parquet`, or `.pq` path | leaf_config payload, not a Navigator axis; file rows must match selected `frequency` |
 | `frequency` | `monthly`, `quarterly` | conversion target; MD+SD must be monthly, QD+SD must be quarterly |
 | `information_set_type` | `final_revised_data`, `pseudo_oos_on_revised_data` | revised = post-revision truth; pseudo-oos masks to simulate real-time |

@@ -245,8 +245,8 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
     tree_axes = payload["tree_axes"]["1_data_task"]
 
     assert tree_axes == [
-        "dataset",
         "custom_source_policy",
+        "dataset",
         "frequency",
         "information_set_type",
         "fred_sd_frequency_policy",
@@ -274,17 +274,17 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
     ]
     assert layer1_groups[0]["level"] == "primary_decision"
     assert layer1_groups[0]["axes"] == [
-        "dataset",
         "custom_source_policy",
+        "dataset",
         "frequency",
     ]
     assert layer1_groups[2]["parent_axis"] == "dataset"
     assert layer1_groups[2]["level"] == "conditional_subgroup"
     sample_axes = {item["axis"]: item for item in payload["samples"][0]["view"]["tree"]}
     assert sample_axes["dataset"]["group_id"] == "source_identity"
-    assert sample_axes["dataset"]["axis_level"] == "primary_decision"
+    assert sample_axes["dataset"]["axis_level"] == "conditional_subdecision"
     assert sample_axes["custom_source_policy"]["group_id"] == "source_identity"
-    assert sample_axes["custom_source_policy"]["axis_level"] == "conditional_subdecision"
+    assert sample_axes["custom_source_policy"]["axis_level"] == "primary_decision"
     assert "custom_source_format" not in sample_axes
     assert "custom_source_schema" not in sample_axes
     assert sample_axes["frequency"]["axis_level"] == "derived_or_required"
@@ -295,7 +295,7 @@ def test_navigator_ui_data_exports_layer1_presentation_contract():
     assert sample_axes["raw_missing_policy"]["group_id"] == "raw_source_quality"
     assert sample_axes["raw_missing_policy"]["axis_level"] == "secondary_policy"
     assert sample_axes["missing_availability"]["group_id"] == "official_frame_policy"
-    assert presentation["dataset"]["label"] == "Source Panel"
+    assert presentation["dataset"]["label"] == "FRED Panel Route"
     assert presentation["dataset"]["values"]["fred_md+fred_sd"]["label"] == "FRED-MD + FRED-SD"
     assert "custom_csv" not in presentation["dataset"]["values"]
     assert presentation["custom_source_policy"]["default_value"] == "official_only"
@@ -367,6 +367,20 @@ def test_navigation_layer1_frequency_respects_dataset():
     sd_axis = _axis(build_navigation_view(sd_recipe), "frequency")
     assert _option(sd_axis, "monthly")["enabled"] is True
     assert _option(sd_axis, "quarterly")["enabled"] is True
+
+
+def test_navigation_layer1_custom_only_disables_composite_routes():
+    recipe = _recipe()
+    recipe["path"]["1_data_task"]["fixed_axes"]["custom_source_policy"] = "custom_panel_only"
+    view = build_navigation_view(recipe)
+    dataset_axis = _axis(view, "dataset")
+
+    assert _option(dataset_axis, "fred_md")["enabled"] is True
+    assert _option(dataset_axis, "fred_sd")["enabled"] is True
+    assert _option(dataset_axis, "fred_md+fred_sd")["enabled"] is False
+    assert "custom_panel_only supports one FRED source panel" in _option(
+        dataset_axis, "fred_md+fred_sd"
+    )["disabled_reason"]
 
 
 def test_navigation_layer1_target_structure_respects_study_scope():
