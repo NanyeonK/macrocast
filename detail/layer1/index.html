@@ -119,7 +119,14 @@ choose a FRED source panel; custom-only studies provide a custom file path and
 frequency without choosing a FRED panel. Optional Simple helpers expose
 FRED-SD state/variable selection and FRED-SD frequency evidence policies, but
 the ordinary path keeps Layer 1 mostly defaulted.</p>
-<p>Full exposes the complete Layer 1 source-frame contract. The live registry keeps hidden compatibility axes for older custom-source recipes, but the Navigator primary tree shows only user-facing decisions. Those axes are not all the same depth: some are primary decisions, some are derived/required follow-ups, some are conditional FRED-SD sub-decisions, and many are defaulted policy controls. <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower source-load selectors used by explicit FRED-SD selector helpers and group resolution.</p>
+<p>Full exposes the complete Layer 1 source-frame contract. The live registry
+keeps hidden compatibility axes for older custom-source recipes, but the
+Navigator primary tree shows only user-facing decisions. Those axes are not all
+the same depth: some are primary decisions, some are derived/required
+follow-ups, some are conditional FRED-SD sub-decisions, and many are defaulted
+policy controls. <code class="docutils literal notranslate"><span class="pre">state_selection</span></code> / <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code> are lower
+source-load selectors used by explicit FRED-SD selector helpers and group
+resolution.</p>
 </section>
 <section id="hierarchy">
 <h2>Hierarchy<a class="headerlink" href="#hierarchy" title="Link to this heading"></a></h2>
@@ -141,7 +148,7 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 <tr class="row-odd"><td><p>Primary policy</p></td>
 <td><p>Forecast-Time Information</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>, <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
-<td><p>Defines the data revision/vintage regime, publication lag, and same-period x availability at each forecast origin.</p></td>
+<td><p>Defines the data revision/vintage regime, publication lag, and same-period x availability at each forecast origin. For custom-only data, only same-period x availability is exposed by default.</p></td>
 </tr>
 <tr class="row-even"><td><p>Contract-derived</p></td>
 <td><p>Target (y) Definition</p></td>
@@ -151,11 +158,11 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 <tr class="row-odd"><td><p>Secondary policy</p></td>
 <td><p>Predictor (x) Definition</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">variable_universe</span></code></p></td>
-<td><p>Limits eligible candidate x columns before Layer 2 builds representations.</p></td>
+<td><p>Limits eligible FRED-MD/QD x columns before Layer 2 builds representations. Custom-only x columns are defined by the custom file; standalone FRED-SD x columns are defined by state and series scope.</p></td>
 </tr>
 <tr class="row-even"><td><p>Conditional subgroup</p></td>
 <td><p>FRED-SD Predictor Scope</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">state_selection</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code>, <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
 <td><p>Active only when the FRED source panel includes FRED-SD.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Secondary policy</p></td>
@@ -166,7 +173,7 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 <tr class="row-even"><td><p>Secondary policy</p></td>
 <td><p>Official transform / frame availability</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>, <code class="docutils literal notranslate"><span class="pre">missing_availability</span></code></p></td>
-<td><p>Applies FRED transform codes when available and closes source-frame availability gaps before Layer 2 begins.</p></td>
+<td><p>Applies FRED-MD/QD official transform codes when available and closes source-frame availability gaps before Layer 2 begins.</p></td>
 </tr>
 </tbody>
 </table>
@@ -196,7 +203,7 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 </tr>
 <tr class="row-odd"><td><p>4.1.4</p></td>
 <td><p><a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">FRED-SD predictor scope</span></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">state_selection</span></code>, hidden <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fred_sd_frequency_policy</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_state_group</span></code>, <code class="docutils literal notranslate"><span class="pre">state_selection</span></code>, <code class="docutils literal notranslate"><span class="pre">fred_sd_variable_group</span></code>, <code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>4.1.5</p></td>
 <td><p><a class="reference internal" href="raw_source_cleaning.html"><span class="std std-doc">Raw source cleaning</span></a></p></td>
@@ -241,11 +248,11 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">final_revised_data</span></code></p></td>
-<td><p>data revision/vintage regime; not the publication-lag rule</p></td>
+<td><p>data revision/vintage regime; hidden by default for custom-only data</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ignore_release_lag</span></code></p></td>
-<td><p>publication-lag rule; <code class="docutils literal notranslate"><span class="pre">series_specific_lag</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.release_lag_per_series</span></code></p></td>
+<td><p>publication-lag rule; hidden by default for custom-only data; <code class="docutils literal notranslate"><span class="pre">series_specific_lag</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.release_lag_per_series</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">forbid_same_period_predictors</span></code></p></td>
@@ -265,19 +272,19 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">state_selection</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">all_states</span></code></p></td>
-<td><p>hidden selector; <code class="docutils literal notranslate"><span class="pre">selected_states</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.sd_states</span></code></p></td>
+<td><p>conditional FRED-SD State List selector; <code class="docutils literal notranslate"><span class="pre">selected_states</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.sd_states</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sd_variable_selection</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">all_sd_variables</span></code></p></td>
-<td><p>hidden selector; <code class="docutils literal notranslate"><span class="pre">selected_sd_variables</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.sd_variables</span></code></p></td>
+<td><p>conditional FRED-SD Series List selector; <code class="docutils literal notranslate"><span class="pre">selected_sd_variables</span></code> requires <code class="docutils literal notranslate"><span class="pre">leaf_config.sd_variables</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">target_structure</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">single_target</span></code></p></td>
-<td><p>write <code class="docutils literal notranslate"><span class="pre">single_target</span></code> with <code class="docutils literal notranslate"><span class="pre">leaf_config.target</span></code> or <code class="docutils literal notranslate"><span class="pre">multi_target</span></code> with <code class="docutils literal notranslate"><span class="pre">leaf_config.targets</span></code></p></td>
+<td><p>write <code class="docutils literal notranslate"><span class="pre">single_target</span></code> with <code class="docutils literal notranslate"><span class="pre">leaf_config.target</span></code> or <code class="docutils literal notranslate"><span class="pre">multi_target</span></code> with <code class="docutils literal notranslate"><span class="pre">leaf_config.targets</span></code>; docs call these Single Target and Multiple Targets</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">variable_universe</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">all_variables</span></code></p></td>
-<td><p>defaulted unless the research design filters source columns</p></td>
+<td><p>FRED-MD/QD predictor metadata axis; hidden by default when no FRED-MD/QD source is selected</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">raw_missing_policy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">preserve_raw_missing</span></code></p></td>
@@ -289,11 +296,11 @@ the ordinary path keeps Layer 1 mostly defaulted.</p>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">apply_official_tcode</span></code></p></td>
-<td><p>default profile uses official t-codes; <code class="docutils literal notranslate"><span class="pre">keep_official_raw_scale</span></code> preserves raw scale</p></td>
+<td><p>FRED-MD/QD official t-code axis; hidden by default when no FRED-MD/QD source is selected</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">target_and_predictors</span></code></p></td>
-<td><p>default profile transforms both target and predictors</p></td>
+<td><p>FRED-MD/QD official t-code scope; hidden by default when no FRED-MD/QD source is selected</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">missing_availability</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">zero_fill_leading_predictor_gaps</span></code></p></td>

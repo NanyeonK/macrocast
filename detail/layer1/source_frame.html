@@ -162,8 +162,8 @@ still set <code class="docutils literal notranslate"><span class="pre">fixed_axe
 <li><p>first column, or Parquet index, is a parseable date index;</p></li>
 <li><p>remaining columns are numeric series;</p></li>
 <li><p>for <code class="docutils literal notranslate"><span class="pre">custom_panel_only</span></code>, the target y column must exist in the file;</p></li>
-<li><p>predictor x columns are all non-target numeric columns unless
-<code class="docutils literal notranslate"><span class="pre">variable_universe</span></code> narrows them later;</p></li>
+<li><p>predictor x columns are all non-target numeric columns unless the recipe
+supplies explicit custom x lists in <code class="docutils literal notranslate"><span class="pre">leaf_config</span></code>;</p></li>
 <li><p>appended custom columns may use new names, but duplicate names are renamed
 with a <code class="docutils literal notranslate"><span class="pre">__custom</span></code> suffix at runtime.</p></li>
 </ul>
@@ -174,6 +174,16 @@ Monthly routes expect monthly rows. Quarterly routes expect quarterly rows.</p><
 <li><p>Data revision/vintage status is selected later by
 <a class="reference internal" href="availability_timing.html"><span class="std std-doc">4.1.2 Forecast-Time Information</span></a>, not by the source
 mode itself.</p></li>
+<li><p>FRED metadata axes are hidden by default for custom-only studies:
+<code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">information_set_type</span></code>, <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">variable_universe</span></code>,
+<code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code>, and <code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code>. The
+same-period predictor rule remains visible because custom files can still
+define nowcasting-style contemporaneous x availability.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">variable_universe</span></code>, <code class="docutils literal notranslate"><span class="pre">official_transform_policy</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">official_transform_scope</span></code> are also hidden by default for standalone
+FRED-SD, because those axes are FRED-MD/QD metadata controls. FRED-SD uses
+the dedicated state and series scope controls in
+<a class="reference internal" href="fred_sd_source_selection.html"><span class="std std-doc">4.1.4 FRED-SD Predictor Scope</span></a>.</p></li>
 </ul>
 <blockquote>
 <div><p><strong>Warning:</strong> Custom files are user-supplied source data. The Navigator can

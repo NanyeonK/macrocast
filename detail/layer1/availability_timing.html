@@ -137,6 +137,16 @@ source frame exists and is documented in <a class="reference internal" href="fra
 </tr>
 </tbody>
 </table>
+<p>Visibility rule:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code> and <code class="docutils literal notranslate"><span class="pre">release_lag_rule</span></code> are hidden by default for
+<code class="docutils literal notranslate"><span class="pre">custom_source_policy:</span> <span class="pre">custom_panel_only</span></code>, because macrocast cannot infer a
+FRED vintage or publication-lag discipline from an arbitrary custom file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">contemporaneous_x_rule</span></code> remains visible for custom-only studies because it
+is a supervised-learning alignment rule, not a FRED metadata rule.</p></li>
+<li><p>Imported custom-only recipes with non-default FRED timing choices keep those
+axes visible so the route can be inspected instead of silently dropped.</p></li>
+</ul>
 <p>Boundary rule:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">information_set_type</span></code> is about revisions/vintages. It answers whether the
