@@ -10,7 +10,7 @@ lazily inside each function body to avoid circular imports and keep
 the module self-contained at definition time.
 
 Private helpers (_diebold_mariano_test, _harvey_newbold_test,
-_l6_dmp_multi_horizon, _long_run_variance, _normal_two_sided_p)
+_long_run_variance, _normal_two_sided_p)
 are module-private in runtime.py (``_`` prefix) but accessible to
 internal package modules.  This is intentional: the standalone
 functions are part of the same package and share the runtime's

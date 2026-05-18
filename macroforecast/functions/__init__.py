@@ -9,6 +9,7 @@ Cycle 26: ``FitResultBase`` Protocol added.
 Cycle 27: L5 metrics bulk standalone-ization (13 new ops).
 Cycle 28: L4 linear family standalone-ization (7 ops).
 Cycle 29: L6 statistical tests standalone-ization (7 ops).
+Cycle 30: L3 basic panel transforms standalone-ization (10 ops).
 
 Example usage::
 
@@ -32,6 +33,10 @@ Example usage::
     print(mf.functions.mse(y_true, y_pred))   # 0.01
     print(mf.functions.rmse(y_true, y_pred))  # 0.1
     print(mf.functions.mae(y_true, y_pred))   # 0.1
+
+    panel = pd.DataFrame({"a": [1.0, 2.0, 3.0, 4.0, 5.0]})
+    print(mf.functions.diff_transform(panel))
+    print(mf.functions.scale_transform(panel, method="zscore"))
 """
 from __future__ import annotations
 
@@ -71,6 +76,19 @@ from .tests import (
     CWTestResult, cw_test,
     EncNewTestResult, enc_new_test,
     EncTTestResult, enc_t_test,
+)
+
+from .transforms import (
+    diff_transform,
+    log_transform,
+    log_diff_transform,
+    pct_change_transform,
+    cumsum_transform,
+    ma_window_transform,
+    lag_matrix,
+    seasonal_lag_matrix,
+    ma_increasing_order_transform,
+    scale_transform,
 )
 
 __all__ = [
@@ -120,4 +138,15 @@ __all__ = [
     "enc_new_test",
     "EncTTestResult",
     "enc_t_test",
+    # Cycle 30: L3 basic panel transforms
+    "diff_transform",
+    "log_transform",
+    "log_diff_transform",
+    "pct_change_transform",
+    "cumsum_transform",
+    "ma_window_transform",
+    "lag_matrix",
+    "seasonal_lag_matrix",
+    "ma_increasing_order_transform",
+    "scale_transform",
 ]
