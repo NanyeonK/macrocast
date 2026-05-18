@@ -5,6 +5,8 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+## [0.9.2] -- 2026-05-18 -- "paradigm shift: 109 new standalone callables across L2/L3/L4/L5/L6/L7 (sm.ols-style API)"
+
 ### Cycle 38 -- L7 importance standalone callables (8 ops)
 
 **New standalone callables** in `mf.functions` (all return a frozen dataclass):
