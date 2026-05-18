@@ -63,6 +63,23 @@ def _f(
     )
 
 
+
+# Shared data-argument docs for all L4 linear standalone callables
+_L4_DATA_ARGS = (
+    ParameterDoc(
+        name="X",
+        type="np.ndarray | pd.DataFrame",
+        default=REQUIRED,
+        description="Feature matrix. Shape (n_samples, n_features). Accepts numpy arrays or DataFrames.",
+    ),
+    ParameterDoc(
+        name="y",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Target vector. Shape (n_samples,). Accepts numpy arrays or Series.",
+    ),
+)
+
 # Linear / regularised regression family
 _F_OLS = _f(
     "ols",
@@ -81,6 +98,16 @@ _F_OLS = _f(
         Reference(citation="Greene (2018) 'Econometric Analysis', 8th ed., Pearson."),
     ),
     related_options=("ridge", "lasso", "elastic_net", "ar_p"),
+    op_page=True,
+    op_func_name="ols_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="OLSFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_RIDGE = _f(
@@ -230,6 +257,33 @@ _F_LASSO = _f(
         ),
     ),
     related_options=("ridge", "elastic_net", "lasso_path"),
+    op_page=True,
+    op_func_name="lasso_fit",
+    parameters=(
+        ParameterDoc(
+            name="alpha",
+            type="float",
+            default=1.0,
+            constraint=">=0",
+            description="L1 regularisation strength. Larger values force more coefficients to exactly zero.",
+        ),
+        ParameterDoc(
+            name="max_iter",
+            type="int",
+            default=20000,
+            constraint=">=1",
+            description="Maximum number of coordinate descent iterations.",
+        ),
+    ),
+    data_args=_L4_DATA_ARGS,
+    return_type="LassoFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar."),
+        (".alpha", "float", "Regularisation strength used."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_ELASTIC_NET = _f(
@@ -249,6 +303,41 @@ _F_ELASTIC_NET = _f(
         ),
     ),
     related_options=("ridge", "lasso"),
+    op_page=True,
+    op_func_name="elastic_net_fit",
+    parameters=(
+        ParameterDoc(
+            name="alpha",
+            type="float",
+            default=1.0,
+            constraint=">=0",
+            description="Overall regularisation strength.",
+        ),
+        ParameterDoc(
+            name="l1_ratio",
+            type="float",
+            default=0.5,
+            constraint="in [0.0, 1.0]",
+            description="L1/L2 mixing parameter. 0 = pure ridge, 1 = pure lasso.",
+        ),
+        ParameterDoc(
+            name="max_iter",
+            type="int",
+            default=20000,
+            constraint=">=1",
+            description="Maximum number of coordinate descent iterations.",
+        ),
+    ),
+    data_args=_L4_DATA_ARGS,
+    return_type="ElasticNetFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar."),
+        (".alpha", "float", "Regularisation strength used."),
+        (".l1_ratio", "float", "L1/L2 mixing parameter used."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_LASSO_PATH = _f(
@@ -262,6 +351,39 @@ _F_LASSO_PATH = _f(
     "When the recipe wants automatic α selection without an explicit search_algorithm.",
     references=(_REF_DESIGN_L4,),
     related_options=("lasso", "ridge"),
+    op_page=True,
+    op_func_name="lasso_path_fit",
+    parameters=(
+        ParameterDoc(
+            name="cv",
+            type="int",
+            default=5,
+            constraint=">=2",
+            description="Number of cross-validation folds for alpha selection.",
+        ),
+        ParameterDoc(
+            name="max_iter",
+            type="int",
+            default=20000,
+            constraint=">=1",
+            description="Maximum coordinate descent iterations per alpha.",
+        ),
+        ParameterDoc(
+            name="random_state",
+            type="int | None",
+            default=None,
+            description="Random seed for CV fold generation. None uses system entropy.",
+        ),
+    ),
+    data_args=_L4_DATA_ARGS,
+    return_type="LassoPathFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar."),
+        (".alpha_selected", "float", "CV-selected regularisation strength."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_BAYESIAN_RIDGE = _f(
@@ -276,6 +398,18 @@ _F_BAYESIAN_RIDGE = _f(
     "Studies that need coefficient credible intervals; default-Bayesian baselines.",
     references=(_REF_DESIGN_L4,),
     related_options=("ridge", "bvar_minnesota"),
+    op_page=True,
+    op_func_name="bayesian_ridge_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="BayesianRidgeFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Posterior mean coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Posterior mean intercept scalar."),
+        (".alpha_", "float", "Posterior noise precision (empirical Bayes)."),
+        (".lambda_", "float", "Posterior weight precision (empirical Bayes)."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_HUBER = _f(
@@ -295,6 +429,38 @@ _F_HUBER = _f(
         ),
     ),
     related_options=("ols", "ridge"),
+    op_page=True,
+    op_func_name="huber_fit",
+    parameters=(
+        ParameterDoc(
+            name="epsilon",
+            type="float",
+            default=1.35,
+            constraint=">1.0",
+            description=(
+                "Huber loss transition point. Residuals with |r| <= epsilon * scale_ "
+                "are treated as inliers (quadratic loss); larger residuals are outliers "
+                "(linear loss). Must be > 1.0 (sklearn requirement)."
+            ),
+        ),
+        ParameterDoc(
+            name="max_iter",
+            type="int",
+            default=1000,
+            constraint=">=1",
+            description="Maximum number of LBFGS iterations.",
+        ),
+    ),
+    data_args=_L4_DATA_ARGS,
+    return_type="HuberFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar."),
+        (".epsilon", "float", "Huber loss transition point used."),
+        (".scale_", "float", "Robust scale estimate from the fitted model."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 _F_GLMBOOST = _f(
@@ -314,6 +480,34 @@ _F_GLMBOOST = _f(
         ),
     ),
     related_options=("lasso", "elastic_net"),
+    op_page=True,
+    op_func_name="glmboost_fit",
+    parameters=(
+        ParameterDoc(
+            name="n_iter",
+            type="int",
+            default=100,
+            constraint=">=1",
+            description="Number of boosting iterations. More iterations = finer coefficient path.",
+        ),
+        ParameterDoc(
+            name="learning_rate",
+            type="float",
+            default=0.1,
+            constraint=">0",
+            description="Shrinkage factor applied to each coefficient update. Smaller = slower convergence, more regularisation.",
+        ),
+    ),
+    data_args=_L4_DATA_ARGS,
+    return_type="GLMBoostFitResult",
+    returns_attrs=(
+        (".coef_", "np.ndarray", "Fitted coefficient vector, shape (n_features,)."),
+        (".intercept_", "float", "Fitted intercept scalar (initialised to mean(y))."),
+        (".n_iter", "int", "Number of boosting iterations used."),
+        (".learning_rate", "float", "Shrinkage factor used."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Human-readable text table of fit results."),
+    ),
 )
 
 
