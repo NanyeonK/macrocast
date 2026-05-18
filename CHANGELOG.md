@@ -5,6 +5,52 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+### Cycle 34 -- L2 clean panel ops standalone-ization (14 ops)
+
+**New standalone callables** in `mf.functions` (all return `pd.DataFrame`):
+
+`iqr_outlier_clean(panel, *, threshold=10.0, action="flag_as_nan")` -> `pd.DataFrame`
+`zscore_outlier_clean(panel, *, threshold=3.0, action="flag_as_nan")` -> `pd.DataFrame`
+`winsorize_clean(panel, *, lower_quantile=0.01, upper_quantile=0.99)` -> `pd.DataFrame`
+`em_factor_impute_clean(panel, *, n_factors=8, max_iter=20, tol=1e-4)` -> `pd.DataFrame`
+`em_multivariate_impute_clean(panel, *, max_iter=20, tol=1e-4)` -> `pd.DataFrame`
+`mean_impute_clean(panel)` -> `pd.DataFrame`
+`forward_fill_clean(panel)` -> `pd.DataFrame`
+`linear_interpolate_clean(panel)` -> `pd.DataFrame`
+`truncate_to_balanced_clean(panel)` -> `pd.DataFrame`
+`drop_unbalanced_series_clean(panel)` -> `pd.DataFrame`
+`zero_fill_leading_clean(panel)` -> `pd.DataFrame`
+`apply_tcode_transform(panel, tcode_map)` -> `pd.DataFrame`
+`freq_align_quarterly_to_monthly_clean(panel, quarterly_columns, *, rule="step_backward")` -> `pd.DataFrame`
+`freq_align_monthly_to_quarterly_clean(panel, monthly_columns, *, rule="quarterly_average")` -> `pd.DataFrame`
+
+Paradigm (C29 lazy-import recipe-path): each wrapper imports the runtime helper
+inside the function body -- no formula duplication.
+
+**Critical correctness constraints**:
+- `iqr_outlier_clean`: `iqr.replace(0, pd.NA)` precedes mask computation (zero-IQR columns not flagged).
+- `freq_align_quarterly_to_monthly_clean` step_backward: `.bfill().ffill()` order (NOT `.ffill().bfill()`).
+- `zero_fill_leading_clean`: fills ALL NaN with 0 (name misleading but matches runtime).
+- `em_multivariate_impute_clean` passes `n_factors=None` -> `rank = min(T, K) // 2`.
+
+**New file**: `macroforecast/functions/clean.py` (14 ops).
+
+All 14 names added to `mf.functions.__all__`.
+
+**OptionDoc updates** (`macroforecast/scaffold/option_docs/l2.py`):
+- `_e()` helper extended with `op_page`, `op_func_name`, `data_args`, `return_type`, `returns_attrs` kwargs.
+- `_L2_PANEL_DATA_ARG` and `_L2_PANEL_TCODE_DATA_ARGS` shared data-arg constants added.
+- 14 OptionDoc entries updated with `op_page=True`, `op_func_name`, `data_args=_L2_PANEL_DATA_ARG`,
+  `return_type="pd.DataFrame"`.
+
+**Encyclopedia**: 256 -> 270 pages (14 new L2 op pages).
+
+**Tests** (`tests/functions/test_l2_clean.py`): 131 passed.
+- Bit-exact vs runtime for all applicable ops.
+- Correctness: shape, column/index preservation, outlier flagging, imputation fill, tcode transforms.
+- Input validation: empty panel, threshold ranges, invalid actions/rules/tcodes.
+- Namespace wiring: all 14 in `mf.functions.__all__`.
+
 ### Cycle 33 -- L3 final B1 transforms standalone (8 ops) + C32 backlog
 
 **New standalone callables** in `mf.functions` (all return `pd.DataFrame`):
