@@ -585,6 +585,8 @@ def random_forest_fit(
     # n_jobs override: _build_l4_model hardcodes n_jobs=1 for safety;
     # override here to allow parallelism when caller requests it.
     model.n_jobs = int(n_jobs)
+    # min_samples_leaf: _build_l4_model does not forward this param; set post-construction.
+    model.min_samples_leaf = int(min_samples_leaf)
     model.fit(X, y)
 
     fi = np.asarray(model.feature_importances_, dtype=float)
@@ -686,6 +688,8 @@ def extra_trees_fit(
     # n_jobs override: _build_l4_model hardcodes n_jobs=1 for safety;
     # override here to allow parallelism when caller requests it.
     model.n_jobs = int(n_jobs)
+    # min_samples_leaf: _build_l4_model does not forward this param; set post-construction.
+    model.min_samples_leaf = int(min_samples_leaf)
     model.fit(X, y)
 
     fi = np.asarray(model.feature_importances_, dtype=float)

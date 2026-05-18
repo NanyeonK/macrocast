@@ -576,3 +576,25 @@ class TestSummaryPercentFormat:
         assert vals, "No percent values found in CatBoost summary"
         for v in vals:
             assert 0.0 < v <= 100.0, f"Percent value out of (0,100]: {v}"
+
+
+class TestMinSamplesLeafTakesEffect:
+    """Reviewer B-1: post-construction min_samples_leaf must reach model."""
+
+    def test_random_forest_min_samples_leaf_takes_effect(self):
+        import macroforecast as mf
+        import numpy as np
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, 5)
+        y = X @ np.array([1.0, 2.0, 3.0, 4.0, 5.0]) + 0.5 * rng.randn(100)
+        r = mf.functions.random_forest_fit(X, y, min_samples_leaf=5)
+        assert r._model.min_samples_leaf == 5
+
+    def test_extra_trees_min_samples_leaf_takes_effect(self):
+        import macroforecast as mf
+        import numpy as np
+        rng = np.random.RandomState(42)
+        X = rng.randn(100, 5)
+        y = X @ np.array([1.0, 2.0, 3.0, 4.0, 5.0]) + 0.5 * rng.randn(100)
+        r = mf.functions.extra_trees_fit(X, y, min_samples_leaf=5)
+        assert r._model.min_samples_leaf == 5

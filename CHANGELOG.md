@@ -34,7 +34,7 @@ All 6 names added to `mf.functions.__all__`.
 - CHANGELOG C34 entry: `iqr.replace(0, pd.NA)` -> `iqr.replace(0, np.nan)` (correctness constraint text).
 - CHANGELOG C34 entry: test count corrected `131 passed` -> `142 passed`.
 
-**Tests** (`tests/functions/test_l4_tree_family.py`): ~36 passed.
+**Tests** (`tests/functions/test_l4_tree_family.py`): 73 passed.
 - Bit-exact vs `_build_l4_model("<family>", params)` direct call on RNG-42 100x5 panel.
 - `.predict()` correctness vs recipe path.
 - `.summary()` content (family name, top-3 features).
