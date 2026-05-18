@@ -162,6 +162,34 @@ from .deep import (
     TransformerFitResult, transformer_fit,
 )
 
+# Cycle 37: L4 timeseries family
+from .timeseries import (
+    VARFitResult, var_fit,
+    BVARMinnesotaFitResult, bvar_minnesota_fit,
+    BVARNIWFitResult, bvar_niw_fit,
+    ARFitResult, ar_fit,
+    FARFitResult, far_fit,
+    PCRFitResult, pcr_fit,
+    FAVARFitResult, favar_fit,
+    GARCH11FitResult, garch11_fit,
+    EGARCHFitResult, egarch_fit,
+    RealizedGARCHFitResult, realized_garch_fit,
+    ETSFitResult, ets_fit,
+    ThetaFitResult, theta_fit,
+    HoltWintersFitResult, holt_winters_fit,
+    DFMFitResult, dfm_fit,
+)
+
+# Cycle 37: L4 misc family
+from .misc import (
+    SVRLinearFitResult, svr_linear_fit,
+    SVRRBFFitResult, svr_rbf_fit,
+    SVRPolyFitResult, svr_poly_fit,
+    KNNFitResult, knn_fit,
+    KernelRidgeFitResult, kernel_ridge_fit,
+    MARSFitResult, mars_fit,
+)
+
 __all__ = [
     "FitResultBase",
     "RidgeFitResult",
@@ -286,4 +314,46 @@ __all__ = [
     "gru_fit",
     "TransformerFitResult",
     "transformer_fit",
+    # Cycle 37: L4 timeseries family
+    "VARFitResult",
+    "var_fit",
+    "BVARMinnesotaFitResult",
+    "bvar_minnesota_fit",
+    "BVARNIWFitResult",
+    "bvar_niw_fit",
+    "ARFitResult",
+    "ar_fit",
+    "FARFitResult",
+    "far_fit",
+    "PCRFitResult",
+    "pcr_fit",
+    "FAVARFitResult",
+    "favar_fit",
+    "GARCH11FitResult",
+    "garch11_fit",
+    "EGARCHFitResult",
+    "egarch_fit",
+    "RealizedGARCHFitResult",
+    "realized_garch_fit",
+    "ETSFitResult",
+    "ets_fit",
+    "ThetaFitResult",
+    "theta_fit",
+    "HoltWintersFitResult",
+    "holt_winters_fit",
+    "DFMFitResult",
+    "dfm_fit",
+    # Cycle 37: L4 misc family
+    "SVRLinearFitResult",
+    "svr_linear_fit",
+    "SVRRBFFitResult",
+    "svr_rbf_fit",
+    "SVRPolyFitResult",
+    "svr_poly_fit",
+    "KNNFitResult",
+    "knn_fit",
+    "KernelRidgeFitResult",
+    "kernel_ridge_fit",
+    "MARSFitResult",
+    "mars_fit",
 ]
