@@ -5,6 +5,29 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+### Cycle 27 -- L5 metrics bulk standalone-ization (~13 ops)
+
+**New standalone callables** in `mf.functions` (all return `float`):
+
+Point metrics: `mse`, `rmse`, `mae`, `medae`, `mape`
+Relative metrics: `relative_mse`, `relative_mae`, `mse_reduction`, `r2_oos`
+Interval/coverage metrics: `interval_score`, `coverage_rate`
+Direction metrics: `success_ratio`, `pesaran_timmermann_metric`
+
+All callables produce results bit-exact with the L5 recipe-path computation
+where a recipe path exists; `mape`, `interval_score`, and `coverage_rate` are
+new canonical implementations (no prior recipe-path existed).
+
+Encyclopedia pages auto-emitted for all 13 new ops plus `theil_u2` (previously
+missing its per-op page).
+
+Deferred: `log_score`, `crps` (B2 -- require predictive density objects).
+
+**Note on `mse_reduction`**: the standalone matches the runtime computation
+(absolute difference `benchmark_MSE - model_MSE`), not the ratio-based
+description in earlier docs. The doc-string flags this explicitly.
+
+
 
 ## [0.9.1] -- 2026-05-18 -- "audit fixes C12-C22 + paradigm foundation (REQUIRED sentinel, FitResultBase)"
 
