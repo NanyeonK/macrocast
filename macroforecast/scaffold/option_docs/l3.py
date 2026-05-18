@@ -49,6 +49,45 @@ _L3_PANEL_DATA_ARG: tuple[ParameterDoc, ...] = (
     ),
 )
 
+# Cycle 32: shared data-argument docs for supervised L3 ops (panel + required target).
+_panel_arg = ParameterDoc(
+    name="panel",
+    type="pd.DataFrame",
+    default=REQUIRED,
+    description=(
+        "Input panel. Each column is a variable; rows are time periods. "
+        "Series is promoted to a single-column DataFrame internally."
+    ),
+)
+_target_arg = ParameterDoc(
+    name="target",
+    type="pd.Series",
+    default=REQUIRED,
+    description=(
+        "Supervisory signal aligned to the panel index. "
+        "Must share at least one index value with panel; raises ValueError if the "
+        "intersection is empty."
+    ),
+)
+_optional_target_arg = ParameterDoc(
+    name="target",
+    type="pd.Series | None",
+    default=None,
+    description=(
+        "Optional supervisory signal. Required when method is 'correlation' or 'lasso'; "
+        "ignored for method='variance'."
+    ),
+)
+
+# Panel + required target (4 supervised ops).
+_L3_SUPERVISED_DATA_ARGS: tuple[ParameterDoc, ...] = (_panel_arg, _target_arg)
+
+# Panel + optional target (feature_selection_transform).
+_L3_OPTIONAL_TARGET_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    _panel_arg,
+    _optional_target_arg,
+)
+
 
 def _o(
     option: str,
@@ -522,6 +561,22 @@ _OP_SUPERVISED_PCA = _o(
         "sparse_pca_chen_rohe",
         "pca",
     ),
+    op_page=True,
+    op_func_name="supervised_pca_transform",
+    data_args=_L3_SUPERVISED_DATA_ARGS + (
+        ParameterDoc(
+            name="n_components",
+            type="int",
+            default=3,
+            constraint=">= 1",
+            description=(
+                "Number of supervised principal components (P). Clamped internally "
+                "to the number of columns kept after correlation screening."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 _OP_SCALED_PCA = _o(
@@ -541,6 +596,22 @@ _OP_SCALED_PCA = _o(
         ),
     ),
     related_options=("pca", "partial_least_squares"),
+    op_page=True,
+    op_func_name="scaled_pca_transform",
+    data_args=_L3_SUPERVISED_DATA_ARGS + (
+        ParameterDoc(
+            name="n_components",
+            type="int",
+            default=3,
+            constraint=">= 1",
+            description=(
+                "Number of principal components to extract. Clamped internally "
+                "to min(T_clean, K) - 1."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 _OP_DFM = _o(
@@ -562,6 +633,22 @@ _OP_DFM = _o(
         ),
     ),
     related_options=("pca", "scaled_pca"),
+    op_page=True,
+    op_func_name="dfm_transform",
+    data_args=_L3_PANEL_DATA_ARG + (
+        ParameterDoc(
+            name="n_factors",
+            type="int",
+            default=3,
+            constraint=">= 1",
+            description=(
+                "Number of latent dynamic factors to extract. Clamped internally "
+                "to min(T_clean, K) - 1."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 _OP_VARIMAX = _o(
@@ -605,6 +692,22 @@ _OP_PARTIAL_LEAST_SQUARES = _o(
         ),
     ),
     related_options=("pca", "scaled_pca"),
+    op_page=True,
+    op_func_name="partial_least_squares_transform",
+    data_args=_L3_SUPERVISED_DATA_ARGS + (
+        ParameterDoc(
+            name="n_components",
+            type="int",
+            default=3,
+            constraint=">= 1",
+            description=(
+                "Number of PLS latent components. Clamped internally to "
+                "min(T_clean - 1, K_clean - 1)."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 _OP_RANDOM_PROJECTION = _o(
@@ -996,6 +1099,35 @@ _OP_FEATURE_SELECTION = _o(
     "Trimming the panel before expensive downstream estimators (NN, SVM, kernel) when high-dim noise dominates.",
     when_not_to_use="Tree models -- they handle irrelevant features natively.",
     related_options=("scale", "pca"),
+    op_page=True,
+    op_func_name="feature_selection_transform",
+    data_args=_L3_OPTIONAL_TARGET_DATA_ARGS + (
+        ParameterDoc(
+            name="n_features",
+            type="int | float",
+            default=0.5,
+            constraint="int >= 1 or float in (0, 1]",
+            description=(
+                "Number of features to keep. If a float in (0, 1], treated as a "
+                "fraction of total columns. If an integer, used as a direct count "
+                "clamped to [1, K]."
+            ),
+        ),
+        ParameterDoc(
+            name="method",
+            type="str",
+            default='"variance"',
+            constraint='"variance" | "correlation" | "lasso"',
+            description=(
+                "Selection criterion. 'variance' keeps highest-variance columns "
+                "(no target needed). 'correlation' keeps columns most correlated "
+                "with target. 'lasso' fits LassoCV and keeps largest-coefficient "
+                "columns. 'correlation' and 'lasso' require target."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 
@@ -1399,6 +1531,32 @@ _OP_SLICED_INVERSE_REGRESSION = _o(
         ),
     ),
     related_options=("scaled_pca", "supervised_pca", "partial_least_squares"),
+    op_page=True,
+    op_func_name="sliced_inverse_regression_transform",
+    data_args=_L3_SUPERVISED_DATA_ARGS + (
+        ParameterDoc(
+            name="n_components",
+            type="int",
+            default=3,
+            constraint=">= 1",
+            description=(
+                "Number of SIR directions (effective rank of the between-slice "
+                "covariance matrix)."
+            ),
+        ),
+        ParameterDoc(
+            name="n_slices",
+            type="int",
+            default=10,
+            constraint=">= 2",
+            description=(
+                "Number of contiguous slices of the target distribution. "
+                "Clamped internally to the number of aligned clean rows."
+            ),
+        ),
+    ),
+    return_type="pd.DataFrame",
+    returns_attrs=(),
 )
 
 
