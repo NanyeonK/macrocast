@@ -49,22 +49,7 @@ See [cumsum function page](../op/cumsum.md) for full documentation + parameters 
 
 Dynamic factor model -- Kalman state-space factor extraction.
 
-statsmodels ``DynamicFactor`` MLE estimate of latent factors with idiosyncratic AR(1) errors. Differs from ``pca`` in that factors are smoothed via the Kalman filter and respect a factor-VAR transition.
-
-When the panel is mixed-frequency (FRED-SD), the runtime auto-routes to ``DynamicFactorMQ`` (Mariano-Murasawa 2003).
-
-**When to use**
-
-Smoothed factors with an explicit dynamic; mixed-frequency panels (FRED-SD).
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-* Mariano & Murasawa (2003) 'A new coincident index of business cycles based on monthly and quarterly series', JAE 18(4): 427-443.
-
-**Related options**: [`pca`](#pca), [`scaled_pca`](#scaled-pca)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [dfm function page](../op/dfm.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.dfm_transform``.
 
 ### `diff`  --  operational
 
@@ -76,27 +61,7 @@ See [diff function page](../op/diff.md) for full documentation + parameters + st
 
 Filter columns by variance / correlation / lasso pre-screen.
 
-Drops columns failing one of three criteria configured via ``params.method``:
-
-* ``variance`` -- drop columns with variance below ``params.threshold``.
-* ``correlation`` -- drop columns with pairwise correlation above ``params.threshold`` (keeps the first).
-* ``lasso`` -- fit a Lasso pre-screen and keep columns with non-zero coefficients.
-
-**When to use**
-
-Trimming the panel before expensive downstream estimators (NN, SVM, kernel) when high-dim noise dominates.
-
-**When NOT to use**
-
-Tree models -- they handle irrelevant features natively.
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-
-**Related options**: [`scale`](#scale), [`pca`](#pca)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [feature_selection function page](../op/feature_selection.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.feature_selection_transform``.
 
 ### `fourier`  --  operational
 
@@ -362,20 +327,7 @@ _Last reviewed 2026-05-05 by macroforecast author._
 
 Partial least squares regression -- supervised factor extraction.
 
-Computes orthogonal latent components that maximise the covariance with the target (not just predictor variance, as in PCA). sklearn's ``PLSRegression``; ``params.n_components``.
-
-**When to use**
-
-When a target-supervised reduction is preferable to PCA's unsupervised projection.
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-* Wold, Sjöström & Eriksson (2001) 'PLS-regression: a basic tool of chemometrics', Chemometrics and Intelligent Laboratory Systems 58(2): 109-130.
-
-**Related options**: [`pca`](#pca), [`scaled_pca`](#scaled-pca)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [partial_least_squares function page](../op/partial_least_squares.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.partial_least_squares_transform``.
 
 ### `pca`  --  operational
 
@@ -475,22 +427,7 @@ See [scale function page](../op/scale.md) for full documentation + parameters + 
 
 Scaled / weighted PCA (target-aware factor extraction).
 
-Weights each column by its predictive correlation with the target before performing PCA. Implements the Huang-Jiang-Tu-Zhou (2022) scaled PCA for forecasting macro variables.
-
-Reduces to plain PCA when all weights are equal.
-
-**When to use**
-
-When standard PCA's leading factor is dominated by predictively-irrelevant variance.
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-* Huang, Jiang, Tu & Zhou (2022) 'Scaled PCA: A New Approach to Dimension Reduction', Management Science 68(3): 1678-1695.
-
-**Related options**: [`pca`](#pca), [`partial_least_squares`](#partial-least-squares)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [scaled_pca function page](../op/scaled_pca.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.scaled_pca_transform``.
 
 ### `season_dummy`  --  operational
 
@@ -508,28 +445,7 @@ See [seasonal_lag function page](../op/seasonal_lag.md) for full documentation +
 
 sSUFF / Sliced inverse regression (scaled) -- supervised dimension reduction (Huang-Jiang-Li-Tong-Zhou 2022).
 
-Supervised dimension reduction extending ``scaled_pca`` to non-linear y → X dependence. Pipeline: (1) standardise X; (2) optional column-wise predictive scaling (``scaling_method`` = ``scaled_pca`` reuses the Huang-Zhou OLS-slope; ``marginal_R2`` uses sign(β_j)·√R²_j; ``none`` skips); (3) sort rows by y and partition into ``n_slices`` H contiguous slices; (4) compute weighted between-slice covariance ``Σ_S = Σ_h (n_h/n) · m̄_h · m̄_h^⊤``; (5) take the top-``n_components`` eigenvectors as factor loadings; (6) project the full panel onto these directions. The sSUFF augmentation (Huang-Zhou-Tong 2022) recovers latent factors with higher correlation than plain SIR in the macro-panel regime where signals are sparse over predictors.
-
-Defaults: ``n_components = 2``, ``n_slices = 10``, ``scaling_method = 'scaled_pca'``. Requires a ``target_signal`` input port; ``temporal_rule`` is required and rejects ``full_sample_once``.
-
-**When to use**
-
-Supervised factor extraction from macro panels with non-linear y → X structure; alternative to ``scaled_pca`` when the predictive direction is non-monotone.
-
-**When NOT to use**
-
-Very small T (need ≥ 5·n_slices observations after dropping NaN); strictly linear y → X relationship (``scaled_pca`` is sufficient).
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-* Huang, Jiang, Li, Tong & Zhou (2022) 'Scaled PCA: A New Approach to Dimension Reduction', Management Science 68(3): 1678-1695.
-* Fan, Xue & Yao (2017) 'Sufficient forecasting using factor models', Journal of Econometrics 201(2): 292-306.
-* Li (1991) 'Sliced Inverse Regression for Dimension Reduction', JASA 86(414): 316-327.
-
-**Related options**: [`scaled_pca`](#scaled-pca), [`supervised_pca`](#supervised-pca), [`partial_least_squares`](#partial-least-squares)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [sliced_inverse_regression function page](../op/sliced_inverse_regression.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.sliced_inverse_regression_transform``.
 
 ### `sparse_pca`  --  operational
 
@@ -591,32 +507,7 @@ _(no schema description for `stability_selection`)_
 
 Supervised PCA (Giglio-Xiu-Zhang 2025) -- screen-then-PCA on a target panel.
 
-Two-stage supervised reduction:
-  1. For each target column ``g``, rank panel columns by univariate correlation with ``g`` and keep the top ``⌊q · M⌋`` (q ∈ (0, 1] hyperparameter; default 0.5);
-  2. Run PCA on the screened sub-panel, returning P supervised components.
-
-Refinement of Giglio-Xiu (2021) three-pass: screening makes the construction robust to weak factors and omitted-variable bias. Used as the asset-side stage of Rapach & Zhou (2025) Sparse Macro-Finance Factors for risk-premium estimation. Distinct from ``partial_least_squares`` (PLS uses covariance-maximising NIPALS over all columns; SPCA uses correlation-screened PCA on a sub-panel) and from ``scaled_pca`` (Huang-Jiang-Tu-Zhou 2022 weights every column; SPCA hard-screens).
-
-Operational v0.9.1 dev-stage v0.9.0C-4. Hyperparams: ``n_components`` (= P; default 4), ``q`` (screening rate; default 0.5).
-
-**When to use**
-
-Cross-sectional asset-pricing factor extraction; weak-factor-robust supervised reduction; Rapach-Zhou (2025) replication.
-
-**When NOT to use**
-
-When the supervisory signal is dense (every panel column matters) -- prefer ``scaled_pca`` or ``partial_least_squares``.
-
-**References**
-
-* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
-* Giglio, Xiu & Zhang (2025) 'Test Assets and Weak Factors', Journal of Finance, forthcoming.
-* Giglio & Xiu (2021) 'Asset Pricing with Omitted Factors', Journal of Political Economy 129(7): 1947-1990.
-* Rapach & Zhou (2025) 'Sparse Macro-Finance Factors' working paper -- §2.2 eqs. (5)-(8).
-
-**Related options**: [`partial_least_squares`](#partial-least-squares), [`scaled_pca`](#scaled-pca), [`sparse_pca_chen_rohe`](#sparse-pca-chen-rohe), [`pca`](#pca)
-
-_Last reviewed 2026-05-05 by macroforecast author._
+See [supervised_pca function page](../op/supervised_pca.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.supervised_pca_transform``.
 
 ### `target_construction`  --  operational
 

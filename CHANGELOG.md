@@ -5,6 +5,47 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+### Cycle 32 -- L3 supervised/mixed transforms standalone (6 ops)
+
+**New standalone callables** in `mf.functions` (all return `pd.DataFrame`):
+
+`scaled_pca_transform(panel, target, *, n_components=3)` -> `pd.DataFrame`
+`supervised_pca_transform(panel, target, *, n_components=3)` -> `pd.DataFrame`
+`partial_least_squares_transform(panel, target, *, n_components=3)` -> `pd.DataFrame`
+`sliced_inverse_regression_transform(panel, target, *, n_components=3, n_slices=10)` -> `pd.DataFrame`
+`dfm_transform(panel, *, n_factors=3)` -> `pd.DataFrame`
+`feature_selection_transform(panel, target=None, *, n_features=0.5, method="variance")` -> `pd.DataFrame`
+
+Paradigm (C29 lazy-import recipe-path): each wrapper imports the runtime helper
+inside the function body -- no formula duplication.
+
+Target alignment validation (supervised ops):
+- `target.index.intersection(panel.index).empty` raises `ValueError` with message
+  "no common index values" for `scaled_pca_transform`, `supervised_pca_transform`,
+  `partial_least_squares_transform`, `sliced_inverse_regression_transform`.
+- `feature_selection_transform`: `method in {"correlation", "lasso"}` and `target is None`
+  raises `ValueError("requires target")`.
+
+`dfm_transform` is fully unsupervised (no target argument). `feature_selection_transform`
+accepts `target=None` (optional) and raises only when a supervised method needs it.
+
+All 6 names added to `mf.functions.__all__`.
+
+**OptionDoc updates** (`macroforecast/scaffold/option_docs/l3.py`):
+- Added `_L3_SUPERVISED_DATA_ARGS` constant (panel_arg + required target_arg) for 4 supervised ops.
+- Added `_L3_OPTIONAL_TARGET_DATA_ARGS` constant (panel_arg + optional_target_arg) for `feature_selection`.
+- `dfm` uses existing `_L3_PANEL_DATA_ARG`-only data_args.
+- All 6 ops set to `op_page=True` with `op_func_name` and full `data_args` + `return_type` population.
+
+**Encyclopedia**: 242 → 248 pages (6 new L3 op pages).
+
+**Tests** (`tests/functions/test_l3_supervised_transforms.py`): 59 tests, all pass.
+- Bit-exact vs runtime helper for all 6 ops (RNG-42, `rtol=1e-12, atol=1e-14`).
+- Target alignment `ValueError` on disjoint indices (4 supervised ops).
+- `feature_selection_transform` method/target combo validation.
+- `dfm_transform` no-target signature verified.
+- Namespace wiring (`mf.functions.<name>`) for all 6.
+
 ### Cycle 31 -- L3 advanced transforms standalone (12 ops) + C30 backlog fixes
 
 **New standalone callables** in `mf.functions` (all return `pd.DataFrame`):
