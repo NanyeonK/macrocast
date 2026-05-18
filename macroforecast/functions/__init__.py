@@ -164,6 +164,7 @@ from .deep import (
 
 # Cycle 37: L4 timeseries family
 from .timeseries import (
+    GARCHFitResult,
     VARFitResult, var_fit,
     BVARMinnesotaFitResult, bvar_minnesota_fit,
     BVARNIWFitResult, bvar_niw_fit,
@@ -182,6 +183,7 @@ from .timeseries import (
 
 # Cycle 37: L4 misc family
 from .misc import (
+    SVRFitResult,
     SVRLinearFitResult, svr_linear_fit,
     SVRRBFFitResult, svr_rbf_fit,
     SVRPolyFitResult, svr_poly_fit,
@@ -315,6 +317,7 @@ __all__ = [
     "TransformerFitResult",
     "transformer_fit",
     # Cycle 37: L4 timeseries family
+    "GARCHFitResult",
     "VARFitResult",
     "var_fit",
     "BVARMinnesotaFitResult",
@@ -344,6 +347,7 @@ __all__ = [
     "DFMFitResult",
     "dfm_fit",
     # Cycle 37: L4 misc family
+    "SVRFitResult",
     "SVRLinearFitResult",
     "svr_linear_fit",
     "SVRRBFFitResult",

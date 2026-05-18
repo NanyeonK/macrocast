@@ -12,7 +12,7 @@ GARCH / EGARCH / RealizedGARCH require optional ``arch`` dep: skipif guard.
 
 Protocol conformance: ``isinstance(r, FitResultBase)``.
 
-Uses small panels (50x3) and n_lags=1 for CI speed.
+Uses small panels (50x3) and n_lag=1 for CI speed.
 """
 from __future__ import annotations
 
@@ -84,15 +84,16 @@ class TestVARFit:
         X, y = xy_rng42
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            r = mf.functions.var_fit(X, y, n_lags=1)
-        assert r.n_lags == 1
+            r = mf.functions.var_fit(X, y, n_lag=1)
+        assert r.n_lag == 1
+        assert r.n_series >= 1
         assert r.n_obs == 50
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            r = mf.functions.var_fit(X_arr, y_arr, n_lags=1)
+            r = mf.functions.var_fit(X_arr, y_arr, n_lag=1)
         ref = _recipe_predict("var", {"n_lag": 1}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-10)
 
@@ -117,7 +118,7 @@ class TestVARFit:
             r = mf.functions.var_fit(X, y)
         s = r.summary()
         assert "VAR" in s
-        assert "n_lags" in s
+        assert "n_lag" in s
 
     def test_protocol_conformance(self, xy_rng42):
         X, y = xy_rng42
@@ -126,10 +127,10 @@ class TestVARFit:
             r = mf.functions.var_fit(X, y)
         assert isinstance(r, FitResultBase)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.var_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.var_fit(X, y, n_lag=0)
 
     def test_namespace_wiring(self):
         assert "var_fit" in mf.functions.__all__
@@ -145,14 +146,14 @@ class TestBVARMinnesotaFit:
 
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
-        r = mf.functions.bvar_minnesota_fit(X, y, n_lags=1)
-        assert r.n_lags == 1
+        r = mf.functions.bvar_minnesota_fit(X, y, n_lag=1)
+        assert r.n_lag == 1
         assert r.lambda1 == 0.2
         assert r.n_obs == 50
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
-        r = mf.functions.bvar_minnesota_fit(X_arr, y_arr, n_lags=1, lambda1=0.2)
+        r = mf.functions.bvar_minnesota_fit(X_arr, y_arr, n_lag=1, lambda1=0.2)
         ref = _recipe_predict("bvar_minnesota", {"n_lag": 1, "lambda_1": 0.2}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-10)
 
@@ -173,10 +174,10 @@ class TestBVARMinnesotaFit:
         r = mf.functions.bvar_minnesota_fit(X, y)
         assert isinstance(r, FitResultBase)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.bvar_minnesota_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.bvar_minnesota_fit(X, y, n_lag=0)
 
     def test_validation_lambda1(self, xy_rng42):
         X, y = xy_rng42
@@ -197,13 +198,14 @@ class TestBVARNIWFit:
 
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
-        r = mf.functions.bvar_niw_fit(X, y, n_lags=1)
-        assert r.n_lags == 1
+        r = mf.functions.bvar_niw_fit(X, y, n_lag=1)
+        assert r.n_lag == 1
+        assert r.lambda1 >= 0.2
         assert r.n_obs == 50
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
-        r = mf.functions.bvar_niw_fit(X_arr, y_arr, n_lags=1)
+        r = mf.functions.bvar_niw_fit(X_arr, y_arr, n_lag=1)
         ref = _recipe_predict("bvar_normal_inverse_wishart", {"n_lag": 1}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-10)
 
@@ -224,10 +226,10 @@ class TestBVARNIWFit:
         r = mf.functions.bvar_niw_fit(X, y)
         assert isinstance(r, FitResultBase)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.bvar_niw_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.bvar_niw_fit(X, y, n_lag=0)
 
     def test_namespace_wiring(self):
         assert "bvar_niw_fit" in mf.functions.__all__
@@ -243,14 +245,14 @@ class TestARFit:
 
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
-        r = mf.functions.ar_fit(X, y, n_lags=1)
-        assert r.n_lags == 1
+        r = mf.functions.ar_fit(X, y, n_lag=1)
+        assert r.n_lag == 1
         assert r.coef_.shape == (1,)
         assert isinstance(r.intercept_, float)
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
-        r = mf.functions.ar_fit(X_arr, y_arr, n_lags=1)
+        r = mf.functions.ar_fit(X_arr, y_arr, n_lag=1)
         ref = _recipe_predict("ar_p", {"n_lag": 1}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-12)
 
@@ -271,24 +273,24 @@ class TestARFit:
         r = mf.functions.ar_fit(X, y)
         s = r.summary()
         assert "AR" in s
-        assert "n_lags" in s
+        assert "n_lag" in s
         assert "intercept_" in s
 
-    def test_coef_shape_n_lags_2(self, xy_rng42):
+    def test_coef_shape_n_lag_2(self, xy_rng42):
         X, y = xy_rng42
-        r = mf.functions.ar_fit(X, y, n_lags=2)
+        r = mf.functions.ar_fit(X, y, n_lag=2)
         assert r.coef_.shape == (2,)
-        assert r.n_lags == 2
+        assert r.n_lag == 2
 
     def test_protocol_conformance(self, xy_rng42):
         X, y = xy_rng42
         r = mf.functions.ar_fit(X, y)
         assert isinstance(r, FitResultBase)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.ar_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.ar_fit(X, y, n_lag=0)
 
     def test_namespace_wiring(self):
         assert "ar_fit" in mf.functions.__all__
@@ -304,13 +306,13 @@ class TestFARFit:
 
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
-        r = mf.functions.far_fit(X, y, n_factors=2, n_lags=1)
+        r = mf.functions.far_fit(X, y, n_factors=2, n_lag=1)
         assert r.n_factors == 2
-        assert r.n_lags == 1
+        assert r.n_lag == 1
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
-        r = mf.functions.far_fit(X_arr, y_arr, n_factors=2, n_lags=1)
+        r = mf.functions.far_fit(X_arr, y_arr, n_factors=2, n_lag=1)
         ref = _recipe_predict("factor_augmented_ar", {"n_factors": 2, "n_lag": 1}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-10)
 
@@ -336,10 +338,10 @@ class TestFARFit:
         with pytest.raises(ValueError, match="n_factors"):
             mf.functions.far_fit(X, y, n_factors=0)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.far_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.far_fit(X, y, n_lag=0)
 
     def test_namespace_wiring(self):
         assert "far_fit" in mf.functions.__all__
@@ -402,15 +404,15 @@ class TestFAVARFit:
         X, y = xy_rng42
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            r = mf.functions.favar_fit(X, y, n_factors=2, n_lags=1)
+            r = mf.functions.favar_fit(X, y, n_factors=2, n_lag=1)
         assert r.n_factors == 2
-        assert r.n_lags == 1
+        assert r.n_lag == 1
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            r = mf.functions.favar_fit(X_arr, y_arr, n_factors=2, n_lags=1)
+            r = mf.functions.favar_fit(X_arr, y_arr, n_factors=2, n_lag=1)
         ref = _recipe_predict("factor_augmented_var", {"n_factors": 2, "n_lag": 1}, X_arr, y_arr)
         np.testing.assert_allclose(r.predict(X_arr), ref, rtol=1e-10)
 
@@ -442,10 +444,10 @@ class TestFAVARFit:
         with pytest.raises(ValueError, match="n_factors"):
             mf.functions.favar_fit(X, y, n_factors=0)
 
-    def test_validation_n_lags(self, xy_rng42):
+    def test_validation_n_lag(self, xy_rng42):
         X, y = xy_rng42
-        with pytest.raises(ValueError, match="n_lags"):
-            mf.functions.favar_fit(X, y, n_lags=0)
+        with pytest.raises(ValueError, match="n_lag"):
+            mf.functions.favar_fit(X, y, n_lag=0)
 
     def test_namespace_wiring(self):
         assert "favar_fit" in mf.functions.__all__

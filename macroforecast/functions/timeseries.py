@@ -50,8 +50,10 @@ class VARFitResult:
 
     Attributes
     ----------
-    n_lags :
+    n_lag :
         Lag order p used.
+    n_series :
+        Number of endogenous series (= X.shape[1] + 1, target included).
     n_obs :
         Number of observations after lag creation.
     _model :
@@ -59,7 +61,8 @@ class VARFitResult:
         Not part of the public contract.
     """
 
-    n_lags: int
+    n_lag: int
+    n_series: int
     n_obs: int
     _model: Any
 
@@ -91,7 +94,8 @@ class VARFitResult:
             sep,
             f"{'VAR Results':^78}",
             sep,
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
+            f"{'n_series:':35s} {self.n_series:>20d}",
             f"{'n_obs:':35s} {self.n_obs:>20d}",
             sep,
         ]
@@ -104,7 +108,7 @@ class BVARMinnesotaFitResult:
 
     Attributes
     ----------
-    n_lags :
+    n_lag :
         Lag order p used.
     lambda1 :
         Minnesota tightness hyperparameter.
@@ -115,7 +119,7 @@ class BVARMinnesotaFitResult:
         Not part of the public contract.
     """
 
-    n_lags: int
+    n_lag: int
     lambda1: float
     n_obs: int
     _model: Any
@@ -144,7 +148,7 @@ class BVARMinnesotaFitResult:
             sep,
             f"{'BVAR Minnesota Results':^78}",
             sep,
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
             f"{'lambda1:':35s} {self.lambda1:>20.4f}",
             f"{'n_obs:':35s} {self.n_obs:>20d}",
             sep,
@@ -158,8 +162,12 @@ class BVARNIWFitResult:
 
     Attributes
     ----------
-    n_lags :
+    n_lag :
         Lag order p used.
+    lambda1 :
+        NIW prior tightness parameter (default 0.2).  Set to the overall
+        tightness hyperparameter used for the Normal-Inverse-Wishart prior,
+        analogous to Minnesota lambda1.  Always >= 0.2.
     n_obs :
         Number of observations used.
     _model :
@@ -167,7 +175,8 @@ class BVARNIWFitResult:
         Not part of the public contract.
     """
 
-    n_lags: int
+    n_lag: int
+    lambda1: float
     n_obs: int
     _model: Any
 
@@ -187,14 +196,16 @@ class BVARNIWFitResult:
         Returns
         -------
         str
-            Statsmodels-style table showing lag order and observation count.
+            Statsmodels-style table showing lag order, tightness, and
+            observation count.
         """
         sep = "=" * 78
         lines = [
             sep,
             f"{'BVAR NIW Results':^78}",
             sep,
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
+            f"{'lambda1:':35s} {self.lambda1:>20.4f}",
             f"{'n_obs:':35s} {self.n_obs:>20d}",
             sep,
         ]
@@ -207,7 +218,7 @@ class ARFitResult:
 
     Attributes
     ----------
-    n_lags :
+    n_lag :
         AR lag order p.
     coef_ :
         Fitted AR coefficients, shape (p,).
@@ -218,7 +229,7 @@ class ARFitResult:
         Not part of the public contract.
     """
 
-    n_lags: int
+    n_lag: int
     coef_: np.ndarray
     intercept_: float
     _model: Any
@@ -248,7 +259,7 @@ class ARFitResult:
             sep,
             f"{'AR Results':^78}",
             sep,
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
             f"{'intercept_:':35s} {self.intercept_:>20.6f}",
             sep,
             f"{'Lag':30s} {'coef':>12s}",
@@ -268,15 +279,19 @@ class FARFitResult:
     ----------
     n_factors :
         Number of PCA factors extracted from ``X``.
-    n_lags :
+    n_lag :
         AR lag order p on target.
+    coef_ :
+        Fitted regression coefficients on (factors + AR lags), shape
+        (n_factors + n_lag,).
     _model :
         Internal fitted ``_FactorAugmentedAR`` instance.
         Not part of the public contract.
     """
 
     n_factors: int
-    n_lags: int
+    n_lag: int
+    coef_: "np.ndarray"
     _model: Any
 
     def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
@@ -303,7 +318,8 @@ class FARFitResult:
             f"{'FAR (Factor-Augmented AR) Results':^78}",
             sep,
             f"{'n_factors:':35s} {self.n_factors:>20d}",
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
+            f"{'coef_ shape:':35s} {str(self.coef_.shape):>20s}",
             sep,
         ]
         return "\n".join(lines)
@@ -317,12 +333,15 @@ class PCRFitResult:
     ----------
     n_components :
         Number of principal components used in regression.
+    coef_ :
+        Fitted OLS coefficients in the PC score space, shape (n_components,).
     _model :
         Internal fitted ``_PrincipalComponentRegression`` instance.
         Not part of the public contract.
     """
 
     n_components: int
+    coef_: "np.ndarray"
     _model: Any
 
     def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
@@ -349,6 +368,7 @@ class PCRFitResult:
             f"{'PCR Results':^78}",
             sep,
             f"{'n_components:':35s} {self.n_components:>20d}",
+            f"{'coef_ shape:':35s} {str(self.coef_.shape):>20s}",
             sep,
         ]
         return "\n".join(lines)
@@ -362,7 +382,7 @@ class FAVARFitResult:
     ----------
     n_factors :
         Number of PCA factors extracted from ``X``.
-    n_lags :
+    n_lag :
         VAR lag order p.
     _model :
         Internal fitted ``_FactorAugmentedVAR`` instance.
@@ -370,7 +390,7 @@ class FAVARFitResult:
     """
 
     n_factors: int
-    n_lags: int
+    n_lag: int
     _model: Any
 
     def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
@@ -397,7 +417,7 @@ class FAVARFitResult:
             f"{'FAVAR (Factor-Augmented VAR) Results':^78}",
             sep,
             f"{'n_factors:':35s} {self.n_factors:>20d}",
-            f"{'n_lags:':35s} {self.n_lags:>20d}",
+            f"{'n_lag:':35s} {self.n_lag:>20d}",
             sep,
         ]
         return "\n".join(lines)
@@ -611,6 +631,72 @@ class RealizedGARCHFitResult:
         return "\n".join(lines)
 
 
+
+@dataclass(frozen=True)
+class GARCHFitResult:
+    """Consolidated result for GARCH family callables.
+
+    All three GARCH variants (:func:`garch11_fit`, :func:`egarch_fit`,
+    :func:`realized_garch_fit`) return this single type, distinguished by the
+    ``variant`` attribute.
+
+    Attributes
+    ----------
+    variant :
+        GARCH family variant: ``"garch"`` | ``"egarch"`` | ``"realized_garch"``.
+    conditional_mu :
+        Fitted constant conditional mean mu.
+    n_obs :
+        Number of non-missing observations in y.
+    params_ :
+        Dictionary of fitted model parameters.
+    _model :
+        Internal fitted ``_GARCHFamily`` instance.
+        Not part of the public contract.
+    """
+
+    variant: str
+    conditional_mu: float
+    n_obs: int
+    params_: dict
+    _model: Any
+
+    def predict(self, X: "np.ndarray | pd.DataFrame") -> "np.ndarray":
+        """Return conditional-mean forecast broadcast over ``len(X)`` rows."""
+        return np.asarray(self._model.predict(_to_frame(X)), dtype=float)
+
+    def predict_variance(self, h_steps: int = 1) -> "np.ndarray":
+        """Return h-step-ahead conditional variance forecast."""
+        return self._model.predict_variance(h_steps)
+
+    def summary(self) -> str:
+        """Return a minimal text summary of the GARCH fit result."""
+        sep = "=" * 78
+        label = {
+            "garch": "GARCH(1,1) Results",
+            "egarch": "EGARCH Results",
+            "realized_garch": "RealizedGARCH Results",
+        }.get(self.variant, f"GARCH[{self.variant}] Results")
+        lines = [
+            sep,
+            f"{label:^78}",
+            sep,
+            f"{'variant:':35s} {self.variant:>20s}",
+            f"{'conditional_mu:':35s} {self.conditional_mu:>20.6f}",
+            f"{'n_obs:':35s} {self.n_obs:>20d}",
+        ]
+        for k, v in self.params_.items():
+            lines.append(f"{k + ':':35s} {v:>20.6f}")
+        lines.append(sep)
+        return "\n".join(lines)
+
+
+# Backward-compat aliases: old result types map to the new consolidated type.
+# These aliases keep existing code that references GARCH11FitResult etc. working.
+GARCH11FitResult = GARCHFitResult
+EGARCHFitResult = GARCHFitResult
+RealizedGARCHFitResult = GARCHFitResult
+
 @dataclass(frozen=True)
 class ETSFitResult:
     """Result of :func:`ets_fit`.
@@ -724,6 +810,8 @@ class HoltWintersFitResult:
         Seasonal component type: ``'add'`` or ``'mul'``.
     seasonal_periods :
         Number of periods per season.
+    trend :
+        Trend component type: ``'add'``, ``'mul'``, or ``None``.
     n_obs :
         Number of observations used.
     _model :
@@ -733,6 +821,7 @@ class HoltWintersFitResult:
 
     seasonal: str
     seasonal_periods: int
+    trend: str
     n_obs: int
     _model: Any
 
@@ -752,8 +841,8 @@ class HoltWintersFitResult:
         Returns
         -------
         str
-            Statsmodels-style table showing seasonal type, periods, and
-            observation count.
+            Statsmodels-style table showing seasonal type, periods, trend,
+            and observation count.
         """
         sep = "=" * 78
         lines = [
@@ -762,6 +851,7 @@ class HoltWintersFitResult:
             sep,
             f"{'seasonal:':35s} {self.seasonal:>20s}",
             f"{'seasonal_periods:':35s} {self.seasonal_periods:>20d}",
+            f"{'trend:':35s} {str(self.trend):>20s}",
             f"{'n_obs:':35s} {self.n_obs:>20d}",
             sep,
         ]
@@ -776,6 +866,9 @@ class DFMFitResult:
     ----------
     n_factors :
         Number of dynamic factors extracted.
+    mode_ :
+        DFM estimator mode indicator: always ``"mariano_murasawa"`` for this
+        family (Kalman state-space MLE, Mariano-Murasawa 2010).
     n_obs :
         Number of observations used.
     _model :
@@ -784,6 +877,7 @@ class DFMFitResult:
     """
 
     n_factors: int
+    mode_: str
     n_obs: int
     _model: Any
 
@@ -803,8 +897,8 @@ class DFMFitResult:
         Returns
         -------
         str
-            Statsmodels-style table showing factor count and observation
-            count.
+            Statsmodels-style table showing factor count, mode, and
+            observation count.
         """
         sep = "=" * 78
         lines = [
@@ -812,6 +906,7 @@ class DFMFitResult:
             f"{'DFM Results':^78}",
             sep,
             f"{'n_factors:':35s} {self.n_factors:>20d}",
+            f"{'mode_:':35s} {self.mode_:>20s}",
             f"{'n_obs:':35s} {self.n_obs:>20d}",
             sep,
         ]
@@ -826,7 +921,7 @@ def var_fit(
     X: np.ndarray | pd.DataFrame,
     y: np.ndarray | pd.Series,
     *,
-    n_lags: int = 1,
+    n_lag: int = 1,
 ) -> VARFitResult:
     """Standalone Vector Autoregression VAR(p).
 
@@ -839,19 +934,19 @@ def var_fit(
         Feature matrix.  Shape (n_samples, n_features).
     y :
         Target vector.  Shape (n_samples,).
-    n_lags :
+    n_lag :
         VAR lag order p.  Must be >= 1.  Default 1.
 
     Returns
     -------
     VARFitResult
-        Fitted result exposing ``n_lags``, ``n_obs``, ``.predict(X)``,
+        Fitted result exposing ``n_lag``, ``n_obs``, ``.predict(X)``,
         ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_lags < 1``.
+        If ``n_lag < 1``.
 
     Examples
     --------
@@ -861,7 +956,7 @@ def var_fit(
     >>> X = rng.randn(50, 3)
     >>> y = X[:, 0] + 0.5 * rng.randn(50)
     >>> result = var_fit(X, y)
-    >>> result.n_lags
+    >>> result.n_lag
     1
 
     References
@@ -870,18 +965,19 @@ def var_fit(
     """
     from ..core.runtime import _build_l4_model  # lazy import to avoid circular
 
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
 
     X_df = _to_frame(X)
     y_s = _to_series(y)
 
-    params: dict[str, Any] = {"n_lag": int(n_lags)}
+    params: dict[str, Any] = {"n_lag": int(n_lag)}
     model = _build_l4_model("var", params)
     model.fit(X_df, y_s)
 
     return VARFitResult(
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
+        n_series=int(X_df.shape[1]) + 1,
         n_obs=len(y_s),
         _model=model,
     )
@@ -891,7 +987,7 @@ def bvar_minnesota_fit(
     X: np.ndarray | pd.DataFrame,
     y: np.ndarray | pd.Series,
     *,
-    n_lags: int = 1,
+    n_lag: int = 1,
     lambda1: float = 0.2,
 ) -> BVARMinnesotaFitResult:
     """Standalone Bayesian VAR with Minnesota prior.
@@ -905,7 +1001,7 @@ def bvar_minnesota_fit(
         Feature matrix.  Shape (n_samples, n_features).
     y :
         Target vector.  Shape (n_samples,).
-    n_lags :
+    n_lag :
         VAR lag order p.  Must be >= 1.  Default 1.
     lambda1 :
         Minnesota prior tightness.  Must be > 0.  Default 0.2.
@@ -913,13 +1009,13 @@ def bvar_minnesota_fit(
     Returns
     -------
     BVARMinnesotaFitResult
-        Fitted result exposing ``n_lags``, ``lambda1``, ``n_obs``,
+        Fitted result exposing ``n_lag``, ``lambda1``, ``n_obs``,
         ``.predict(X)``, ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_lags < 1`` or ``lambda1 <= 0``.
+        If ``n_lag < 1`` or ``lambda1 <= 0``.
 
     Examples
     --------
@@ -929,7 +1025,7 @@ def bvar_minnesota_fit(
     >>> X = rng.randn(50, 3)
     >>> y = X[:, 0] + 0.5 * rng.randn(50)
     >>> result = bvar_minnesota_fit(X, y)
-    >>> result.n_lags
+    >>> result.n_lag
     1
 
     References
@@ -939,8 +1035,8 @@ def bvar_minnesota_fit(
     """
     from ..core.runtime import _build_l4_model  # lazy import to avoid circular
 
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
     if lambda1 <= 0:
         raise ValueError(f"lambda1 must be > 0, got {lambda1!r}")
 
@@ -948,14 +1044,14 @@ def bvar_minnesota_fit(
     y_s = _to_series(y)
 
     params: dict[str, Any] = {
-        "n_lag": int(n_lags),
+        "n_lag": int(n_lag),
         "lambda_1": float(lambda1),
     }
     model = _build_l4_model("bvar_minnesota", params)
     model.fit(X_df, y_s)
 
     return BVARMinnesotaFitResult(
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
         lambda1=float(lambda1),
         n_obs=len(y_s),
         _model=model,
@@ -966,7 +1062,8 @@ def bvar_niw_fit(
     X: np.ndarray | pd.DataFrame,
     y: np.ndarray | pd.Series,
     *,
-    n_lags: int = 1,
+    n_lag: int = 1,
+    lambda1: float = 0.2,
 ) -> BVARNIWFitResult:
     """Standalone Bayesian VAR with Normal-Inverse-Wishart prior.
 
@@ -979,19 +1076,19 @@ def bvar_niw_fit(
         Feature matrix.  Shape (n_samples, n_features).
     y :
         Target vector.  Shape (n_samples,).
-    n_lags :
+    n_lag :
         VAR lag order p.  Must be >= 1.  Default 1.
 
     Returns
     -------
     BVARNIWFitResult
-        Fitted result exposing ``n_lags``, ``n_obs``, ``.predict(X)``,
+        Fitted result exposing ``n_lag``, ``n_obs``, ``.predict(X)``,
         ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_lags < 1``.
+        If ``n_lag < 1``.
 
     Examples
     --------
@@ -1001,7 +1098,7 @@ def bvar_niw_fit(
     >>> X = rng.randn(50, 3)
     >>> y = X[:, 0] + 0.5 * rng.randn(50)
     >>> result = bvar_niw_fit(X, y)
-    >>> result.n_lags
+    >>> result.n_lag
     1
 
     References
@@ -1011,18 +1108,19 @@ def bvar_niw_fit(
     """
     from ..core.runtime import _build_l4_model  # lazy import to avoid circular
 
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
 
     X_df = _to_frame(X)
     y_s = _to_series(y)
 
-    params: dict[str, Any] = {"n_lag": int(n_lags)}
+    params: dict[str, Any] = {"n_lag": int(n_lag)}
     model = _build_l4_model("bvar_normal_inverse_wishart", params)
     model.fit(X_df, y_s)
 
     return BVARNIWFitResult(
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
+        lambda1=float(lambda1),
         n_obs=len(y_s),
         _model=model,
     )
@@ -1032,7 +1130,7 @@ def ar_fit(
     X: np.ndarray | pd.DataFrame,
     y: np.ndarray | pd.Series,
     *,
-    n_lags: int = 1,
+    n_lag: int = 1,
 ) -> ARFitResult:
     """Standalone AR(p) autoregression on the target.
 
@@ -1047,19 +1145,19 @@ def ar_fit(
         internal implementation; included for API consistency.
     y :
         Target vector.  Shape (n_samples,).
-    n_lags :
+    n_lag :
         AR lag order p.  Must be >= 1.  Default 1.
 
     Returns
     -------
     ARFitResult
-        Fitted result exposing ``n_lags``, ``coef_``, ``intercept_``,
+        Fitted result exposing ``n_lag``, ``coef_``, ``intercept_``,
         ``.predict(X)``, ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_lags < 1``.
+        If ``n_lag < 1``.
 
     Examples
     --------
@@ -1069,7 +1167,7 @@ def ar_fit(
     >>> X = rng.randn(50, 3)
     >>> y = X[:, 0] + 0.5 * rng.randn(50)
     >>> result = ar_fit(X, y)
-    >>> result.n_lags
+    >>> result.n_lag
     1
     >>> result.coef_.shape
     (1,)
@@ -1081,21 +1179,21 @@ def ar_fit(
     """
     from ..core.runtime import _build_l4_model  # lazy import to avoid circular
 
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
 
     X_df = _to_frame(X)
     y_s = _to_series(y)
 
-    params: dict[str, Any] = {"n_lag": int(n_lags)}
+    params: dict[str, Any] = {"n_lag": int(n_lag)}
     model = _build_l4_model("ar_p", params)
     model.fit(X_df, y_s)
 
-    coef = np.asarray(model.coef_ if model.coef_ is not None else np.zeros(n_lags), dtype=float)
+    coef = np.asarray(model.coef_ if model.coef_ is not None else np.zeros(n_lag), dtype=float)
     intercept = float(model.intercept_)
 
     return ARFitResult(
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
         coef_=coef,
         intercept_=intercept,
         _model=model,
@@ -1107,7 +1205,7 @@ def far_fit(
     y: np.ndarray | pd.Series,
     *,
     n_factors: int = 3,
-    n_lags: int = 1,
+    n_lag: int = 1,
 ) -> FARFitResult:
     """Standalone Factor-Augmented AR (Stock-Watson 2002).
 
@@ -1124,19 +1222,19 @@ def far_fit(
     n_factors :
         Number of principal components to extract from ``X``.  Must be >= 1.
         Default 3.
-    n_lags :
+    n_lag :
         AR lag order p on the target.  Must be >= 1.  Default 1.
 
     Returns
     -------
     FARFitResult
-        Fitted result exposing ``n_factors``, ``n_lags``, ``.predict(X)``,
+        Fitted result exposing ``n_factors``, ``n_lag``, ``.predict(X)``,
         ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_factors < 1`` or ``n_lags < 1``.
+        If ``n_factors < 1`` or ``n_lag < 1``.
 
     Examples
     --------
@@ -1158,22 +1256,29 @@ def far_fit(
 
     if n_factors < 1:
         raise ValueError(f"n_factors must be >= 1, got {n_factors!r}")
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
 
     X_df = _to_frame(X)
     y_s = _to_series(y)
 
     params: dict[str, Any] = {
         "n_factors": int(n_factors),
-        "n_lag": int(n_lags),
+        "n_lag": int(n_lag),
     }
     model = _build_l4_model("factor_augmented_ar", params)
     model.fit(X_df, y_s)
 
+    # Extract regression coefficients from the fitted _FactorAugmentedAR.
+    if hasattr(model, "_regression") and model._regression is not None:
+        coef = np.asarray(model._regression.coef_, dtype=float)
+    else:
+        coef = np.zeros(n_factors + n_lag, dtype=float)
+
     return FARFitResult(
         n_factors=int(n_factors),
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
+        coef_=coef,
         _model=model,
     )
 
@@ -1233,8 +1338,15 @@ def pcr_fit(
     model = _build_l4_model("principal_component_regression", params)
     model.fit(X_df, y_s)
 
+    # Extract OLS coefficients from the fitted _PrincipalComponentRegression.
+    if hasattr(model, "_regression") and model._regression is not None:
+        coef = np.asarray(model._regression.coef_, dtype=float)
+    else:
+        coef = np.zeros(n_components, dtype=float)
+
     return PCRFitResult(
         n_components=int(n_components),
+        coef_=coef,
         _model=model,
     )
 
@@ -1244,7 +1356,7 @@ def favar_fit(
     y: np.ndarray | pd.Series,
     *,
     n_factors: int = 3,
-    n_lags: int = 1,
+    n_lag: int = 1,
 ) -> FAVARFitResult:
     """Standalone Factor-Augmented VAR (Bernanke-Boivin-Eliasz 2005).
 
@@ -1259,19 +1371,19 @@ def favar_fit(
         Target vector.  Shape (n_samples,).
     n_factors :
         Number of PCA factors to extract from ``X``.  Must be >= 1.  Default 3.
-    n_lags :
+    n_lag :
         VAR lag order p.  Must be >= 1.  Default 1.
 
     Returns
     -------
     FAVARFitResult
-        Fitted result exposing ``n_factors``, ``n_lags``, ``.predict(X)``,
+        Fitted result exposing ``n_factors``, ``n_lag``, ``.predict(X)``,
         ``.summary()``.
 
     Raises
     ------
     ValueError
-        If ``n_factors < 1`` or ``n_lags < 1``.
+        If ``n_factors < 1`` or ``n_lag < 1``.
 
     Examples
     --------
@@ -1293,22 +1405,22 @@ def favar_fit(
 
     if n_factors < 1:
         raise ValueError(f"n_factors must be >= 1, got {n_factors!r}")
-    if n_lags < 1:
-        raise ValueError(f"n_lags must be >= 1, got {n_lags!r}")
+    if n_lag < 1:
+        raise ValueError(f"n_lag must be >= 1, got {n_lag!r}")
 
     X_df = _to_frame(X)
     y_s = _to_series(y)
 
     params: dict[str, Any] = {
         "n_factors": int(n_factors),
-        "n_lag": int(n_lags),
+        "n_lag": int(n_lag),
     }
     model = _build_l4_model("factor_augmented_var", params)
     model.fit(X_df, y_s)
 
     return FAVARFitResult(
         n_factors=int(n_factors),
-        n_lags=int(n_lags),
+        n_lag=int(n_lag),
         _model=model,
     )
 
@@ -1367,7 +1479,8 @@ def garch11_fit(
     model = _build_l4_model("garch11", params)
     model.fit(X_df, y_s)
 
-    return GARCH11FitResult(
+    return GARCHFitResult(
+        variant="garch",
         conditional_mu=float(model._mu),
         n_obs=int(y_s.dropna().shape[0]),
         params_=dict(model.params_),
@@ -1425,7 +1538,8 @@ def egarch_fit(
     model = _build_l4_model("egarch", params)
     model.fit(X_df, y_s)
 
-    return EGARCHFitResult(
+    return GARCHFitResult(
+        variant="egarch",
         conditional_mu=float(model._mu),
         n_obs=int(y_s.dropna().shape[0]),
         params_=dict(model.params_),
@@ -1503,7 +1617,8 @@ def realized_garch_fit(
     model = _build_l4_model("realized_garch_with_rv_exog", params)
     model.fit(X_with_rv, y_s)
 
-    return RealizedGARCHFitResult(
+    return GARCHFitResult(
+        variant="realized_garch",
         conditional_mu=float(model._mu),
         n_obs=int(y_s.dropna().shape[0]),
         params_=dict(model.params_),
@@ -1677,6 +1792,7 @@ def holt_winters_fit(
     return HoltWintersFitResult(
         seasonal=str(model.seasonal),
         seasonal_periods=int(model.seasonal_periods),
+        trend=str(model.trend) if model.trend is not None else "add",
         n_obs=len(y_s),
         _model=model,
     )
@@ -1747,12 +1863,14 @@ def dfm_fit(
 
     return DFMFitResult(
         n_factors=int(n_factors),
+        mode_="mariano_murasawa",
         n_obs=len(y_s),
         _model=model,
     )
 
 
 __all__ = [
+    "GARCHFitResult",
     "VARFitResult",
     "var_fit",
     "BVARMinnesotaFitResult",

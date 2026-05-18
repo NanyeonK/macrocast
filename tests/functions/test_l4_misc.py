@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 
 import macroforecast as mf
-from macroforecast.functions import FitResultBase
+from macroforecast.functions import FitResultBase, SVRFitResult
 from macroforecast.core.runtime import _build_l4_model
 
 
@@ -74,6 +74,8 @@ class TestSVRLinearFit:
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
         r = mf.functions.svr_linear_fit(X, y, C=1.0)
+        assert isinstance(r, SVRFitResult)
+        assert r.kernel == "linear"
         assert r.C == 1.0
         assert r.n_support_vectors >= 0
 
@@ -100,7 +102,7 @@ class TestSVRLinearFit:
         r = mf.functions.svr_linear_fit(X, y)
         s = r.summary()
         assert "SVR" in s
-        assert "Linear" in s
+        assert "LINEAR" in s.upper()
         assert "n_support_vectors" in s
 
     def test_protocol_conformance(self, xy_rng42):
@@ -116,6 +118,7 @@ class TestSVRLinearFit:
     def test_namespace_wiring(self):
         assert "svr_linear_fit" in mf.functions.__all__
         assert "SVRLinearFitResult" in mf.functions.__all__
+        assert "SVRFitResult" in mf.functions.__all__
 
 
 # ===========================================================================
@@ -128,6 +131,8 @@ class TestSVRRBFFit:
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
         r = mf.functions.svr_rbf_fit(X, y, C=1.0, gamma="scale")
+        assert isinstance(r, SVRFitResult)
+        assert r.kernel == "rbf"
         assert r.C == 1.0
         assert r.gamma == "scale"
 
@@ -175,6 +180,8 @@ class TestSVRPolyFit:
     def test_returns_result(self, xy_rng42):
         X, y = xy_rng42
         r = mf.functions.svr_poly_fit(X, y, C=1.0, degree=2)
+        assert isinstance(r, SVRFitResult)
+        assert r.kernel == "poly"
         assert r.C == 1.0
         assert r.degree == 2
 
@@ -199,7 +206,7 @@ class TestSVRPolyFit:
         r = mf.functions.svr_poly_fit(X, y)
         s = r.summary()
         assert "SVR" in s
-        assert "Poly" in s
+        assert "POLY" in s.upper()
         assert "degree" in s
 
     def test_protocol_conformance(self, xy_rng42):
@@ -235,6 +242,7 @@ class TestKNNFit:
         assert r.n_neighbors == 5
         assert r.n_neighbors_used >= 1
         assert r.n_features_in_ == 3
+        assert r.weights in ("uniform", "distance")
 
     def test_bit_exact_with_recipe(self, xy_rng42):
         X_arr, y_arr = xy_rng42

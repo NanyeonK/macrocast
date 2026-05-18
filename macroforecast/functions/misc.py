@@ -220,6 +220,71 @@ class SVRPolyFitResult:
         return "\n".join(lines)
 
 
+
+@dataclass(frozen=True)
+class SVRFitResult:
+    """Consolidated result for SVR family callables.
+
+    All three SVR kernel variants (:func:`svr_linear_fit`, :func:`svr_rbf_fit`,
+    :func:`svr_poly_fit`) return this single type, distinguished by the
+    ``kernel`` attribute.
+
+    Attributes
+    ----------
+    kernel :
+        SVR kernel type: ``"linear"`` | ``"rbf"`` | ``"poly"``.
+    C :
+        Regularisation parameter used.
+    n_support_vectors :
+        Number of support vectors from the fitted SVR.
+    gamma :
+        RBF/poly bandwidth parameter.  ``None`` for linear kernel.
+    degree :
+        Polynomial degree.  ``None`` for non-poly kernels.
+    _model :
+        Internal fitted ``sklearn.svm.SVR`` instance.
+        Not part of the public contract.
+    """
+
+    kernel: str
+    C: float
+    n_support_vectors: int
+    gamma: Any
+    degree: Any
+    _model: Any
+
+    def predict(self, X: "np.ndarray | pd.DataFrame") -> "np.ndarray":
+        """Return predictions for new data."""
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        return np.asarray(self._model.predict(X), dtype=float)
+
+    def summary(self) -> str:
+        """Return a human-readable text summary of the SVR fit result."""
+        sep = "=" * 78
+        label = f"SVR [{self.kernel.upper()}] Results"
+        lines = [
+            sep,
+            f"{label:^78}",
+            sep,
+            f"{'kernel:':35s} {self.kernel:>20s}",
+            f"{'C:':35s} {self.C:>20.4f}",
+            f"{'n_support_vectors:':35s} {self.n_support_vectors:>20d}",
+        ]
+        if self.gamma is not None:
+            lines.append(f"{'gamma:':35s} {str(self.gamma):>20s}")
+        if self.degree is not None:
+            lines.append(f"{'degree:':35s} {self.degree:>20d}")
+        lines.append(sep)
+        return "\n".join(lines)
+
+
+# Backward-compat aliases so existing code referencing the old specific types
+# still works at runtime.
+SVRLinearFitResult = SVRFitResult
+SVRRBFFitResult = SVRFitResult
+SVRPolyFitResult = SVRFitResult
+
 @dataclass(frozen=True)
 class KNNFitResult:
     """Result of :func:`knn_fit`.
@@ -232,6 +297,8 @@ class KNNFitResult:
         Actual k used (= min(n_neighbors, n_train_samples)).
     n_features_in_ :
         Number of features seen at fit time.
+    weights :
+        Weight function used in prediction: ``"uniform"`` or ``"distance"``.
     _model :
         Internal fitted ``_AutoClipKNN`` instance.
         Not part of the public contract.
@@ -240,6 +307,7 @@ class KNNFitResult:
     n_neighbors: int
     n_neighbors_used: int
     n_features_in_: int
+    weights: str
     _model: Any
 
     def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
@@ -268,7 +336,7 @@ class KNNFitResult:
         Returns
         -------
         str
-            Statsmodels-style table showing neighbour counts and features.
+            Statsmodels-style table showing neighbour counts, weights, and features.
         """
         sep = "=" * 78
         lines = [
@@ -277,6 +345,7 @@ class KNNFitResult:
             sep,
             f"{'n_neighbors (requested):':35s} {self.n_neighbors:>20d}",
             f"{'n_neighbors (used):':35s} {self.n_neighbors_used:>20d}",
+            f"{'weights:':35s} {self.weights:>20s}",
             f"{'n_features_in_:':35s} {self.n_features_in_:>20d}",
             sep,
         ]
@@ -463,9 +532,12 @@ def svr_linear_fit(
     model = _build_l4_model("svr_linear", params)
     model.fit(X_df.values, y_s.values)
 
-    return SVRLinearFitResult(
+    return SVRFitResult(
+        kernel="linear",
         C=float(C),
         n_support_vectors=int(model.n_support_[0]),
+        gamma=None,
+        degree=None,
         _model=model,
     )
 
@@ -529,10 +601,12 @@ def svr_rbf_fit(
     model = _build_l4_model("svr_rbf", params)
     model.fit(X_df.values, y_s.values)
 
-    return SVRRBFFitResult(
+    return SVRFitResult(
+        kernel="rbf",
         C=float(C),
-        gamma=gamma,
         n_support_vectors=int(model.n_support_[0]),
+        gamma=gamma,
+        degree=None,
         _model=model,
     )
 
@@ -597,10 +671,12 @@ def svr_poly_fit(
     model.set_params(degree=int(degree))
     model.fit(X_df.values, y_s.values)
 
-    return SVRPolyFitResult(
+    return SVRFitResult(
+        kernel="poly",
         C=float(C),
-        degree=int(degree),
         n_support_vectors=int(model.n_support_[0]),
+        gamma=None,
+        degree=int(degree),
         _model=model,
     )
 
@@ -668,10 +744,14 @@ def knn_fit(
     # _AutoClipKNN clips n_neighbors to the actual training set size.
     n_used = model._knn.n_neighbors if model._knn is not None else min(n_neighbors, len(y_s))
 
+    # Extract the weights string from the AutoClipKNN wrapper.
+    weights_str = getattr(model, "weights", "uniform")
+
     return KNNFitResult(
         n_neighbors=int(n_neighbors),
         n_neighbors_used=int(n_used),
         n_features_in_=int(X_df.shape[1]),
+        weights=str(weights_str),
         _model=model,
     )
 
@@ -825,6 +905,7 @@ def mars_fit(
 
 
 __all__ = [
+    "SVRFitResult",
     "SVRLinearFitResult",
     "svr_linear_fit",
     "SVRRBFFitResult",
