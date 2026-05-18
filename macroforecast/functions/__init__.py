@@ -6,8 +6,8 @@ without constructing a full recipe.
 
 Cycle 22 POC: ``ridge_fit`` + ``theil_u1`` + ``theil_u2``.
 Cycle 26: ``FitResultBase`` Protocol added.
-Subsequent cycles will extend to L3 ops, L4 families, L5 metrics,
-L6 tests, L7 importance.
+Cycle 27: L5 metrics bulk standalone-ization (13 new ops).
+Subsequent cycles will extend to L3 ops, L4 families, L6 tests, L7 importance.
 
 Example usage::
 
@@ -25,11 +25,51 @@ Example usage::
 
     u1 = mf.functions.theil_u1(np.array([1, 2, 3]), np.array([1.5, 2.5, 3.5]))
     print(u1)                    # 0.1044...
+
+    y_true = np.array([1.0, 2.0, 3.0])
+    y_pred = np.array([1.1, 2.1, 3.1])
+    print(mf.functions.mse(y_true, y_pred))   # 0.01
+    print(mf.functions.rmse(y_true, y_pred))  # 0.1
+    print(mf.functions.mae(y_true, y_pred))   # 0.1
 """
 from __future__ import annotations
 
 from ._base import FitResultBase
 from .ridge import RidgeFitResult, ridge_fit
 from .theil_u import theil_u1, theil_u2
+from .metrics import (
+    mse,
+    rmse,
+    mae,
+    medae,
+    mape,
+    relative_mse,
+    relative_mae,
+    mse_reduction,
+    r2_oos,
+    interval_score,
+    coverage_rate,
+    success_ratio,
+    pesaran_timmermann_metric,
+)
 
-__all__ = ["FitResultBase", "RidgeFitResult", "ridge_fit", "theil_u1", "theil_u2"]
+__all__ = [
+    "FitResultBase",
+    "RidgeFitResult",
+    "ridge_fit",
+    "theil_u1",
+    "theil_u2",
+    "mse",
+    "rmse",
+    "mae",
+    "medae",
+    "mape",
+    "relative_mse",
+    "relative_mae",
+    "mse_reduction",
+    "r2_oos",
+    "interval_score",
+    "coverage_rate",
+    "success_ratio",
+    "pesaran_timmermann_metric",
+]
