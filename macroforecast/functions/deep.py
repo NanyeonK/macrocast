@@ -345,7 +345,13 @@ def _fit_torch_sequence(
     -------
     tuple of (model, n_params, n_features, final_loss)
     """
-    import torch
+    try:
+        import torch
+    except ImportError as e:
+        raise NotImplementedError(
+            "Torch-based sequence models (LSTM/GRU/Transformer) require PyTorch. "
+            "Install with `pip install macroforecast[torch]` or `pip install torch`."
+        ) from e
     from torch import nn
 
     torch.manual_seed(random_state)

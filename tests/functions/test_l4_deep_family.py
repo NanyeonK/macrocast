@@ -23,6 +23,19 @@ import macroforecast as mf
 from macroforecast.functions import FitResultBase
 from macroforecast.core.runtime import _build_l4_model
 
+# ---------------------------------------------------------------------------
+# Helper: torch availability check
+# ---------------------------------------------------------------------------
+
+def _torch_available() -> bool:
+    try:
+        import torch  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+
 
 # ---------------------------------------------------------------------------
 # Shared deterministic fixtures
@@ -172,6 +185,7 @@ class TestMLPFit:
 # TestLSTMFit
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
 class TestLSTMFit:
     """lstm_fit: correctness (atol=1e-5), predict, summary, protocol, validation."""
 
@@ -259,6 +273,7 @@ class TestLSTMFit:
 # TestGRUFit
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
 class TestGRUFit:
     """gru_fit: correctness (atol=1e-5), predict, summary, protocol, validation."""
 
@@ -335,6 +350,7 @@ class TestGRUFit:
 # TestTransformerFit
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not _torch_available(), reason="torch not installed")
 class TestTransformerFit:
     """transformer_fit: correctness (atol=1e-5), predict, summary, protocol, validation."""
 
