@@ -333,6 +333,7 @@ DIRECTION = {
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Build OptionDoc entries.
 # ---------------------------------------------------------------------------
 
@@ -369,6 +370,10 @@ for option, doc in _ALL.items():
         related=tuple(k for k in _PRIMARY_REFS_BY_OPTION if k != option)[:4]))
 
 
+# ---------------------------------------------------------------------------
+# Shared data_args tuples for per-op encyclopedia pages (Cycle 27).
+# ---------------------------------------------------------------------------
+
 # Data args for theil_u1 function-op (Cycle 26: moved from parameters).
 _THEIL_U1_DATA_ARGS: tuple[ParameterDoc, ...] = (
     ParameterDoc(
@@ -385,7 +390,136 @@ _THEIL_U1_DATA_ARGS: tuple[ParameterDoc, ...] = (
     ),
 )
 
+# Standard (y_true, y_pred) data args -- point metrics other than theil_u1/u2.
+_METRIC_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual (realised) values. 1-D float array of length N.",
+    ),
+    ParameterDoc(
+        name="y_pred",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Forecast values. Must be the same length as y_true.",
+    ),
+)
+
+# (y_true, y_prev) data args for theil_u2.
+_THEIL_U2_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual values at time t. 1-D array of length N.",
+    ),
+    ParameterDoc(
+        name="y_pred",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Forecast values at time t. Same length as y_true.",
+    ),
+    ParameterDoc(
+        name="y_prev",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description=(
+            "Actual values at time t-1 (random-walk baseline). "
+            "Same length as y_true. Pass np.nan for missing rows."
+        ),
+    ),
+)
+
+# (y_true, y_model, y_benchmark) data args -- relative metrics.
+_RELATIVE_METRIC_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual (realised) values. 1-D float array of length N.",
+    ),
+    ParameterDoc(
+        name="y_model",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Candidate model forecast values. Same length as y_true.",
+    ),
+    ParameterDoc(
+        name="y_benchmark",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Benchmark model forecast values. Same length as y_true.",
+    ),
+)
+
+# (y_true, y_lower, y_upper) data args -- interval/coverage metrics.
+_INTERVAL_METRIC_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual (realised) values. 1-D float array of length N.",
+    ),
+    ParameterDoc(
+        name="y_lower",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Lower bound of the prediction interval. Same length as y_true.",
+    ),
+    ParameterDoc(
+        name="y_upper",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Upper bound of the prediction interval. Same length as y_true.",
+    ),
+)
+
+# (y_true, y_pred, y_prev) data args -- success_ratio.
+_DIRECTION_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual (realised) values. 1-D float array of length N.",
+    ),
+    ParameterDoc(
+        name="y_pred",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Forecast values. Same length as y_true.",
+    ),
+    ParameterDoc(
+        name="y_prev",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description=(
+            "Lagged actual values (y at t-1). Same length as y_true. "
+            "Pass np.nan for rows where the previous value is unavailable."
+        ),
+    ),
+)
+
+# (y_true, y_pred) data args -- pesaran_timmermann_metric.
+_PT_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="y_true",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Actual (realised) values. 1-D float array of length N.",
+    ),
+    ParameterDoc(
+        name="y_pred",
+        type="np.ndarray | pd.Series",
+        default=REQUIRED,
+        description="Forecast values. Same length as y_true.",
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Multi-select axes
+# ---------------------------------------------------------------------------
+
 _POINT = []
 for option, (summary, desc, when, when_not) in POINT.items():
     refs: tuple[Reference, ...] = (_REF_DESIGN_L5, _REF_DIEBOLD_2017)
@@ -393,12 +527,29 @@ for option, (summary, desc, when, when_not) in POINT.items():
         refs = refs + (_REF_HYNDMAN_KOEHLER_2006,)
     if option in ("theil_u1", "theil_u2"):
         refs = (_REF_DESIGN_L5, _REF_THEIL_1966)
-    # Cycle 22 POC: theil_u1 gets a dedicated per-op encyclopedia page.
-    _op_page = option == "theil_u1"
-    _op_func_name = "theil_u1" if option == "theil_u1" else ""
-    _params: tuple[ParameterDoc, ...] = ()  # y_true/y_pred moved to data_args
-    _data_args: tuple[ParameterDoc, ...] = _THEIL_U1_DATA_ARGS if option == "theil_u1" else ()
-    _return_type: str = "float" if option == "theil_u1" else ""
+    # Cycle 27: all point metrics get a per-op encyclopedia page.
+    _op_page = True
+    _op_func_name = option
+    _params: tuple[ParameterDoc, ...] = ()
+    if option == "theil_u1":
+        _data_args: tuple[ParameterDoc, ...] = _THEIL_U1_DATA_ARGS
+    elif option == "theil_u2":
+        _data_args = _THEIL_U2_DATA_ARGS
+    elif option == "mape":
+        _data_args = _METRIC_DATA_ARGS
+        _params = (
+            ParameterDoc(
+                name="eps",
+                type="float",
+                default=1e-10,
+                description=(
+                    "Small positive value added to |y_true| to avoid "
+                    "division by zero when targets are near zero."
+                ),
+            ),
+        )
+    else:
+        _data_args = _METRIC_DATA_ARGS
     _POINT.append(_e("point_metrics", option, summary,
         f"Point-forecast metric ``{option}``. {desc}",
         when, when_not_to_use=when_not, references=refs,
@@ -406,26 +557,80 @@ for option, (summary, desc, when, when_not) in POINT.items():
         op_page=_op_page, op_func_name=_op_func_name,
         parameters=_params,
         data_args=_data_args,
-        return_type=_return_type))
+        return_type="float"))
 
 _DENSITY = []
 for option, (summary, desc, when) in DENSITY.items():
     density_refs: tuple[Reference, ...] = (_REF_DESIGN_L5, _REF_GNEITING_RAFTERY_2007, _REF_GNEITING_KATZFUSS_2014)
     if option == "interval_score":
         density_refs = density_refs + (_REF_WINKLER_1972,)
+    # Cycle 27: interval_score and coverage_rate (B1 subset) get per-op pages.
+    # log_score and crps are B2 (require density objects) -- deferred.
+    if option == "interval_score":
+        _d_op_page = True
+        _d_data_args = _INTERVAL_METRIC_DATA_ARGS
+        _d_params: tuple[ParameterDoc, ...] = (
+            ParameterDoc(
+                name="alpha",
+                type="float",
+                default=0.05,
+                description=(
+                    "Miscoverage level (1 - confidence level). "
+                    "E.g. alpha=0.05 for 95% prediction intervals."
+                ),
+            ),
+        )
+        _d_return_type = "float"
+    elif option == "coverage_rate":
+        _d_op_page = True
+        _d_data_args = _INTERVAL_METRIC_DATA_ARGS
+        _d_params = ()
+        _d_return_type = "float"
+    else:
+        _d_op_page = False
+        _d_data_args = ()
+        _d_params = ()
+        _d_return_type = ""
     _DENSITY.append(_e("density_metrics", option, summary,
         f"Density-forecast metric ``{option}``. {desc}",
         when, references=density_refs,
-        related=tuple(k for k in DENSITY if k != option)))
+        related=tuple(k for k in DENSITY if k != option),
+        op_page=_d_op_page, op_func_name=option if _d_op_page else "",
+        parameters=_d_params,
+        data_args=_d_data_args,
+        return_type=_d_return_type))
 
-_DIRECTION = [
-    _e("direction_metrics", option, summary,
-       f"Directional-accuracy metric ``{option}``. {desc}",
-       when, when_not_to_use=when_not,
-       references=(_REF_DESIGN_L5, _REF_PESARAN_TIMMERMANN_1992),
-       related=tuple(k for k in DIRECTION if k != option))
-    for option, (summary, desc, when, when_not) in DIRECTION.items()
-]
+_DIRECTION = []
+for option, (summary, desc, when, when_not) in DIRECTION.items():
+    # Cycle 27: both direction metrics get per-op pages.
+    if option == "success_ratio":
+        _dir_data_args = _DIRECTION_DATA_ARGS
+        _dir_params: tuple[ParameterDoc, ...] = ()
+    else:
+        # pesaran_timmermann_metric: (y_true, y_pred) + threshold kwarg
+        _dir_data_args = _PT_DATA_ARGS
+        _dir_params = (
+            ParameterDoc(
+                name="threshold",
+                type="float",
+                default=0.0,
+                description=(
+                    "Threshold for computing directional binary series. "
+                    "A forecast above threshold = directional 'up'."
+                ),
+            ),
+        )
+    _DIRECTION.append(
+        _e("direction_metrics", option, summary,
+           f"Directional-accuracy metric ``{option}``. {desc}",
+           when, when_not_to_use=when_not,
+           references=(_REF_DESIGN_L5, _REF_PESARAN_TIMMERMANN_1992),
+           related=tuple(k for k in DIRECTION if k != option),
+           op_page=True, op_func_name=option,
+           parameters=_dir_params,
+           data_args=_dir_data_args,
+           return_type="float")
+    )
 
 _RELATIVE = []
 for option, (summary, desc, when) in RELATIVE.items():
@@ -435,6 +640,10 @@ for option, (summary, desc, when) in RELATIVE.items():
     _RELATIVE.append(_e("relative_metrics", option, summary,
         f"Relative-loss metric ``{option}``. {desc}",
         when, references=relative_refs,
-        related=tuple(k for k in RELATIVE if k != option)))
+        related=tuple(k for k in RELATIVE if k != option),
+        op_page=True, op_func_name=option,
+        parameters=(),
+        data_args=_RELATIVE_METRIC_DATA_ARGS,
+        return_type="float"))
 
 register(*_PRIMARY, *_POINT, *_DENSITY, *_DIRECTION, *_RELATIVE)
