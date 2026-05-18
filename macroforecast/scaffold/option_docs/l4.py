@@ -1327,6 +1327,19 @@ _F_MLP = _f(
     "Non-linear regression baselines; ablations against deep NN.",
     references=(_REF_DESIGN_L4,),
     related_options=("lstm", "gru", "transformer"),
+    op_page=True,
+    op_func_name="mlp_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="MLPFitResult",
+    returns_attrs=(
+        (".n_params", "int", "Total number of trainable parameters (weights + biases)."),
+        (".n_features_in_", "int", "Number of input features seen during fit."),
+        (".hidden_layer_sizes", "tuple", "Tuple of hidden layer widths, e.g. (32, 16)."),
+        (".epochs_used", "int", "Number of optimiser iterations completed."),
+        (".final_loss", "float", "Training MSE at the end of fitting."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Arch metadata table: model_type, hidden_layer_sizes, n_features, n_params, epochs_used, final_loss."),
+    ),
 )
 
 _F_LSTM = _f(
@@ -1346,6 +1359,19 @@ _F_LSTM = _f(
         ),
     ),
     related_options=("gru", "transformer", "mlp"),
+    op_page=True,
+    op_func_name="lstm_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="LSTMFitResult",
+    returns_attrs=(
+        (".n_params", "int", "Total number of trainable parameters in LSTM + head."),
+        (".n_features_in_", "int", "Number of input features seen during fit."),
+        (".hidden_size", "int", "Width of the LSTM hidden state."),
+        (".epochs_used", "int", "Number of training epochs completed."),
+        (".final_loss", "float", "Training MSE via no-grad forward pass after fitting."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Arch metadata table: model_type, hidden_size, n_features, n_params, epochs_used, final_loss."),
+    ),
 )
 
 _F_GRU = _f(
@@ -1361,6 +1387,19 @@ _F_GRU = _f(
         ),
     ),
     related_options=("lstm", "transformer"),
+    op_page=True,
+    op_func_name="gru_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="GRUFitResult",
+    returns_attrs=(
+        (".n_params", "int", "Total number of trainable parameters in GRU + head."),
+        (".n_features_in_", "int", "Number of input features seen during fit."),
+        (".hidden_size", "int", "Width of the GRU hidden state."),
+        (".epochs_used", "int", "Number of training epochs completed."),
+        (".final_loss", "float", "Training MSE via no-grad forward pass after fitting."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Arch metadata table: model_type, hidden_size, n_features, n_params, epochs_used, final_loss."),
+    ),
 )
 
 _F_TRANSFORMER = _f(
@@ -1376,6 +1415,19 @@ _F_TRANSFORMER = _f(
         ),
     ),
     related_options=("lstm", "gru"),
+    op_page=True,
+    op_func_name="transformer_fit",
+    data_args=_L4_DATA_ARGS,
+    return_type="TransformerFitResult",
+    returns_attrs=(
+        (".n_params", "int", "Total trainable parameters in Transformer encoder + head."),
+        (".n_features_in_", "int", "Number of input features seen during fit (= d_model)."),
+        (".hidden_size", "int", "dim_feedforward of the single TransformerEncoderLayer."),
+        (".epochs_used", "int", "Number of training epochs completed."),
+        (".final_loss", "float", "Training MSE via no-grad forward pass after fitting."),
+        (".predict(X)", "np.ndarray", "Predictions for new data X, shape (n_samples,)."),
+        (".summary()", "str", "Arch metadata table: model_type, hidden_size, n_features, n_params, epochs_used, final_loss."),
+    ),
 )
 
 

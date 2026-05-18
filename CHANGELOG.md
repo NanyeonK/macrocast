@@ -5,6 +5,37 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+### Cycle 36 -- L4 deep family standalone-ization (4 ops)
+
+**New standalone callables** in `mf.functions` (all return a frozen dataclass):
+
+`mlp_fit(X, y, *, hidden_layer_sizes=(32,16), max_iter=500, random_state=0)` -> `MLPFitResult`
+`lstm_fit(X, y, *, hidden_size=32, n_epochs=50, random_state=0)` -> `LSTMFitResult`
+`gru_fit(X, y, *, hidden_size=32, n_epochs=50, random_state=0)` -> `GRUFitResult`
+`transformer_fit(X, y, *, hidden_size=32, n_epochs=50, random_state=0)` -> `TransformerFitResult`
+
+Each result dataclass exposes: `.n_params`, `.n_features_in_`, `.hidden_layer_sizes` (MLP) / `.hidden_size` (torch), `.epochs_used`, `.final_loss`, `._model`, `.predict(X)`, `.summary()`.
+
+Paradigm (C28 lazy-import): MLP calls `_build_l4_model("mlp", params)` from `macroforecast.core.runtime` directly (bit-exact, rtol=1e-12). Torch families (LSTM/GRU/Transformer) replicate `_TorchSequenceModel` architecture identically in `_fit_torch_sequence` helper (atol=1e-5). Seeds set via `torch.manual_seed(random_state)` + `np.random.seed(random_state)` before fit. `final_loss` computed via `with torch.no_grad():` forward pass after training.
+
+**New file**: `macroforecast/functions/deep.py` (4 ops).
+
+All 8 names (4 callables + 4 result types) added to `mf.functions.__all__`.
+
+**OptionDoc updates** (`macroforecast/scaffold/option_docs/l4.py`):
+- 4 deep family entries updated with `op_page=True`, `op_func_name`, `data_args=_L4_DATA_ARGS`, `return_type`, `returns_attrs`.
+
+**Encyclopedia**: 276 -> 280 pages (4 new L4 deep op pages).
+
+**Tests** (`tests/functions/test_l4_deep_family.py`): see test file.
+- Bit-exact MLP vs `_build_l4_model("mlp", params)` direct call (rtol=1e-12).
+- atol=1e-5 for torch families (LSTM/GRU/Transformer).
+- `.predict()` shape (n,) + dtype float.
+- `.summary()` contains model_type, n_features, final_loss.
+- Protocol structural conformance (`FitResultBase`).
+- Input validation (max_iter, hidden_size, n_epochs, hidden_layer_sizes).
+- Namespace wiring (`mf.functions.__all__`).
+
 ### Cycle 35 -- L4 tree/ensemble family standalone-ization (6 ops) + C34 backlog
 
 **New standalone callables** in `mf.functions` (all return a frozen dataclass):

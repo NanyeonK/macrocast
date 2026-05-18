@@ -154,6 +154,14 @@ from .tree import (
     CatBoostFitResult, catboost_fit,
 )
 
+# Cycle 36: L4 deep family
+from .deep import (
+    MLPFitResult, mlp_fit,
+    LSTMFitResult, lstm_fit,
+    GRUFitResult, gru_fit,
+    TransformerFitResult, transformer_fit,
+)
+
 __all__ = [
     "FitResultBase",
     "RidgeFitResult",
@@ -269,4 +277,13 @@ __all__ = [
     "lightgbm_fit",
     "CatBoostFitResult",
     "catboost_fit",
+    # Cycle 36: L4 deep family
+    "MLPFitResult",
+    "mlp_fit",
+    "LSTMFitResult",
+    "lstm_fit",
+    "GRUFitResult",
+    "gru_fit",
+    "TransformerFitResult",
+    "transformer_fit",
 ]

@@ -304,92 +304,25 @@ _Last reviewed 2026-05-04 by macroforecast author._
 
 Multi-layer perceptron (sklearn).
 
-Feed-forward NN with ReLU activations. ``params.hidden_layer_sizes`` controls the architecture.
-
-**v0.9 sub-axes** (apply equally to mlp / lstm / gru / transformer):
-* ``params.architecture`` -- network topology. ``standard`` (default) is the standard feed-forward / sequence variant. ``hemisphere`` (future) implements Coulombe / Frenette / Klieber (2025 JAE) HNN with separate mean / variance hemispheres joined by a constraint loss.
-* ``params.loss`` -- objective. ``mse`` (default), ``quantile`` (operational via forecast_object=quantile), ``volatility_emphasis`` (future, HNN constraint loss).
-
-**When to use**
-
-Non-linear regression baselines; ablations against deep NN.
-
-**References**
-
-* macroforecast design Part 2, L4: 'forecasting model is the layer where every authoring iteration ends -- pick family, tune, repeat.'
-
-**Related options**: [`lstm`](#lstm), [`gru`](#gru), [`transformer`](#transformer)
-
-_Last reviewed 2026-05-04 by macroforecast author._
+See [mlp function page](../family/mlp.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.mlp_fit``.
 
 ### `lstm`  --  operational
 
 Long short-term memory recurrent NN (torch, optional).
 
-Requires ``pip install macroforecast[deep]``. Sequence-aware RNN with input/forget/output gates. Trains on sliding windows of the lagged feature panel.
-
-**When to use**
-
-Sequence-modelling studies; replication of deep-NN forecasting papers.
-
-**When NOT to use**
-
-Without [deep] installed -- raises NotImplementedError.
-
-**References**
-
-* macroforecast design Part 2, L4: 'forecasting model is the layer where every authoring iteration ends -- pick family, tune, repeat.'
-* Hochreiter & Schmidhuber (1997) 'Long short-term memory', Neural Computation 9(8).
-
-**Related options**: [`gru`](#gru), [`transformer`](#transformer), [`mlp`](#mlp)
-
-_Last reviewed 2026-05-04 by macroforecast author._
+See [lstm function page](../family/lstm.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.lstm_fit``.
 
 ### `gru`  --  operational
 
 Gated recurrent unit RNN (torch, optional).
 
-Requires ``pip install macroforecast[deep]``. Simpler than LSTM (one fewer gate); often comparable on macro panels.
-
-**When to use**
-
-Sequence-modelling baselines; LSTM ablations.
-
-**When NOT to use**
-
-Without [deep] installed.
-
-**References**
-
-* macroforecast design Part 2, L4: 'forecasting model is the layer where every authoring iteration ends -- pick family, tune, repeat.'
-* Cho et al. (2014) 'Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation', EMNLP.
-
-**Related options**: [`lstm`](#lstm), [`transformer`](#transformer)
-
-_Last reviewed 2026-05-04 by macroforecast author._
+See [gru function page](../family/gru.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.gru_fit``.
 
 ### `transformer`  --  operational
 
 Transformer encoder regressor (torch, optional).
 
-Requires ``pip install macroforecast[deep]``. Self-attention on the lagged feature panel. Single encoder layer; suitable as a non-linear sequence-attention baseline.
-
-**When to use**
-
-Attention-based macro forecasting research; sequence-NN benchmark.
-
-**When NOT to use**
-
-Without [deep] installed.
-
-**References**
-
-* macroforecast design Part 2, L4: 'forecasting model is the layer where every authoring iteration ends -- pick family, tune, repeat.'
-* Vaswani et al. (2017) 'Attention is all you need', NeurIPS.
-
-**Related options**: [`lstm`](#lstm), [`gru`](#gru)
-
-_Last reviewed 2026-05-04 by macroforecast author._
+See [transformer function page](../family/transformer.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.transformer_fit``.
 
 ### `knn`  --  operational
 
