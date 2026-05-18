@@ -331,21 +331,21 @@ class TestTimeTrendTransform:
 
     def test_column_name(self):
         out = time_trend_transform(PANEL)
-        assert list(out.columns) == ["t"]
+        assert list(out.columns) == ["time_trend"]
 
     def test_trend_values(self):
         out = time_trend_transform(PANEL)
         expected = np.arange(1, 51, dtype=float)
-        assert np.allclose(out["t"].values, expected)
+        assert np.allclose(out["time_trend"].values, expected)
 
     def test_bit_exact_inline(self):
         # time_trend_transform uses inline np.arange - no runtime helper
         out = time_trend_transform(PANEL_SMALL)
-        assert list(out["t"]) == list(range(1, 21))
+        assert list(out["time_trend"]) == list(range(1, 21))
 
     def test_dtype_float(self):
         out = time_trend_transform(PANEL)
-        assert out["t"].dtype == np.float64
+        assert out["time_trend"].dtype == np.float64
 
     def test_index_preserved(self):
         out = time_trend_transform(PANEL)
@@ -354,7 +354,7 @@ class TestTimeTrendTransform:
     def test_small_panel(self):
         panel = pd.DataFrame({"a": [1.0, 2.0, 3.0]})
         out = time_trend_transform(panel)
-        assert list(out["t"]) == [1.0, 2.0, 3.0]
+        assert list(out["time_trend"]) == [1.0, 2.0, 3.0]
 
     def test_empty_panel_raises(self):
         with pytest.raises(ValueError):
@@ -449,3 +449,19 @@ class TestHolidayTransform:
         assert hasattr(mf.functions, "holiday_transform")
         out = mf.functions.holiday_transform(PANEL)
         assert out.shape == (50, 1)
+
+
+# ---------------------------------------------------------------------------
+# OD-3: Alias OptionDoc entries must have op_page=False
+# ---------------------------------------------------------------------------
+
+class TestOD3AliasOpPageFalse:
+    def test_OD_3_aliases_have_op_page_false(self):
+        from macroforecast.scaffold.option_docs.l3 import (
+            _OP_VARIMAX_ROTATION,
+            _OP_KERNEL,
+            _OP_NYSTROEM_FEATURES,
+            _OP_POLYNOMIAL,
+        )
+        for od in [_OP_VARIMAX_ROTATION, _OP_KERNEL, _OP_NYSTROEM_FEATURES, _OP_POLYNOMIAL]:
+            assert od.op_page is False, f"{od.option!r} alias must have op_page=False"

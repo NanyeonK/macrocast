@@ -103,7 +103,19 @@ See [interaction function page](../op/interaction.md) for full documentation + p
 
 Kernel-feature pre-step (Random Fourier / Nyström handle).
 
-See [kernel function page](../op/kernel.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.kernel_features_transform``.
+Generic handle for an explicit kernel-feature embedding; concrete dispatch is determined by ``params.kernel`` (``rbf`` / ``poly`` / ``laplacian``). For named variants use ``kernel_features`` (RBF Random Fourier) or ``nystroem``.
+
+**When to use**
+
+Kernel-augmented linear / SVM pipelines.
+
+**References**
+
+* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
+
+**Related options**: [`kernel_features`](#kernel-features), [`nystroem`](#nystroem)
+
+_Last reviewed 2026-05-05 by macroforecast author._
 
 ### `kernel_features`  --  operational
 
@@ -252,7 +264,19 @@ See [nystroem function page](../op/nystroem.md) for full documentation + paramet
 
 Alias for ``nystroem`` -- explicit feature-stage name.
 
-See [nystroem_features function page](../op/nystroem_features.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.nystroem_transform``.
+Identical to ``nystroem``; preferred when a multi-stage pipeline names its kernel approximation explicitly in the lineage graph.
+
+**When to use**
+
+Multi-stage pipelines that separate kernel approximation from downstream linear fits.
+
+**References**
+
+* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
+
+**Related options**: [`nystroem`](#nystroem)
+
+_Last reviewed 2026-05-05 by macroforecast author._
 
 ### `partial_least_squares`  --  operational
 
@@ -276,7 +300,23 @@ See [pct_change function page](../op/pct_change.md) for full documentation + par
 
 Polynomial basis expansion -- degree-d powers of input.
 
-See [polynomial function page](../op/polynomial.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.polynomial_expansion_transform``.
+sklearn ``PolynomialFeatures`` of degree ``params.degree``. Includes interaction terms by default; set ``params.interaction_only=True`` for products without pure powers.
+
+**When to use**
+
+Capturing low-order non-linearity for linear / kernel models.
+
+**When NOT to use**
+
+High dimension (degree > 3 with many predictors) -- explodes the design matrix; use kernel methods instead.
+
+**References**
+
+* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
+
+**Related options**: [`interaction`](#interaction), [`kernel_features`](#kernel-features), [`polynomial_expansion`](#polynomial-expansion)
+
+_Last reviewed 2026-05-05 by macroforecast author._
 
 ### `polynomial_expansion`  --  operational
 
@@ -448,7 +488,19 @@ See [varimax function page](../op/varimax.md) for full documentation + parameter
 
 Alias for ``varimax`` -- rotation step in a multi-stage factor pipeline.
 
-See [varimax_rotation function page](../op/varimax_rotation.md) for full documentation + parameters + standalone usage. Standalone: ``mf.functions.varimax_transform``.
+Identical operation to ``varimax`` but registered separately so a cascading L3 pipeline can declare ``pca → varimax_rotation`` as two visible nodes in its lineage.
+
+**When to use**
+
+Multi-stage pipelines that explicitly separate factor extraction from rotation.
+
+**References**
+
+* macroforecast design Part 2, L3: 'feature engineering is a DAG of typed transforms; cascade-depth bounds the longest chain at cascade_max_depth.'
+
+**Related options**: [`varimax`](#varimax), [`pca`](#pca)
+
+_Last reviewed 2026-05-05 by macroforecast author._
 
 ### `wavelet`  --  operational
 

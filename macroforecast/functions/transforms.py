@@ -2426,7 +2426,7 @@ def time_trend_transform(panel: pd.DataFrame) -> pd.DataFrame:
     _require_non_empty(frame)
     T = len(frame)
     trend = np.arange(1, T + 1, dtype=float)
-    return pd.DataFrame({"t": trend}, index=frame.index)
+    return pd.DataFrame({"time_trend": trend}, index=frame.index)
 
 
 # ---------------------------------------------------------------------------
