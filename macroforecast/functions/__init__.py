@@ -13,6 +13,7 @@ Cycle 30: L3 basic panel transforms standalone-ization (10 ops).
 Cycle 31: L3 advanced panel transforms standalone-ization (12 ops).
 Cycle 32: L3 supervised/mixed transforms standalone-ization (6 ops).
 Cycle 33: L3 final B1 transforms standalone-ization (8 ops).
+Cycle 34: L2 clean panel ops standalone-ization (14 ops).
 
 Example usage::
 
@@ -40,6 +41,7 @@ Example usage::
     panel = pd.DataFrame({"a": [1.0, 2.0, 3.0, 4.0, 5.0]})
     print(mf.functions.diff_transform(panel))
     print(mf.functions.scale_transform(panel, method="zscore"))
+    print(mf.functions.iqr_outlier_clean(panel, threshold=10.0))
 """
 from __future__ import annotations
 
@@ -121,6 +123,24 @@ from .transforms import (
     nystroem_transform,
     time_trend_transform,
     holiday_transform,
+)
+
+# Cycle 34: L2 clean panel ops
+from .clean import (
+    iqr_outlier_clean,
+    zscore_outlier_clean,
+    winsorize_clean,
+    em_factor_impute_clean,
+    em_multivariate_impute_clean,
+    mean_impute_clean,
+    forward_fill_clean,
+    linear_interpolate_clean,
+    truncate_to_balanced_clean,
+    drop_unbalanced_series_clean,
+    zero_fill_leading_clean,
+    apply_tcode_transform,
+    freq_align_quarterly_to_monthly_clean,
+    freq_align_monthly_to_quarterly_clean,
 )
 
 __all__ = [
@@ -210,4 +230,19 @@ __all__ = [
     "nystroem_transform",
     "time_trend_transform",
     "holiday_transform",
+    # Cycle 34: L2 clean panel ops
+    "iqr_outlier_clean",
+    "zscore_outlier_clean",
+    "winsorize_clean",
+    "em_factor_impute_clean",
+    "em_multivariate_impute_clean",
+    "mean_impute_clean",
+    "forward_fill_clean",
+    "linear_interpolate_clean",
+    "truncate_to_balanced_clean",
+    "drop_unbalanced_series_clean",
+    "zero_fill_leading_clean",
+    "apply_tcode_transform",
+    "freq_align_quarterly_to_monthly_clean",
+    "freq_align_monthly_to_quarterly_clean",
 ]
