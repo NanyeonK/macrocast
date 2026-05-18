@@ -11,18 +11,105 @@ L6.B (nested), L6.E (density), L6.F (direction), L6.G (residual) are
 populated as tier-1 entries by their schema axes but presently expose
 no ``operational`` test_id options separate from the four sub-layers
 listed above.
+
+Cycle 29: L6.A and L6.B ops updated with op_page=True, op_func_name,
+data_args, return_type, returns_attrs.
 """
 
 from __future__ import annotations
 
 from . import register
-from .types import OptionDoc, Reference
+from .types import OptionDoc, ParameterDoc, Reference, REQUIRED
 
 _REVIEWED = "2026-05-05"
 _REVIEWER = "macroforecast author"
 
 _REF_DESIGN_L6 = Reference(
     citation="macroforecast design Part 3, L6: 'tests must report (statistic, p-value, kernel, lag) and respect HAC dependence-correction.'",
+)
+
+
+# Shared data_args tuples for per-op encyclopedia pages (Cycle 29).
+
+_L6_LOSS_PAIR_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="loss_a",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Per-period losses for model A (e.g. squared errors).",
+    ),
+    ParameterDoc(
+        name="loss_b",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Per-period losses for model B.",
+    ),
+)
+
+_L6_DMP_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="loss_differentials",
+        type="list[np.ndarray] or np.ndarray",
+        default=REQUIRED,
+        description="Per-period loss differentials, one array per horizon or pre-stacked.",
+    ),
+)
+
+_L6_HN_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="e_a",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Forecast errors for model A (actual - forecast_a).",
+    ),
+    ParameterDoc(
+        name="e_b",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Forecast errors for model B (actual - forecast_b).",
+    ),
+)
+
+_L6_CW_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="loss_small",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Squared losses for the small (restricted) model.",
+    ),
+    ParameterDoc(
+        name="loss_large",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Squared losses for the large (unrestricted) model.",
+    ),
+    ParameterDoc(
+        name="f_small",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Point forecasts for the small model.",
+    ),
+    ParameterDoc(
+        name="f_large",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Point forecasts for the large model.",
+    ),
+)
+
+_L6_ENC_DATA_ARGS: tuple[ParameterDoc, ...] = (
+    ParameterDoc(
+        name="loss_small",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Squared losses for the small model.",
+    ),
+    ParameterDoc(
+        name="loss_large",
+        type="np.ndarray",
+        default=REQUIRED,
+        description="Squared losses for the large model.",
+    ),
 )
 
 
@@ -37,6 +124,11 @@ def _e(
     when_not_to_use: str = "",
     references: tuple[Reference, ...] = (_REF_DESIGN_L6,),
     related: tuple[str, ...] = (),
+    op_page: bool = False,
+    op_func_name: str = "",
+    data_args: tuple[ParameterDoc, ...] = (),
+    return_type: str = "",
+    returns_attrs: tuple[tuple[str, str, str], ...] = (),
 ) -> OptionDoc:
     return OptionDoc(
         layer="l6",
@@ -49,6 +141,11 @@ def _e(
         when_not_to_use=when_not_to_use,
         references=references,
         related_options=related,
+        op_page=op_page,
+        op_func_name=op_func_name,
+        data_args=data_args,
+        return_type=return_type,
+        returns_attrs=returns_attrs,
         last_reviewed=_REVIEWED,
         reviewer=_REVIEWER,
     )
@@ -80,6 +177,17 @@ register(
             ),
         ),
         related=("gw_giacomini_white", "dmp_multi_horizon", "multi"),
+        op_page=True,
+        op_func_name="dm_test",
+        data_args=_L6_LOSS_PAIR_DATA_ARGS,
+        return_type="DMTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "DM test statistic"),
+            ("pvalue", "float or None", "Two-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+            ("hln_correction", "bool", "HLN correction applied"),
+        ),
     ),
     _e(
         "L6_A_equal_predictive",
@@ -100,6 +208,17 @@ register(
             ),
         ),
         related=("dm_diebold_mariano", "multi"),
+        op_page=True,
+        op_func_name="gw_test",
+        data_args=_L6_LOSS_PAIR_DATA_ARGS,
+        return_type="GWTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "GW test statistic"),
+            ("pvalue", "float or None", "Two-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+            ("hln_correction", "bool", "HLN correction applied"),
+        ),
     ),
     _e(
         "L6_A_equal_predictive",
@@ -120,6 +239,16 @@ register(
             ),
         ),
         related=("dm_diebold_mariano",),
+        op_page=True,
+        op_func_name="dmp_test",
+        data_args=_L6_DMP_DATA_ARGS,
+        return_type="DMPTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "DMP test statistic"),
+            ("pvalue", "float or None", "Two-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs_stacked", "int", "Stacked observations"),
+        ),
     ),
     _e(
         "L6_A_equal_predictive",
@@ -145,6 +274,17 @@ register(
             ),
         ),
         related=("dm_diebold_mariano", "gw_giacomini_white", "multi"),
+        op_page=True,
+        op_func_name="hn_test",
+        data_args=_L6_HN_DATA_ARGS,
+        return_type="HNTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "HN test statistic"),
+            ("pvalue", "float or None", "One-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+            ("encompassing", "str", "Direction: a_over_b"),
+        ),
     ),
     _e(
         "L6_A_equal_predictive",
@@ -297,5 +437,129 @@ register(
             ),
         ),
         related=("mcs_hansen", "spa_hansen"),
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# L6.B nested_test
+# ---------------------------------------------------------------------------
+
+_REF_CLARK_WEST_2007 = Reference(
+    citation="Clark & West (2007) 'Approximately Normal Tests for Equal Predictive Accuracy in Nested Models', JoE 138(2): 291-311.",
+)
+_REF_CLARK_MCCRACKEN_2001 = Reference(
+    citation="Clark & McCracken (2001) 'Tests of Equal Forecast Accuracy and Encompassing for Nested Models', JoE 105(2): 1-28.",
+)
+_REF_ERICSSON_1992 = Reference(
+    citation="Ericsson (1992) 'Parameter Constancy, Mean Square Forecast Errors, and Measuring Forecast Performance', JoE 52(1-2): 113-153.",
+)
+
+register(
+    _e(
+        "L6_B_nested",
+        "nested_test",
+        "clark_west",
+        "Clark-West (2007) MSE-adjusted nested-model predictive ability test.",
+        (
+            "Tests whether the large (unrestricted) model significantly "
+            "outperforms the small (restricted, nested) model. Constructs "
+            "the CW-adjusted statistic "
+            "``f_t = (loss_small - loss_large) + (f_small - f_large)^2``, "
+            "removing the negative expected value bias that standard DM "
+            "has in nested comparisons. One-sided test (H_a: large model "
+            "improves on small); ``hln=False``."
+        ),
+        "Testing whether a larger model with additional regressors beats the restricted benchmark.",
+        when_not_to_use=(
+            "Non-nested model comparisons -- use DM / GW (L6.A) instead. "
+            "Forecast combination (use HN encompassing instead)."
+        ),
+        references=(
+            _REF_DESIGN_L6,
+            _REF_CLARK_WEST_2007,
+        ),
+        related=("enc_new", "enc_t", "multi"),
+        op_page=True,
+        op_func_name="cw_test",
+        data_args=_L6_CW_DATA_ARGS,
+        return_type="CWTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "CW test statistic"),
+            ("pvalue", "float or None", "One-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+            ("cw_adjustment", "bool", "CW penalty applied"),
+        ),
+    ),
+    _e(
+        "L6_B_nested",
+        "nested_test",
+        "enc_new",
+        "Enc-New forecast encompassing test (Clark-McCracken 2001).",
+        (
+            "Tests whether the large model's forecast contains information "
+            "beyond the small (nested) model. Uses raw loss improvement "
+            "``f_t = loss_small - loss_large`` without CW adjustment, "
+            "then applies one-sided DM inference. Complementary to the "
+            "Clark-West test when the user does not want the CW penalty."
+        ),
+        "Testing forecast encompassing in nested model settings without the CW adjustment term.",
+        when_not_to_use="When the CW adjustment for bias is desired -- use clark_west instead.",
+        references=(
+            _REF_DESIGN_L6,
+            _REF_CLARK_MCCRACKEN_2001,
+        ),
+        related=("clark_west", "enc_t", "multi"),
+        op_page=True,
+        op_func_name="enc_new_test",
+        data_args=_L6_ENC_DATA_ARGS,
+        return_type="EncNewTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "Enc-New statistic"),
+            ("pvalue", "float or None", "One-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+        ),
+    ),
+    _e(
+        "L6_B_nested",
+        "nested_test",
+        "enc_t",
+        "Enc-T forecast encompassing test (Ericsson 1992 t-form).",
+        (
+            "Ericsson (1992) t-form of the encompassing test. Identical "
+            "computation to enc_new in the current implementation "
+            "(raw loss improvement, one-sided DM inference, no CW "
+            "adjustment). The distinction is the conceptual labelling: "
+            "enc_t is cast as a t-statistic on the mean loss improvement. "
+            "Both enc_new and enc_t share the same runtime dispatch branch."
+        ),
+        "Encompassing tests in contexts where the Ericsson t-form labelling is preferred.",
+        when_not_to_use="When CW adjustment is needed -- use clark_west instead.",
+        references=(
+            _REF_DESIGN_L6,
+            _REF_ERICSSON_1992,
+        ),
+        related=("clark_west", "enc_new", "multi"),
+        op_page=True,
+        op_func_name="enc_t_test",
+        data_args=_L6_ENC_DATA_ARGS,
+        return_type="EncTTestResult",
+        returns_attrs=(
+            ("stat", "float or None", "Enc-T statistic"),
+            ("pvalue", "float or None", "One-sided p-value"),
+            ("decision", "bool", "Reject H0 at 5%"),
+            ("n_obs", "int", "Observations used"),
+        ),
+    ),
+    _e(
+        "L6_B_nested",
+        "nested_test",
+        "multi",
+        "Run clark_west + enc_new + enc_t and stack the results.",
+        "Multi-test convenience option; emits one row per nested test.",
+        "Comprehensive nested-model evaluation audits.",
+        related=("clark_west", "enc_new", "enc_t"),
     ),
 )
