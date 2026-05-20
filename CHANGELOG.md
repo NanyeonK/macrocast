@@ -52,6 +52,36 @@ full per-version honesty-pass history embedded in repo documentation.
   assets exist" CI steps (Fix 3). The `navigator_app` assets were removed in
   commit `09c79e11`; `docs/conf.py` already reflects `html_extra_path = []`.
 
+### Cycle 43 Phase B-tooling — Automation scaffolding for encyclopedia alignment (2026-05-21)
+
+#### Added
+
+- `tools/gen_encyclopedia_docs.py`: introspection-based generator for
+  `docs/encyclopedia/` per-op pages. Enumerates all registered ops via
+  `list_ops()` (L3, L7, half-layers), virtual ops for L2 (axis-value names),
+  L4 model families, L5 metric ops, and L6 test ops. Writes one `.md` file per
+  op with function signature, parameters table, return type, behavior, recipe
+  context, references, and related-ops sections — all derived from
+  `inspect.signature` and the op registry. Idempotent (byte-identical re-run
+  with `--review-date`). Supports `--dry-run`, `--diff-against`, `--force`.
+
+- `tools/audit_docs_vs_code.py`: bidirectional drift detector for `.md` files.
+  Extracts six token classes (standalone_callable, result_type, version_string,
+  yaml_recipe_key, dotted_import_path, result_attribute) and resolves each
+  against the live codebase. Emits a JSON report with per-token
+  (file, line, token, verdict, evidence). Achieves 0% false-positive rate on
+  `docs/standalone_functions/` (cycle-41 aligned surface, 302 tokens, 302
+  PASS). Supports `--fail-on-drift` for CI gating. No third-party deps beyond
+  `macroforecast`.
+
+- `tests/tools/__init__.py`, `tests/tools/test_gen_encyclopedia.py`,
+  `tests/tools/test_audit_docs.py`: 10 smoke tests (5 per tool) covering
+  `--help`, dry-run, idempotency, op count baseline (L3 = 36), clean/drift
+  fixture verdicts, JSON report schema, and integration false-positive rate.
+
+- `pyproject.toml`: registered `integration` pytest mark for the live
+  false-positive-rate test.
+
 ### Cycle 42 Phase A — Foundational docs alignment (2026-05-20)
 
 #### Changed
