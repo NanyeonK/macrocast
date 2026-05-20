@@ -100,6 +100,7 @@ full per-version honesty-pass history embedded in repo documentation.
   `docs/architecture/layer1/official_transforms.md`,
   `docs/architecture/layer1/frame_availability.md`.
 
+
 ## [0.9.2b1] -- 2026-05-20 -- "introspection-based docs catalog + holiday pandas 2.x fix"
 
 ### Changed

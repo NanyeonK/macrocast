@@ -2,6 +2,7 @@
 
 L3 transform callables apply a single feature engineering operation to a panel DataFrame and return a new DataFrame. They correspond to `op` values in the L3 recipe DAG.
 
+Note: `apply_tcode_transform` is documented in [l2_clean.md](l2_clean.md) because its source module is `macroforecast.functions.clean`.
 
 ## Basic transforms (10 ops)
 
