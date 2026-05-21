@@ -4306,6 +4306,8 @@ class _UnrestrictedMidasModel:
         self._K_fit: int = 1
         self._train_X_lf: pd.DataFrame | None = None
         self._last_y: pd.Series | None = None
+        # Intercept exposed as named attribute for API contract (test-spec PI-8)
+        self._intercept: float = 0.0
 
     def _build_lag_matrix(
         self, X: pd.DataFrame, K: int
@@ -4383,6 +4385,8 @@ class _UnrestrictedMidasModel:
             # Insufficient degrees of freedom: fallback to mean intercept
             self._coef = np.zeros(K_params, dtype=float)
             self._coef[0] = float(y.dropna().mean()) if len(y.dropna()) > 0 else 0.0
+            # Expose intercept as a named float attribute (test-spec.md PI-8)
+            self._intercept: float = float(self._coef[0])
             self._train_X_lf = X_lf.loc[combined.index] if len(combined) > 0 else X_lf
             self._last_y = y.loc[combined.index] if len(combined) > 0 else y
             return self
@@ -4394,6 +4398,8 @@ class _UnrestrictedMidasModel:
         X_aug = np.hstack([np.ones((T_eff, 1)), X_arr])
         coef_hat, *_ = np.linalg.lstsq(X_aug, y_arr, rcond=None)
         self._coef = coef_hat.astype(float)
+        # Expose intercept as a named float attribute (test-spec.md PI-8)
+        self._intercept = float(self._coef[0])
         self._train_X_lf = X_lf.loc[combined.index]
         self._last_y = y.loc[combined.index]
         return self
