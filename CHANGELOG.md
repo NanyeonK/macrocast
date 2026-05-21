@@ -5,6 +5,45 @@ full per-version honesty-pass history embedded in repo documentation.
 
 ## [Unreleased]
 
+### Cycle 44 -- CI stabilization (mypy green + sphinx stale-check removal)
+
+**mypy fixes (26 errors resolved, 4 deferred):**
+
+- `macroforecast/functions/misc.py`: Renamed pre-consolidation dataclasses
+  (`SVRLinearFitResult`, `SVRRBFFitResult`, `SVRPolyFitResult`) to private
+  `_SVRLinearFitResultV0` / `_SVRRBFFitResultV0` / `_SVRPolyFitResultV0`; re-
+  declared the public names as `TypeAlias = SVRFitResult` (Fix 1). Resolves 9
+  mypy errors (`[misc]` x 3, `[assignment]` x 3, `[return-value]` x 3).
+- `macroforecast/core/execution.py`: Added `dict[str, Any]` annotation to
+  `_raw_meta` local variable (Fix 2). Resolves 1 `[var-annotated]` error.
+- `macroforecast/functions/timeseries.py`: Same TypeAlias pattern as Fix 1 for
+  GARCH family (`GARCH11FitResult`, `EGARCHFitResult`, `RealizedGARCHFitResult`
+  -> `GARCHFitResult`). Resolves 9 errors (Fix 4).
+- `macroforecast/functions/transforms.py`: Added `np.ndarray` annotation on
+  `trend` local variable in `time_trend_transform` (Fix 5). Resolves 1 error.
+- `macroforecast/functions/tests.py`: Added `pvalue: float | None` bare
+  annotation before the `if/else` narrowing block in `cw_test`,
+  `enc_new_test`, and `enc_t_test` (Fix 6). Resolves 3 `[assignment]` errors.
+- `macroforecast/core/ops/l3_ops.py`: Widened `_positive_param` `default`
+  parameter from `int` to `int | str` (Fix 7). Resolves 1 `[arg-type]` error.
+- `macroforecast/core/layer_specs.py`: Added `TYPE_CHECKING` guard import of
+  `ParameterDoc` from `macroforecast.scaffold.option_docs.types` (Fix 8).
+  Resolves 1 `[name-defined]` error.
+- `macroforecast/recipes/paper_methods.py`: Replaced `key=q_mse.get` with
+  `key=lambda q: q_mse[q]` in `min()` call (Fix 9). Resolves 1 `[arg-type]`
+  error.
+
+**Deferred (require separate design decision):**
+- `macroforecast/functions/transforms.py:1138` — `random_state: int | None`
+  vs `_adaptive_ma_rf(random_state: int)` mismatch (Deferred A).
+- `macroforecast/scaffold/option_docs/l1.py:1889/2289/2323` — tuple rebinding
+  loses fixed-length type (Deferred B, 3 errors).
+
+**Sphinx fix:**
+- `.github/workflows/ci-docs.yml`: Removed two stale "Check navigator app
+  assets exist" CI steps (Fix 3). The `navigator_app` assets were removed in
+  commit `09c79e11`; `docs/conf.py` already reflects `html_extra_path = []`.
+
 ## [0.9.2b0] -- 2026-05-19 -- "docs visibility for standalone callables (paradigm beta)"
 
 ### Added
