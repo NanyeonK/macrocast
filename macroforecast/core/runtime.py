@@ -3549,13 +3549,23 @@ class _MidasAlmonModel:
             )
         return X
 
-    def _w_almon(self, theta: np.ndarray) -> np.ndarray:
+    def _w_almon(self, theta: np.ndarray, K: int | None = None) -> np.ndarray:
         """Almon polynomial weight function.
 
         b(k; theta) = sum_{q=0}^{Q} theta_q * k^q  for k=0..K-1.
         Clamped to non-negative; normalized to sum to one when sum_to_one=True.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Polynomial coefficients of length Q+1.
+        K : int or None
+            Effective number of lags to use. Defaults to self.n_lags_high.
+            Pass K_eff (resolved in fit) when freq_ratio=1 and X.shape[1]
+            may differ from self.n_lags_high.
         """
-        K = self.n_lags_high
+        if K is None:
+            K = self.n_lags_high
         Q = self.polynomial_order
         kk = np.arange(K, dtype=float)
         w_raw = np.zeros(K, dtype=float)
@@ -3610,26 +3620,33 @@ class _MidasAlmonModel:
         X_clean = X_lf.dropna(how="any")
         common_idx = X_clean.index.intersection(y_arr_s.index)
 
-        K = self.n_lags_high
+        # Resolve effective K: when freq_ratio=1, X is already LF-aligned and
+        # may have fewer columns than n_lags_high. Use the minimum to keep
+        # the weight vector dimension consistent with X_arr columns.
+        K_eff = min(self.n_lags_high, X_lf.shape[1])
+        # Truncate X_lf to the first K_eff columns so that _train_X_lf and
+        # _w_hat are always dimension-aligned regardless of n_lags_high.
+        X_lf_eff = X_lf.iloc[:, :K_eff]
         Q = self.polynomial_order
         # Need at least Q+3 rows to identify Q+1 weight params + mu + beta
         if len(common_idx) < Q + 3:
-            self._w_hat = np.full(K, 1.0 / K, dtype=float)
+            self._w_hat = np.full(K_eff, 1.0 / K_eff, dtype=float)
             self._theta_hat = np.zeros(Q + 1, dtype=float)
             self._intercept = float(y_arr_s.mean()) if len(y_arr_s) > 0 else 0.0
             self._slope = 0.0
-            self._train_X_lf = X_lf
+            self._train_X_lf = X_lf_eff
             return self
 
-        X_arr = X_lf.loc[common_idx].to_numpy(dtype=float)  # shape (T, n_cols)
+        X_arr = X_lf_eff.loc[common_idx].to_numpy(dtype=float)  # shape (T, K_eff)
         y_arr = y_arr_s.loc[common_idx].to_numpy(dtype=float)  # shape (T,)
 
-        # Step 3 & 4: NLS loss — jointly optimise (theta, mu, beta)
+        # Step 3 & 4: NLS loss — jointly optimise (theta, mu, beta).
+        # Use K_eff so that weights vector length matches X_arr.shape[1].
         def loss(params: np.ndarray) -> float:
             theta = params[:Q + 1]
             mu = float(params[Q + 1])
             beta = float(params[Q + 2])
-            weights = self._w_almon(theta)
+            weights = self._w_almon(theta, K=K_eff)
             # agg shape (T,): weighted sum of lag columns
             agg = X_arr @ weights
             resid = y_arr - mu - beta * agg
@@ -3678,14 +3695,21 @@ class _MidasAlmonModel:
         self._theta_hat = theta_hat
         self._intercept = float(best_params[Q + 1])
         self._slope = float(best_params[Q + 2])
-        self._w_hat = self._w_almon(theta_hat)
+        # Use K_eff so _w_hat dimension matches _train_X_lf column count
+        self._w_hat = self._w_almon(theta_hat, K=K_eff)
         self._converged = best_success
-        self._train_X_lf = X_lf
+        # Store only the K_eff effective columns so predict reindex stays aligned
+        self._train_X_lf = X_lf_eff
         self._fit_info = {
             "best_loss": best_loss,
             "converged": best_success,
             "n_starts": self.n_starts,
         }
+        # Invariant: _w_hat must align with _train_X_lf column count
+        assert self._w_hat.shape[0] == self._train_X_lf.shape[1], (
+            f"_w_hat dim {self._w_hat.shape[0]} != _train_X_lf cols "
+            f"{self._train_X_lf.shape[1]}"
+        )
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -3795,14 +3819,24 @@ class _MidasBetaModel:
             )
         return X
 
-    def _w_beta(self, theta: np.ndarray) -> np.ndarray:
+    def _w_beta(self, theta: np.ndarray, K: int | None = None) -> np.ndarray:
         """Beta distribution kernel weight function.
 
         b(k; a, b) proportional to x_k^{a-1} * (1-x_k)^{b-1}
         where x_k = (k+1)/(K+1) in (0, 1). Always sums to one.
         Shape params a, b clamped to >= 1e-3 to prevent blowup.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Beta shape parameters [a, b].
+        K : int or None
+            Effective number of lags to use. Defaults to self.n_lags_high.
+            Pass K_eff (resolved in fit) when freq_ratio=1 and X.shape[1]
+            may differ from self.n_lags_high.
         """
-        K = self.n_lags_high
+        if K is None:
+            K = self.n_lags_high
         a = max(float(theta[0]), 1e-3)
         b = max(float(theta[1]), 1e-3)
         kk = (np.arange(K, dtype=float) + 1.0) / (K + 1.0)  # x_k in (0, 1)
@@ -3849,25 +3883,32 @@ class _MidasBetaModel:
         X_clean = X_lf.dropna(how="any")
         common_idx = X_clean.index.intersection(y_arr_s.index)
 
-        K = self.n_lags_high
+        # Resolve effective K: when freq_ratio=1, X is already LF-aligned and
+        # may have fewer columns than n_lags_high. Use the minimum to keep
+        # the weight vector dimension consistent with X_arr columns.
+        K_eff = min(self.n_lags_high, X_lf.shape[1])
+        # Truncate X_lf to the first K_eff columns so that _train_X_lf and
+        # _w_hat are always dimension-aligned regardless of n_lags_high.
+        X_lf_eff = X_lf.iloc[:, :K_eff]
         # Need at least 4 rows (a, b, mu, beta) + 1 residual degree of freedom
         if len(common_idx) < 5:
-            self._w_hat = np.full(K, 1.0 / K, dtype=float)
+            self._w_hat = np.full(K_eff, 1.0 / K_eff, dtype=float)
             self._theta_hat = np.array([1.0, 1.0], dtype=float)
             self._intercept = float(y_arr_s.mean()) if len(y_arr_s) > 0 else 0.0
             self._slope = 0.0
-            self._train_X_lf = X_lf
+            self._train_X_lf = X_lf_eff
             return self
 
-        X_arr = X_lf.loc[common_idx].to_numpy(dtype=float)  # shape (T, n_cols)
+        X_arr = X_lf_eff.loc[common_idx].to_numpy(dtype=float)  # shape (T, K_eff)
         y_arr = y_arr_s.loc[common_idx].to_numpy(dtype=float)  # shape (T,)
 
-        # Step 3 & 4: NLS loss — params = [a, b, mu, beta]
+        # Step 3 & 4: NLS loss — params = [a, b, mu, beta].
+        # Use K_eff so that weights vector length matches X_arr.shape[1].
         def loss(params: np.ndarray) -> float:
             theta = params[:2]
             mu = float(params[2])
             beta = float(params[3])
-            weights = self._w_beta(theta)
+            weights = self._w_beta(theta, K=K_eff)
             agg = X_arr @ weights
             resid = y_arr - mu - beta * agg
             return float(np.dot(resid, resid))
@@ -3917,9 +3958,11 @@ class _MidasBetaModel:
         self._theta_hat = theta_hat
         self._intercept = float(best_params[2])
         self._slope = float(best_params[3])
-        self._w_hat = self._w_beta(theta_hat)
+        # Use K_eff so _w_hat dimension matches _train_X_lf column count
+        self._w_hat = self._w_beta(theta_hat, K=K_eff)
         self._converged = best_success
-        self._train_X_lf = X_lf
+        # Store only the K_eff effective columns so predict reindex stays aligned
+        self._train_X_lf = X_lf_eff
         self._fit_info = {
             "best_loss": best_loss,
             "converged": best_success,
@@ -3927,6 +3970,11 @@ class _MidasBetaModel:
             "a_hat": a_hat,
             "b_hat": b_hat,
         }
+        # Invariant: _w_hat must align with _train_X_lf column count
+        assert self._w_hat.shape[0] == self._train_X_lf.shape[1], (
+            f"_w_hat dim {self._w_hat.shape[0]} != _train_X_lf cols "
+            f"{self._train_X_lf.shape[1]}"
+        )
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
