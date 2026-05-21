@@ -3530,6 +3530,11 @@ class _MidasAlmonModel:
 
         # State populated by fit()
         self._w_hat: np.ndarray | None = None
+        # _w_hat_effective holds the K_eff-length weights used internally by
+        # predict(). When K_eff == n_lags_high, it equals _w_hat. When
+        # K_eff < n_lags_high, _w_hat is zero-padded to n_lags_high (PI-7)
+        # and _w_hat_effective retains only the K_eff entries for matmul.
+        self._w_hat_effective: np.ndarray | None = None
         self._theta_hat: np.ndarray | None = None
         self._intercept: float = 0.0
         self._slope: float = 0.0
@@ -3630,7 +3635,15 @@ class _MidasAlmonModel:
         Q = self.polynomial_order
         # Need at least Q+3 rows to identify Q+1 weight params + mu + beta
         if len(common_idx) < Q + 3:
-            self._w_hat = np.full(K_eff, 1.0 / K_eff, dtype=float)
+            _w_eff = np.full(K_eff, 1.0 / K_eff, dtype=float)
+            self._w_hat_effective = _w_eff
+            # PI-7: _w_hat must have length n_lags_high; pad with zeros if needed
+            if K_eff < self.n_lags_high:
+                _w_padded = np.zeros(self.n_lags_high, dtype=float)
+                _w_padded[:K_eff] = _w_eff
+                self._w_hat = _w_padded
+            else:
+                self._w_hat = _w_eff.copy()
             self._theta_hat = np.zeros(Q + 1, dtype=float)
             self._intercept = float(y_arr_s.mean()) if len(y_arr_s) > 0 else 0.0
             self._slope = 0.0
@@ -3695,8 +3708,18 @@ class _MidasAlmonModel:
         self._theta_hat = theta_hat
         self._intercept = float(best_params[Q + 1])
         self._slope = float(best_params[Q + 2])
-        # Use K_eff so _w_hat dimension matches _train_X_lf column count
-        self._w_hat = self._w_almon(theta_hat, K=K_eff)
+        # Compute K_eff-length weights for prediction alignment
+        _w_eff = self._w_almon(theta_hat, K=K_eff)
+        self._w_hat_effective = _w_eff
+        # PI-7: _w_hat must have length n_lags_high; pad with zeros when K_eff
+        # is smaller (zeros contribute nothing mathematically — predict uses
+        # _w_hat_effective against K_eff-column _train_X_lf, not _w_hat).
+        if K_eff < self.n_lags_high:
+            _w_padded = np.zeros(self.n_lags_high, dtype=float)
+            _w_padded[:K_eff] = _w_eff
+            self._w_hat = _w_padded
+        else:
+            self._w_hat = _w_eff
         self._converged = best_success
         # Store only the K_eff effective columns so predict reindex stays aligned
         self._train_X_lf = X_lf_eff
@@ -3705,10 +3728,15 @@ class _MidasAlmonModel:
             "converged": best_success,
             "n_starts": self.n_starts,
         }
-        # Invariant: _w_hat must align with _train_X_lf column count
-        assert self._w_hat.shape[0] == self._train_X_lf.shape[1], (
-            f"_w_hat dim {self._w_hat.shape[0]} != _train_X_lf cols "
-            f"{self._train_X_lf.shape[1]}"
+        # Invariant: _w_hat_effective aligns with _train_X_lf column count
+        assert self._w_hat_effective.shape[0] == self._train_X_lf.shape[1], (
+            f"_w_hat_effective dim {self._w_hat_effective.shape[0]} != "
+            f"_train_X_lf cols {self._train_X_lf.shape[1]}"
+        )
+        # PI-7 invariant: _w_hat must have length n_lags_high
+        assert self._w_hat.shape[0] == self.n_lags_high, (
+            f"PI-7 violated: _w_hat len {self._w_hat.shape[0]} != "
+            f"n_lags_high {self.n_lags_high}"
         )
         return self
 
@@ -3742,8 +3770,12 @@ class _MidasAlmonModel:
             .to_numpy(dtype=float)
         )
 
-        # Step 3: Compute prediction
-        agg = X_arr @ self._w_hat
+        # Step 3: Compute prediction using K_eff-length effective weights.
+        # _w_hat_effective has the same length as _train_X_lf columns (K_eff),
+        # so the matmul is always dimension-consistent regardless of whether
+        # _w_hat was padded to n_lags_high for PI-7.
+        w_eff = self._w_hat_effective if self._w_hat_effective is not None else self._w_hat
+        agg = X_arr @ w_eff
         preds = self._intercept + self._slope * agg
         return preds.astype(float)
 
@@ -3800,6 +3832,11 @@ class _MidasBetaModel:
         self.random_state = int(random_state)
 
         self._w_hat: np.ndarray | None = None
+        # _w_hat_effective holds the K_eff-length weights used internally by
+        # predict(). When K_eff == n_lags_high, it equals _w_hat. When
+        # K_eff < n_lags_high, _w_hat is zero-padded to n_lags_high (PI-7)
+        # and _w_hat_effective retains only the K_eff entries for matmul.
+        self._w_hat_effective: np.ndarray | None = None
         self._theta_hat: np.ndarray | None = None  # shape (2,): [a, b]
         self._intercept: float = 0.0
         self._slope: float = 0.0
@@ -3892,7 +3929,15 @@ class _MidasBetaModel:
         X_lf_eff = X_lf.iloc[:, :K_eff]
         # Need at least 4 rows (a, b, mu, beta) + 1 residual degree of freedom
         if len(common_idx) < 5:
-            self._w_hat = np.full(K_eff, 1.0 / K_eff, dtype=float)
+            _w_eff = np.full(K_eff, 1.0 / K_eff, dtype=float)
+            self._w_hat_effective = _w_eff
+            # PI-7: _w_hat must have length n_lags_high; pad with zeros if needed
+            if K_eff < self.n_lags_high:
+                _w_padded = np.zeros(self.n_lags_high, dtype=float)
+                _w_padded[:K_eff] = _w_eff
+                self._w_hat = _w_padded
+            else:
+                self._w_hat = _w_eff.copy()
             self._theta_hat = np.array([1.0, 1.0], dtype=float)
             self._intercept = float(y_arr_s.mean()) if len(y_arr_s) > 0 else 0.0
             self._slope = 0.0
@@ -3958,8 +4003,18 @@ class _MidasBetaModel:
         self._theta_hat = theta_hat
         self._intercept = float(best_params[2])
         self._slope = float(best_params[3])
-        # Use K_eff so _w_hat dimension matches _train_X_lf column count
-        self._w_hat = self._w_beta(theta_hat, K=K_eff)
+        # Compute K_eff-length weights for prediction alignment
+        _w_eff = self._w_beta(theta_hat, K=K_eff)
+        self._w_hat_effective = _w_eff
+        # PI-7: _w_hat must have length n_lags_high; pad with zeros when K_eff
+        # is smaller (zeros contribute nothing mathematically — predict uses
+        # _w_hat_effective against K_eff-column _train_X_lf, not _w_hat).
+        if K_eff < self.n_lags_high:
+            _w_padded = np.zeros(self.n_lags_high, dtype=float)
+            _w_padded[:K_eff] = _w_eff
+            self._w_hat = _w_padded
+        else:
+            self._w_hat = _w_eff
         self._converged = best_success
         # Store only the K_eff effective columns so predict reindex stays aligned
         self._train_X_lf = X_lf_eff
@@ -3970,10 +4025,15 @@ class _MidasBetaModel:
             "a_hat": a_hat,
             "b_hat": b_hat,
         }
-        # Invariant: _w_hat must align with _train_X_lf column count
-        assert self._w_hat.shape[0] == self._train_X_lf.shape[1], (
-            f"_w_hat dim {self._w_hat.shape[0]} != _train_X_lf cols "
-            f"{self._train_X_lf.shape[1]}"
+        # Invariant: _w_hat_effective aligns with _train_X_lf column count
+        assert self._w_hat_effective.shape[0] == self._train_X_lf.shape[1], (
+            f"_w_hat_effective dim {self._w_hat_effective.shape[0]} != "
+            f"_train_X_lf cols {self._train_X_lf.shape[1]}"
+        )
+        # PI-7 invariant: _w_hat must have length n_lags_high
+        assert self._w_hat.shape[0] == self.n_lags_high, (
+            f"PI-7 violated: _w_hat len {self._w_hat.shape[0]} != "
+            f"n_lags_high {self.n_lags_high}"
         )
         return self
 
@@ -4003,7 +4063,10 @@ class _MidasBetaModel:
             .reindex(columns=self._train_X_lf.columns, fill_value=0.0)
             .to_numpy(dtype=float)
         )
-        agg = X_arr @ self._w_hat
+        # Use K_eff-length effective weights for matmul — _w_hat may be padded
+        # to n_lags_high for PI-7 compliance but predict uses _w_hat_effective.
+        w_eff = self._w_hat_effective if self._w_hat_effective is not None else self._w_hat
+        agg = X_arr @ w_eff
         preds = self._intercept + self._slope * agg
         return preds.astype(float)
 
