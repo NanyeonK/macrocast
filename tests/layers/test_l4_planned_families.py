@@ -103,9 +103,9 @@ sinks:
     assert any("future or unknown" in issue.message.lower() for issue in report.hard_errors)
 
 
-def test_realized_garch_still_rejected():
-    # C48 promoted all 4 MIDAS families to operational.
-    # realized_garch remains the sole future L4 family (deferred to C49).
+def test_realized_garch_now_operational_after_c49():
+    # C49 promoted realized_garch to operational (Hansen-Huang-Shek 2012 joint MLE).
+    # FUTURE_MODEL_FAMILIES is now empty. realized_garch must NOT produce a future hard-error.
     yaml_text = """
 nodes:
   - {id: src_X, type: source, selector: {layer_ref: l3, sink_name: l3_features_v1, subset: {component: X_final}}}
@@ -128,4 +128,11 @@ sinks:
 """
     layer = parse_layer_yaml(yaml_text)
     report = validate_layer(layer)
-    assert report.has_hard_errors
+    # realized_garch is now operational — no "future" hard errors
+    future_errors = [
+        e for e in report.hard_errors
+        if "future" in e.message.lower() and "realized_garch" in e.message
+    ]
+    assert not future_errors, (
+        f"realized_garch should no longer be rejected as future after C49: {future_errors}"
+    )
