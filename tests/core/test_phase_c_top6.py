@@ -817,7 +817,7 @@ class TestM9GARCH:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            model = _GARCHFamily(variant="realized_garch", realized_variance="rv")
+            model = _GARCHFamily(variant="rv_exog", realized_variance="rv")
             model.fit(X, y)
 
         # Conditional volatility series finite.

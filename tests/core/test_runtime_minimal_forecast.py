@@ -321,11 +321,12 @@ def test_execute_minimal_forecast_rejects_unknown_family():
         execute_minimal_forecast(yaml_text)
 
 
-def test_execute_minimal_forecast_rejects_future_family():
-    # C48 promoted the 4 MIDAS families to operational.
-    # ``realized_garch`` is the canonical hard-rejected example (still future, deferred to C49).
-    yaml_text = MINIMAL_RECIPE.replace("family: ridge", "family: realized_garch")
-    with pytest.raises(ValueError, match=r"future or unknown"):
+def test_execute_minimal_forecast_realized_garch_now_operational_after_c49():
+    # C49 promoted realized_garch to operational (Hansen-Huang-Shek 2012 joint MLE).
+    # FUTURE_MODEL_FAMILIES is now empty. realized_garch no longer raises; recipe proceeds.
+    # We use a truly unknown name to test the "future or unknown" rejection path.
+    yaml_text = MINIMAL_RECIPE.replace("family: ridge", "family: nonexistent_future_c49_placeholder_xyz")
+    with pytest.raises(ValueError, match=r"(unknown model family|model family is future)"):
         execute_minimal_forecast(yaml_text)
 
 

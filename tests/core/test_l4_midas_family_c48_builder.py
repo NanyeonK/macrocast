@@ -187,10 +187,11 @@ class TestRegistration:
                 f"{fam!r} should not be in FUTURE_MODEL_FAMILIES after C48 promotion"
             )
 
-    def test_realized_garch_still_future(self):
-        # realized_garch is C49 scope; must NOT be promoted here
-        assert "realized_garch" in FUTURE_MODEL_FAMILIES
-        assert get_family_status("realized_garch") == "future"
+    def test_realized_garch_promoted_in_c49(self):
+        # realized_garch was C49 scope; now OPERATIONAL after C49 promotion
+        assert "realized_garch" in OPERATIONAL_MODEL_FAMILIES
+        assert "realized_garch" not in FUTURE_MODEL_FAMILIES
+        assert get_family_status("realized_garch") == "operational"
 
     def test_operational_count_at_least_46(self):
         # Was 42; C48 promotes 4 -> at least 46
