@@ -858,15 +858,22 @@
 <ul class="simple">
 <li><p>macroforecast design Part 4: ‘diagnostic layers default-off; non-blocking; produce JSON + matplotlib views attached to manifest.diagnostics/.’</p></li>
 </ul>
-<p><strong>Related options</strong>: <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a></p>
+<p><strong>Related options</strong>: <a class="reference internal" href="#none"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">none</span></code></span></a>, <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a></p>
 <p><em>Last reviewed 2026-05-05 by macroforecast author.</em></p>
 </section>
 <section id="none-operational">
 <h3><code class="docutils literal notranslate"><span class="pre">none</span></code>  –  operational<a class="headerlink" href="#none-operational" title="Link to this heading">#</a></h3>
-<p><em>(no schema description for <code class="docutils literal notranslate"><span class="pre">none</span></code>)</em></p>
-<blockquote>
-<div><p>TBD: option doc not yet authored for this value. The encyclopedia falls back to the bare schema description above. PRs adding a full <code class="docutils literal notranslate"><span class="pre">OptionDoc</span></code> entry under <code class="docutils literal notranslate"><span class="pre">macroforecast/scaffold/option_docs/l3_5.py</span></code> are welcome.</p>
-</div></blockquote>
+<p>Disable feature-selection diagnostics for this layer.</p>
+<p>L3.5.E selection view <code class="docutils literal notranslate"><span class="pre">none</span></code>.</p>
+<p>This option configures the <code class="docutils literal notranslate"><span class="pre">selection_view</span></code> axis on the <code class="docutils literal notranslate"><span class="pre">L3_5_E_selected_features_post_selection</span></code> sub-layer of L3.5; output is emitted under <code class="docutils literal notranslate"><span class="pre">manifest.diagnostics/l3_5/L3_5_E_selected_features_post_selection/</span></code> alongside the other selected views.</p>
+<p><strong>When to use</strong></p>
+<p>Suppressing diagnostics when feature selection is present but its diagnostics are not needed, avoiding unnecessary overhead.</p>
+<p><strong>References</strong></p>
+<ul class="simple">
+<li><p>macroforecast design Part 4: ‘diagnostic layers default-off; non-blocking; produce JSON + matplotlib views attached to manifest.diagnostics/.’</p></li>
+</ul>
+<p><strong>Related options</strong>: <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
+<p><em>Last reviewed 2026-05-05 by macroforecast author.</em></p>
 </section>
 <section id="selected-list-operational">
 <h3><code class="docutils literal notranslate"><span class="pre">selected_list</span></code>  –  operational<a class="headerlink" href="#selected-list-operational" title="Link to this heading">#</a></h3>
@@ -879,7 +886,7 @@
 <ul class="simple">
 <li><p>macroforecast design Part 4: ‘diagnostic layers default-off; non-blocking; produce JSON + matplotlib views attached to manifest.diagnostics/.’</p></li>
 </ul>
-<p><strong>Related options</strong>: <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
+<p><strong>Related options</strong>: <a class="reference internal" href="#none"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">none</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
 <p><em>Last reviewed 2026-05-05 by macroforecast author.</em></p>
 </section>
 <section id="selection-count-per-origin-operational">
@@ -893,7 +900,7 @@
 <ul class="simple">
 <li><p>macroforecast design Part 4: ‘diagnostic layers default-off; non-blocking; produce JSON + matplotlib views attached to manifest.diagnostics/.’</p></li>
 </ul>
-<p><strong>Related options</strong>: <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
+<p><strong>Related options</strong>: <a class="reference internal" href="#none"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">none</span></code></span></a>, <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-stability"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_stability</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
 <p><em>Last reviewed 2026-05-05 by macroforecast author.</em></p>
 </section>
 <section id="selection-stability-operational">
@@ -907,7 +914,7 @@
 <ul class="simple">
 <li><p>macroforecast design Part 4: ‘diagnostic layers default-off; non-blocking; produce JSON + matplotlib views attached to manifest.diagnostics/.’</p></li>
 </ul>
-<p><strong>Related options</strong>: <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
+<p><strong>Related options</strong>: <a class="reference internal" href="#none"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">none</span></code></span></a>, <a class="reference internal" href="#selected-list"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selected_list</span></code></span></a>, <a class="reference internal" href="#selection-count-per-origin"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">selection_count_per_origin</span></code></span></a>, <a class="reference internal" href="#multi"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">multi</span></code></span></a></p>
 <p><em>Last reviewed 2026-05-05 by macroforecast author.</em></p>
 </section>
 </section>
