@@ -57,7 +57,7 @@ myst_enable_extensions = [
     "smartquotes",
 ]
 
-myst_heading_anchors = 3
+myst_heading_anchors = 4
 
 # -- HTML output --------------------------------------------------------------
 
@@ -133,7 +133,7 @@ intersphinx_mapping = {
 nitpicky = False
 # During the docs IA migration, some audit and compatibility pages are
 # intentionally link-only so they do not dominate the main navigation.
-suppress_warnings = ["myst.xref_missing", "toc.not_included"]
+suppress_warnings = ["myst.xref_missing", "toc.not_included", "myst.header"]
 
 
 # -- Encyclopedia ------------------------------------------------------------
