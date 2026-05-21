@@ -1845,7 +1845,7 @@ _L1C_OFFICIAL_SCOPE = (
 )
 
 # L1.D predictor_geography_scope (FRED-SD)
-_L1D_PRED_GEO = (
+_L1D_PRED_GEO: tuple[OptionDoc, ...] = (
     _t1("l1_d", "predictor_geography_scope", "match_target",
         "Use the same geography scope as the target.",
         "Default; predictor states match the L1.D ``target_geography_scope``. Ensures spatial coherence for state-level forecasts.",
@@ -2256,7 +2256,7 @@ _L1D_VAR_GROUP = tuple(
 )
 
 # L1.D state_selection / sd_variable_selection (binary axes)
-_L1D_STATE_SEL = (
+_L1D_STATE_SEL: tuple[OptionDoc, ...] = (
     _t1("l1_d", "state_selection", "all_states",
         "Auto-select every state in ``fred_sd_state_group``.",
         "Skips per-state cherry-picking; uses the full set defined by the active state group.",
@@ -2290,7 +2290,7 @@ _L1D_STATE_SEL = tuple(
     _L1D_STATE_SEL_SELECTED_PATCHED if d.option == "selected_states" else d
     for d in _L1D_STATE_SEL
 )
-_L1D_VAR_SEL = (
+_L1D_VAR_SEL: tuple[OptionDoc, ...] = (
     _t1("l1_d", "sd_variable_selection", "all_sd_variables",
         "Auto-select every variable in ``fred_sd_variable_group``.",
         "Default; uses the full set defined by the active variable group.",
