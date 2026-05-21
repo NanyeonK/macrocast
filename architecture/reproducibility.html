@@ -819,26 +819,74 @@
                   
   <section id="reproducibility">
 <h1>Reproducibility<a class="headerlink" href="#reproducibility" title="Link to this heading">#</a></h1>
-<p>Reproducibility is a first-class package feature, not an afterthought.</p>
-<p>This page should eventually document:</p>
+<p>Reproducibility is a first-class package feature. Every run produces a
+bit-exact artifact record that can be independently verified by re-execution.</p>
+<section id="run-contract">
+<h2>Run contract<a class="headerlink" href="#run-contract" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">mf.run(recipe)</span></code> returns a <code class="docutils literal notranslate"><span class="pre">ManifestExecutionResult</span></code>. Each cell in
+<code class="docutils literal notranslate"><span class="pre">ManifestExecutionResult.cells</span></code> is a <code class="docutils literal notranslate"><span class="pre">CellExecutionResult</span></code> with a
+<code class="docutils literal notranslate"><span class="pre">sink_hashes:</span> <span class="pre">dict[str,</span> <span class="pre">str]</span></code> field recording the SHA-256 hash of every
+output artifact produced by that cell.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;recipe.yaml&quot;</span><span class="p">,</span> <span class="n">output_directory</span><span class="o">=</span><span class="s2">&quot;out/&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">cells</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">cell_id</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">sink_hashes</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="replication-contract">
+<h2>Replication contract<a class="headerlink" href="#replication-contract" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">mf.replicate(manifest_path)</span></code> re-executes the stored recipe from the
+manifest and returns a <code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code>. The field
+<code class="docutils literal notranslate"><span class="pre">ReplicationResult.sink_hashes_match:</span> <span class="pre">bool</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> when every per-cell
+hash matches the original run bit-for-bit.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">replication</span> <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">replicate</span><span class="p">(</span><span class="s2">&quot;out/manifest.json&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">replication</span><span class="o">.</span><span class="n">sink_hashes_match</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">ReplicationResult</span></code> also carries <code class="docutils literal notranslate"><span class="pre">per_cell_match</span></code> for cell-level
+granularity and <code class="docutils literal notranslate"><span class="pre">recipe_match</span></code> to confirm the stored recipe was not altered.</p>
+</section>
+<section id="seed-propagation">
+<h2>Seed propagation<a class="headerlink" href="#seed-propagation" title="Link to this heading">#</a></h2>
+<p>Set <code class="docutils literal notranslate"><span class="pre">reproducibility_mode:</span> <span class="pre">seeded_reproducible</span></code> and <code class="docutils literal notranslate"><span class="pre">random_seed</span></code> in
+<code class="docutils literal notranslate"><span class="pre">leaf_config</span></code> (L0 <code class="docutils literal notranslate"><span class="pre">0_meta</span></code>) to propagate a deterministic seed through the
+entire run. The runtime derives per-cell seeds from the base seed plus cell
+position so sweeps remain independently reproducible.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">0_meta</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">fixed_axes</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">reproducibility_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">seeded_reproducible</span>
+<span class="w">  </span><span class="nt">leaf_config</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">random_seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span>
+</pre></div>
+</div>
+</section>
+<section id="experiment-export">
+<h2>Experiment export<a class="headerlink" href="#experiment-export" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Experiment.to_yaml()</span></code> exports a fully resolved recipe YAML string. This
+string can be saved to disk and passed back to <code class="docutils literal notranslate"><span class="pre">mf.run</span></code> to reproduce the
+exact study configuration, including all defaults that were applied at
+construction time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">macroforecast</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mf</span>
+
+<span class="n">exp</span> <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Experiment</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="s2">&quot;INDPRO&quot;</span><span class="p">,</span> <span class="n">horizons</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">to_yaml</span><span class="p">())</span>  <span class="c1"># resolved recipe YAML</span>
+</pre></div>
+</div>
+</section>
+<section id="what-is-recorded">
+<h2>What is recorded<a class="headerlink" href="#what-is-recorded" title="Link to this heading">#</a></h2>
+<p>The manifest written to <code class="docutils literal notranslate"><span class="pre">output_directory/manifest.json</span></code> carries:</p>
 <ul class="simple">
-<li><p>recipe export</p></li>
-<li><p>default profile versioning</p></li>
-<li><p>run identifiers</p></li>
-<li><p>sweep variant identifiers</p></li>
-<li><p>raw data cache and manifest behavior</p></li>
-<li><p>seeds and deterministic modes</p></li>
-<li><p>optional dependency versions</p></li>
-<li><p>custom extension provenance</p></li>
+<li><p>the resolved recipe (all axes, leaf_config, and sweep markers);</p></li>
+<li><p>per-cell <code class="docutils literal notranslate"><span class="pre">sink_hashes</span></code> for all output artifacts;</p></li>
+<li><p>per-cell sweep variant values (<code class="docutils literal notranslate"><span class="pre">sweep_values</span></code>);</p></li>
+<li><p>run timing (<code class="docutils literal notranslate"><span class="pre">started_at</span></code>, <code class="docutils literal notranslate"><span class="pre">duration_seconds</span></code>);</p></li>
+<li><p>the cache root path used during the run.</p></li>
 </ul>
-<p>Design requirements:</p>
-<ul class="simple">
-<li><p>an <code class="docutils literal notranslate"><span class="pre">Experiment</span></code> can be exported to a resolved recipe</p></li>
-<li><p>a run records the default profile and every override</p></li>
-<li><p>a sweep records every variant</p></li>
-<li><p>custom methods are named in the manifest</p></li>
-<li><p>artifacts are sufficient to audit what was compared</p></li>
-</ul>
+<p>Custom model and preprocessor names registered via <code class="docutils literal notranslate"><span class="pre">macroforecast.custom</span></code>
+are recorded in the manifest so provenance is auditable even when extension
+callables are used.</p>
+</section>
 </section>
 
 
@@ -879,6 +927,22 @@
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-contract">Run contract</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replication-contract">Replication contract</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#seed-propagation">Seed propagation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#experiment-export">Experiment export</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-recorded">What is recorded</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 

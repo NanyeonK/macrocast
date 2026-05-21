@@ -844,28 +844,12 @@ surface. It is intentionally introduced beside the current public runtime.</p>
 manifest scaffolding.</p></li>
 </ul>
 </section>
-<section id="registry-migration-plan">
-<h2>Registry Migration Plan<a class="headerlink" href="#registry-migration-plan" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code> is the source of truth for the new DAG execution system.
-<code class="docutils literal notranslate"><span class="pre">macroforecast/registry</span></code> will be regenerated from <code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code> entries once
-L0-L8 coverage lands.</p>
-<p>Until that point, <code class="docutils literal notranslate"><span class="pre">macroforecast/registry</span></code> stays frozen for backward compatibility:</p>
-<ul class="simple">
-<li><p>DO NOT add new axes to <code class="docutils literal notranslate"><span class="pre">macroforecast/registry</span></code>.</p></li>
-<li><p>DO NOT modify existing axes in <code class="docutils literal notranslate"><span class="pre">macroforecast/registry</span></code>.</p></li>
-<li><p>DO NOT remove existing axes from <code class="docutils literal notranslate"><span class="pre">macroforecast/registry</span></code>.</p></li>
-</ul>
-<p>Phase 1 layer work adds new axes only to <code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code>. If current public
-recipes need backward-compatible behavior during the transition, implement an
-adapter at the boundary instead of changing legacy registry entries.</p>
-</section>
-<section id="capability-counts">
-<h2>Capability Counts<a class="headerlink" href="#capability-counts" title="Link to this heading">#</a></h2>
-<p>README capability counts refer to the legacy registry runtime, not
-<code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code>. Phase 0 Foundation work must not modify headline capability
-counts.</p>
-<p>The Foundation Core should not change runtime capability counts until it is
-wired to execution and a dedicated capability-audit test owns those numbers.</p>
+<section id="source-of-truth">
+<h2>Source of Truth<a class="headerlink" href="#source-of-truth" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code> is the live source of truth for all layer specifications
+and op registries. The migration from a legacy registry subsystem is complete.
+Layer contracts, op enumerations, and sweep machinery all live under
+<code class="docutils literal notranslate"><span class="pre">macroforecast.core</span></code>.</p>
 </section>
 </section>
 
@@ -918,8 +902,7 @@ wired to execution and a dedicated capability-audit test owns those numbers.</p>
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#current-authority">Current Authority</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#new-core-contract">New Core Contract</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registry-migration-plan">Registry Migration Plan</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#capability-counts">Capability Counts</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#source-of-truth">Source of Truth</a></li>
 </ul>
   </nav></div>
 
